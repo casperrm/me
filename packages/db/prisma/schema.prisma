@@ -51,12 +51,12 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships  Membership[]
-  invitations  Invitation[]
-  auditEvents  AuditEvent[]
-  clients      Client[]
-  expenses     Expense[]
-  assets       Asset[]
+  memberships Membership[]
+  invitations Invitation[]
+  auditEvents AuditEvent[]
+  clients     Client[]
+  expenses    Expense[]
+  assets      Asset[]
 
   @@map("organizations")
 }
@@ -97,10 +97,11 @@ model Membership {
   updatedAt      DateTime         @updatedAt
   version        Int              @default(1) // optimistic concurrency (Section 27.1)
 
-  scopedGrants   ScopedGrant[]
-  assignedTasks  Task[]
-  invitationsSent Invitation[]    @relation("InvitationInvitedBy")
-  uploadedAssets Asset[]
+  scopedGrants              ScopedGrant[]
+  assignedTasks             Task[]
+  invitationsSent           Invitation[]          @relation("InvitationInvitedBy")
+  uploadedAssets            Asset[]
+  ownedContentCalendarItems ContentCalendarItem[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -139,15 +140,15 @@ model Invitation {
 // revocation). tokenHash stores a hash of the bearer token, never the
 // token itself — see ADR-006.
 model Session {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id])
-  tokenHash  String    @unique
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  ipAddress  String?
-  userAgent  String?
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  ipAddress String?
+  userAgent String?
 
   @@index([userId])
   @@map("sessions")
@@ -161,13 +162,13 @@ model Session {
 // rather than a fully data-driven role_permissions table (deferred until
 // an admin-configurable policy builder is actually needed — Section 37).
 model ScopedGrant {
-  id           String      @id @default(uuid())
+  id           String     @id @default(uuid())
   membershipId String
-  membership   Membership  @relation(fields: [membershipId], references: [id])
+  membership   Membership @relation(fields: [membershipId], references: [id])
   permission   String
   clientId     String?
-  client       Client?     @relation(fields: [clientId], references: [id])
-  createdAt    DateTime    @default(now())
+  client       Client?    @relation(fields: [clientId], references: [id])
+  createdAt    DateTime   @default(now())
   createdBy    String?
 
   @@index([membershipId])
@@ -229,30 +230,31 @@ model AuditEvent {
 // ---------------------------------------------------------------------------
 
 model Client {
-  id             String       @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  name           String
-  companyName    String
-  industry       String?
-  lifecycleStage String       @default("ACTIVE") // PROSPECT | ACTIVE | PAUSED | CHURNED
-  services       String // JSON array
+  id                  String       @id @default(uuid())
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  name                String
+  companyName         String
+  industry            String?
+  lifecycleStage      String       @default("ACTIVE") // PROSPECT | ACTIVE | PAUSED | CHURNED
+  services            String // JSON array
   primaryContactName  String?
   primaryContactEmail String?
   connectedAccounts   String? // JSON: [{ platform, accountId, status }]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  brandProfile   BrandProfile?
-  projects       Project[]
-  invoices       Invoice[]
-  notes          Note[]
-  meetings       Meeting[]
-  timelineEvents ClientTimelineEvent[]
-  healthScores   ClientHealthScore[]
-  scopedGrants   ScopedGrant[]
-  assets         Asset[]
-  invitations    Invitation[]
+  brandProfile         BrandProfile?
+  projects             Project[]
+  invoices             Invoice[]
+  notes                Note[]
+  meetings             Meeting[]
+  timelineEvents       ClientTimelineEvent[]
+  healthScores         ClientHealthScore[]
+  scopedGrants         ScopedGrant[]
+  assets               Asset[]
+  invitations          Invitation[]
+  contentCalendarItems ContentCalendarItem[]
 
   @@index([organizationId])
   @@map("clients")
@@ -278,21 +280,21 @@ model BrandProfile {
 }
 
 model BrandProfileVersion {
-  id             String       @id @default(uuid())
-  brandProfileId String
-  brandProfile   BrandProfile @relation(fields: [brandProfileId], references: [id])
-  version        Int
-  colors          String? // JSON: [{ name, hex }]
-  fonts           String? // JSON: [{ role, family }]
-  logoAssetIds    String? // JSON array of Asset ids
-  toneOfVoice     String?
-  visualStyle     String?
-  targetAudience  String?
-  products        String? // JSON array
+  id               String       @id @default(uuid())
+  brandProfileId   String
+  brandProfile     BrandProfile @relation(fields: [brandProfileId], references: [id])
+  version          Int
+  colors           String? // JSON: [{ name, hex }]
+  fonts            String? // JSON: [{ role, family }]
+  logoAssetIds     String? // JSON array of Asset ids
+  toneOfVoice      String?
+  visualStyle      String?
+  targetAudience   String?
+  products         String? // JSON array
   approvedPatterns String? // JSON, with rationale (Section 5)
   rejectedPatterns String? // JSON, with rationale (Section 5)
-  createdAt       DateTime @default(now())
-  createdBy       String? // Membership id
+  createdAt        DateTime     @default(now())
+  createdBy        String? // Membership id
 
   @@unique([brandProfileId, version])
   @@map("brand_profile_versions")
@@ -337,50 +339,51 @@ model Note {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id          String        @id @default(uuid())
-  clientId    String
-  client      Client        @relation(fields: [clientId], references: [id])
-  name        String
-  status      String        @default("PLANNING") // PLANNING | IN_PROGRESS | IN_REVIEW | DELIVERED | ARCHIVED
-  dueDate     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id        String    @id @default(uuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id])
+  name      String
+  status    String    @default("PLANNING") // PLANNING | IN_PROGRESS | IN_REVIEW | DELIVERED | ARCHIVED
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  tasks       Task[]
-  campaigns   Campaign[]
-  assets      Asset[]
+  tasks     Task[]
+  campaigns Campaign[]
+  assets    Asset[]
 
   @@map("projects")
 }
 
 model Task {
-  id          String    @id @default(uuid())
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
-  title       String
-  status      String    @default("todo")
-  assigneeId  String?
-  assignee    Membership? @relation(fields: [assigneeId], references: [id])
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
+  id         String      @id @default(uuid())
+  projectId  String
+  project    Project     @relation(fields: [projectId], references: [id])
+  title      String
+  status     String      @default("todo")
+  assigneeId String?
+  assignee   Membership? @relation(fields: [assigneeId], references: [id])
+  dueDate    DateTime?
+  createdAt  DateTime    @default(now())
 
   @@map("tasks")
 }
 
 model Campaign {
-  id             String   @id @default(uuid())
-  projectId      String
-  project        Project  @relation(fields: [projectId], references: [id])
-  name           String
-  objective      String?
-  status         String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | ACTIVE | PAUSED | COMPLETED
-  platform       String?
-  externalId     String?
-  budgetCents    Int?
-  kpis           String? // JSON
-  createdAt      DateTime @default(now())
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  name        String
+  objective   String?
+  status      String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | ACTIVE | PAUSED | COMPLETED
+  platform    String?
+  externalId  String?
+  budgetCents Int?
+  kpis        String? // JSON
+  createdAt   DateTime @default(now())
 
-  creatives Creative[]
+  creatives            Creative[]
+  contentCalendarItems ContentCalendarItem[]
 
   @@map("campaigns")
 }
@@ -395,8 +398,9 @@ model Creative {
   currentVersion Int      @default(1)
   createdAt      DateTime @default(now())
 
-  versions CreativeVersion[]
-  assets   Asset[]
+  versions             CreativeVersion[]
+  assets               Asset[]
+  contentCalendarItems ContentCalendarItem[]
 
   @@map("creatives")
 }
@@ -426,6 +430,52 @@ model Approval {
   createdAt         DateTime        @default(now())
 
   @@map("approvals")
+}
+
+// ---------------------------------------------------------------------------
+// Content Planning and Publishing (Section 9). This is the planning/
+// scheduling layer — "content calendar with client, channel, campaign,
+// content pillar, format, owner, status, due date, approval, publish
+// time, and linked assets" — distinct from Section 12's due-date
+// calendar (packages/db already backs that one from Task/Project/Invoice
+// due dates directly). Approval itself is NOT reimplemented here: a
+// content item optionally points at a Creative, which already carries
+// the full Section 15.1 approval state machine — this model only tracks
+// the item's own planning-stage status.
+//
+// `status` follows Section 9's workflow (brief -> draft -> internal
+// review -> client approval when required -> scheduled/ready -> publish
+// -> performance -> learning) as far as this phase can actually go:
+// BRIEF | DRAFT | INTERNAL_REVIEW | CLIENT_APPROVAL | SCHEDULED |
+// PUBLISHED | FAILED. "Publish" here means "marked scheduled/published in
+// the plan," not an authorized connector call — real publish execution
+// needs the Integration Center (Phase 4, ADR-pending: no real platform
+// credentials exist yet). FAILED preserves `failureReason` for the
+// "actionable alerts, preserve payload/error metadata, safe retry"
+// requirement, in the one form buildable without a real connector.
+model ContentCalendarItem {
+  id            String      @id @default(uuid())
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id])
+  campaignId    String?
+  campaign      Campaign?   @relation(fields: [campaignId], references: [id])
+  creativeId    String?
+  creative      Creative?   @relation(fields: [creativeId], references: [id])
+  channel       String // e.g. instagram, tiktok, meta, email, blog
+  contentPillar String?
+  format        String? // e.g. reel, carousel, static, story, article
+  title         String
+  status        String      @default("BRIEF")
+  ownerId       String?
+  owner         Membership? @relation(fields: [ownerId], references: [id])
+  dueDate       DateTime?
+  publishAt     DateTime?
+  failureReason String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([clientId])
+  @@map("content_calendar_items")
 }
 
 // Files & Smart Asset Manager (Section 14). `storageKey` is the
@@ -470,13 +520,13 @@ model Asset {
 // ---------------------------------------------------------------------------
 
 model Invoice {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   clientId    String
-  client      Client   @relation(fields: [clientId], references: [id])
+  client      Client    @relation(fields: [clientId], references: [id])
   amountCents Int
-  currency    String   @default("USD")
-  status      String   @default("DRAFT") // DRAFT | SENT | PAID | OVERDUE | FAILED
-  issuedAt    DateTime @default(now())
+  currency    String    @default("USD")
+  status      String    @default("DRAFT") // DRAFT | SENT | PAID | OVERDUE | FAILED
+  issuedAt    DateTime  @default(now())
   dueAt       DateTime?
   paidAt      DateTime?
 
@@ -529,13 +579,13 @@ model MeetingAttendee {
 // ---------------------------------------------------------------------------
 
 model CedarBrainRequest {
-  id           String   @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
-  prompt       String
-  routedAgents String // JSON array
-  response     String? // JSON
-  clientId     String?
-  createdAt    DateTime @default(now())
+  prompt         String
+  routedAgents   String // JSON array
+  response       String? // JSON
+  clientId       String?
+  createdAt      DateTime @default(now())
 
   @@map("cedar_brain_requests")
 }

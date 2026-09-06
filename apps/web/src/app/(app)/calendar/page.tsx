@@ -10,12 +10,16 @@ const TYPE_LABEL: Record<string, string> = {
   task_due: "Task",
   project_due: "Project",
   invoice_due: "Invoice",
+  content_due: "Content",
+  content_publish: "Publish",
 };
 
 const TYPE_STYLE: Record<string, string> = {
   task_due: "bg-cedar-50 text-cedar-700",
   project_due: "bg-amber-50 text-amber-700",
   invoice_due: "bg-neutral-100 text-neutral-600",
+  content_due: "bg-purple-50 text-purple-700",
+  content_publish: "bg-purple-100 text-purple-800",
 };
 
 export default async function CalendarPage() {

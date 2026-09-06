@@ -1,7 +1,7 @@
 import { prisma } from "@cedar/db";
 
 export interface CalendarEvent {
-  type: "task_due" | "project_due" | "invoice_due";
+  type: "task_due" | "project_due" | "invoice_due" | "content_due" | "content_publish";
   title: string;
   date: Date;
   clientId: string;
@@ -12,10 +12,10 @@ export interface CalendarEvent {
 /**
  * Unifies deadlines across modules into one query (Bible Section 12:
  * "Calendar unifies deadlines, meetings, shoots, campaign launches,
- * approvals, publishing, invoice dates, and renewals"). Only task/
- * project/invoice due dates exist to unify so far — extend this
- * function, not a parallel one, as meetings/shoots/campaign launches
- * land in later phases.
+ * approvals, publishing, invoice dates, and renewals"). Task/project/
+ * invoice due dates and Content Calendar (Section 9) due/publish dates
+ * exist to unify so far — extend this function, not a parallel one, as
+ * meetings/shoots/campaign launches land in later phases.
  *
  * `clientIds` mirrors `getReadableClientIds`'s contract: `undefined`
  * means "every client in the organization," an array scopes to exactly
@@ -29,7 +29,7 @@ export async function getUpcomingEvents(params: {
 }): Promise<CalendarEvent[]> {
   const clientScope = params.clientIds ? { id: { in: params.clientIds } } : {};
 
-  const [tasks, projects, invoices] = await Promise.all([
+  const [tasks, projects, invoices, contentDue, contentPublish] = await Promise.all([
     prisma.task.findMany({
       where: {
         dueDate: { gte: params.from, lte: params.to },
@@ -47,6 +47,20 @@ export async function getUpcomingEvents(params: {
     prisma.invoice.findMany({
       where: {
         dueAt: { gte: params.from, lte: params.to },
+        client: { organizationId: params.organizationId, ...clientScope },
+      },
+      include: { client: true },
+    }),
+    prisma.contentCalendarItem.findMany({
+      where: {
+        dueDate: { gte: params.from, lte: params.to },
+        client: { organizationId: params.organizationId, ...clientScope },
+      },
+      include: { client: true },
+    }),
+    prisma.contentCalendarItem.findMany({
+      where: {
+        publishAt: { gte: params.from, lte: params.to },
         client: { organizationId: params.organizationId, ...clientScope },
       },
       include: { client: true },
@@ -83,6 +97,26 @@ export async function getUpcomingEvents(params: {
         clientId: i.clientId,
         clientName: i.client.name,
         href: `/clients/${i.clientId}`,
+      })),
+    ...contentDue
+      .filter((c) => c.dueDate)
+      .map((c) => ({
+        type: "content_due" as const,
+        title: `${c.title} due (${c.channel})`,
+        date: c.dueDate as Date,
+        clientId: c.clientId,
+        clientName: c.client.name,
+        href: `/clients/${c.clientId}/content`,
+      })),
+    ...contentPublish
+      .filter((c) => c.publishAt)
+      .map((c) => ({
+        type: "content_publish" as const,
+        title: `${c.title} publishes (${c.channel})`,
+        date: c.publishAt as Date,
+        clientId: c.clientId,
+        clientName: c.client.name,
+        href: `/clients/${c.clientId}/content`,
       })),
   ];
 

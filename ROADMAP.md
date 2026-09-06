@@ -69,8 +69,18 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       new version superseding whatever the previous one's state was) —
       see `docs/specs/approvals.md`. A version can link to an uploaded
       file from the Files module.
-- [ ] Content calendar (planning/scheduling, distinct from the Section 12
-      due-date calendar already built) — not started.
+- [x] Content Calendar (planning/scheduling, distinct from the Section 12
+      due-date calendar) — `ContentCalendarItem` (client/channel/campaign/
+      pillar/format/owner/status/dueDate/publishAt, optional link to a
+      `Creative` for its own approval history), a 7-state workflow
+      enforced server-side (BRIEF → DRAFT → INTERNAL_REVIEW →
+      CLIENT_APPROVAL → SCHEDULED → PUBLISHED, plus FAILED with a
+      required reason and retry), a per-client planning page at
+      `/clients/[id]/content`, and due/publish dates now feed into the
+      Section 12 unified `/calendar` as `content_due`/`content_publish`
+      events. `PUBLISHED` means "the plan says this went out," not a real
+      connector call — see `docs/specs/content-calendar.md` for the exact
+      scope boundary (actual publish execution is Phase 4).
 - [ ] Video/production workflows (Section 11) — not started.
 - [x] Client Portal (Section 15.2) — `/portal` + `/portal/[clientId]`
       curated view (pending approvals with a decide action, approved

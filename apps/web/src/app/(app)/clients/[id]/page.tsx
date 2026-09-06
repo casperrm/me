@@ -206,7 +206,17 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Projects" action={canWrite && <NewProjectForm clientId={client.id} />}>
+        <Card
+          title="Projects"
+          action={
+            <div className="flex items-center gap-3">
+              <Link href={`/clients/${client.id}/content`} className="text-xs text-cedar-700 hover:underline">
+                Content Calendar
+              </Link>
+              {canWrite && <NewProjectForm clientId={client.id} />}
+            </div>
+          }
+        >
           {client.projects.length === 0 ? (
             <p className="text-sm text-neutral-400">No projects yet.</p>
           ) : (

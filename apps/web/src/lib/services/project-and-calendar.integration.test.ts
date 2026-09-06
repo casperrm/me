@@ -13,11 +13,13 @@ vi.mock("next/headers", () => ({
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
 import { createProject, createTask, setTaskStatus } from "./project-service";
+import { createContentCalendarItem } from "./content-calendar-service";
 import { getUpcomingEvents } from "./calendar-service";
 
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
+  await prisma.contentCalendarItem.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
   await prisma.invoice.deleteMany();
@@ -115,7 +117,7 @@ describe("createProject / createTask / setTaskStatus", () => {
 });
 
 describe("getUpcomingEvents", () => {
-  it("unifies task, project, and invoice due dates within the window and scopes by client", async () => {
+  it("unifies task, project, invoice, and content calendar dates within the window and scopes by client", async () => {
     const projectA = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
     const projectB = await createProject({
       actorUserId: ownerUserId,
@@ -137,12 +139,22 @@ describe("getUpcomingEvents", () => {
       data: { clientId: clientAId, amountCents: 50000, dueAt: new Date("2030-06-12") },
     });
 
+    await createContentCalendarItem({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      clientId: clientAId,
+      title: "Launch post",
+      channel: "instagram",
+      dueDate: new Date("2030-06-11"),
+      publishAt: new Date("2030-06-20"),
+    });
+
     const from = new Date("2030-06-01");
     const to = new Date("2030-06-30");
 
     const allEvents = await getUpcomingEvents({ organizationId: orgId, from, to });
     const types = allEvents.map((e) => e.type).sort();
-    expect(types).toEqual(["invoice_due", "project_due", "task_due"]);
+    expect(types).toEqual(["content_due", "content_publish", "invoice_due", "project_due", "task_due"]);
     // Sorted chronologically.
     expect(allEvents[0].date.getTime()).toBeLessThanOrEqual(allEvents[allEvents.length - 1].date.getTime());
 
