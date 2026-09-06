@@ -3,6 +3,7 @@ import { prisma } from "@cedar/db";
 import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
+import { getClientProfitability } from "@/lib/services/profitability-service";
 
 // Dashboard figures must always reflect current data, not a build-time snapshot.
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
 
   const organizationId = actor.organizationId;
 
-  const [clients, invoices, expenses, pendingApprovals, delayedProjects, recentTimeline] =
+  const [clients, invoices, expenses, pendingApprovals, delayedProjects, recentTimeline, profitability] =
     await Promise.all([
       prisma.client.findMany({ where: { organizationId } }),
       prisma.invoice.findMany({ where: { client: { organizationId } } }),
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
         take: 6,
         include: { client: true },
       }),
+      getClientProfitability(organizationId),
     ]);
 
   const revenueCents = invoices
@@ -113,6 +115,53 @@ export default async function DashboardPage() {
           )}
         </Card>
       </div>
+
+      <Card
+        title="Client profitability"
+        action={<span className="text-xs text-neutral-400">Paid invoices minus attributed expenses (Section 4.2/16)</span>}
+      >
+        {profitability.clients.every((c) => c.revenueCents === 0 && c.costCents === 0) ? (
+          <p className="text-sm text-neutral-400">No paid invoices or logged expenses yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-neutral-100 text-xs text-neutral-500">
+                  <th className="pb-2 pr-4">Client</th>
+                  <th className="pb-2 pr-4">Revenue</th>
+                  <th className="pb-2 pr-4">Cost</th>
+                  <th className="pb-2 pr-4">Profit</th>
+                  <th className="pb-2">Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profitability.clients
+                  .filter((c) => c.revenueCents > 0 || c.costCents > 0)
+                  .sort((a, b) => b.profitCents - a.profitCents)
+                  .map((c) => (
+                    <tr key={c.clientId} className="border-b border-neutral-50">
+                      <td className="py-2 pr-4">
+                        <Link href={`/clients/${c.clientId}`} className="hover:underline">
+                          {c.clientName}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4">{money(c.revenueCents)}</td>
+                      <td className="py-2 pr-4">{money(c.costCents)}</td>
+                      <td className={`py-2 pr-4 ${c.profitCents < 0 ? "text-red-600" : ""}`}>{money(c.profitCents)}</td>
+                      <td className="py-2">{c.marginPct !== null ? `${c.marginPct.toFixed(0)}%` : "—"}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {profitability.unattributedCostCents > 0 && (
+          <p className="mt-3 text-xs text-neutral-400">
+            {money(profitability.unattributedCostCents)} in expenses aren&apos;t attributed to a specific client (general
+            overhead).
+          </p>
+        )}
+      </Card>
     </div>
   );
 }

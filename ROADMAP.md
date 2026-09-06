@@ -171,9 +171,20 @@ them.
       campaign trends, communication gaps, satisfaction signals, and
       renewal proximity (also named in Section 4.2) need modules that
       don't exist yet and are never faked.
-- [ ] Missing: profitability attribution by project/service/campaign,
-      Opportunity Engine, AI Business Advisor, governed metrics catalog
-      (Section 29).
+- [x] Client-level profitability attribution (Section 4.2/16) — new
+      `Expense.clientId` (optional) plus a first real write path
+      (`createExpense`, gated on `finance:write`) makes cost
+      attribution real, paired with `Invoice.clientId` (already
+      existed) for revenue. CEO Dashboard gained a per-client
+      revenue/cost/profit/margin table; client profile page gained an
+      Expenses card. Explicit scope boundary in
+      `docs/specs/profitability.md`: project/campaign/service-level
+      attribution (Phase 5's own wording) needs schema and UI this
+      slice doesn't build (`Invoice.projectId`/`Expense.projectId`, a
+      billable line-item model) — deferred with reasons given, not
+      faked.
+- [ ] Missing: project/campaign/service-level profitability, Opportunity
+      Engine, AI Business Advisor, governed metrics catalog (Section 29).
 
 ## Phase 6 — Advanced Intelligence: not started
 

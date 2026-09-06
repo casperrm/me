@@ -8,6 +8,7 @@ import { requireActor } from "@/lib/guards";
 import { NewProjectForm } from "./NewProjectForm";
 import { AssetUploadForm } from "./AssetUploadForm";
 import { AssetsList } from "./AssetsList";
+import { AddExpenseForm } from "./AddExpenseForm";
 import { buildSignedDownloadPath } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       brandProfile: { include: { versions: { orderBy: { version: "desc" }, take: 1 } } },
       projects: { include: { campaigns: true, tasks: true } },
       invoices: { orderBy: { issuedAt: "desc" } },
+      expenses: { orderBy: { incurredAt: "desc" } },
       notes: { orderBy: { createdAt: "desc" } },
       timelineEvents: { orderBy: { occurredAt: "desc" } },
       healthScores: { orderBy: { computedAt: "desc" }, take: 1 },
@@ -57,6 +59,12 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     organizationId: actor.organizationId,
     permission: "clients:write",
     clientId: client.id,
+  });
+
+  const canWriteFinance = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "finance:write",
   });
 
   const brandVersion = client.brandProfile?.versions[0];
@@ -283,6 +291,23 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                   <span>{inv.issuedAt.toLocaleDateString()}</span>
                   <span>${(inv.amountCents / 100).toLocaleString()}</span>
                   <span className="text-xs text-neutral-500">{inv.status}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card title="Expenses" action={canWriteFinance && <AddExpenseForm clientId={client.id} />}>
+          {client.expenses.length === 0 ? (
+            <p className="text-sm text-neutral-400">No expenses logged against this client yet.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {client.expenses.map((exp) => (
+                <li key={exp.id} className="flex justify-between">
+                  <span>
+                    {exp.incurredAt.toLocaleDateString()} — {exp.category}
+                  </span>
+                  <span>${(exp.amountCents / 100).toLocaleString()}</span>
                 </li>
               ))}
             </ul>

@@ -301,6 +301,7 @@ model Client {
   contentCalendarItems ContentCalendarItem[]
   shoots               Shoot[]
   notifications        Notification[]
+  expenses             Expense[]
 
   @@index([organizationId])
   @@map("clients")
@@ -692,11 +693,19 @@ model Expense {
   id             String       @id @default(uuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  // Optional: attributes this cost to a specific client for profitability
+  // reporting (Section 4.2/16). Null means an org-wide overhead cost
+  // (software, general contractors) that isn't attributable to one
+  // client — reported separately, never guessed at or evenly split
+  // across clients.
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
   category       String
   amountCents    Int
   description    String?
   incurredAt     DateTime     @default(now())
 
+  @@index([clientId])
   @@map("expenses")
 }
 
