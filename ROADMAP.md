@@ -24,8 +24,9 @@ deployment.
 - [x] Base UI system, owner dashboard, team/permissions screens
       (`apps/web`).
 - [x] Health endpoints (`apps/api` `/health` + `/ready`).
-- [ ] Queue/worker runtime exists (`apps/worker`) but carries no real
-      job yet — fine per ADR-004, not a blocker for this phase.
+- [x] Queue/worker runtime (`apps/worker`) now carries a real job — the
+      Section 30 overdue-escalation scan (hourly, `immediately: true` on
+      restart), see `docs/specs/notifications.md`.
 - [x] Object storage abstraction — `StorageAdapter` interface with a
       local-filesystem dev implementation, real checksums, signed
       time-limited download URLs, upload validation (type/size).
@@ -56,7 +57,16 @@ canonical system.
       checksums, and signed URLs on a dev-grade local storage backend
       (see `docs/specs/files-and-assets.md`, ADR-005). Virus/malware
       scanning is the one explicitly unbuilt piece.
-- [ ] Search, notifications — not started.
+- [x] Notifications (Section 30) — in-app notification center
+      (severity/category/client/resource/action/read-acknowledged
+      state), a real fan-out (`notifyClientWriters`) wired into approval
+      requests (QC-aware severity), failed content-calendar publishes,
+      and a new hourly worker escalation job for overdue tasks/projects/
+      content. Explicit scope boundary in `docs/specs/notifications.md`:
+      payment-risk and integration-degradation escalation triggers need
+      modules that don't exist yet (real invoicing, Phase 4 connectors);
+      email/push channels are adapters for later, not built.
+- [ ] Global search / command palette (Section 28.2) — not started.
 - [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
       Brand DNA saves, project creation, campaign creation, asset
       uploads, and creative approvals, in addition to seed data — still

@@ -51,12 +51,13 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships Membership[]
-  invitations Invitation[]
-  auditEvents AuditEvent[]
-  clients     Client[]
-  expenses    Expense[]
-  assets      Asset[]
+  memberships   Membership[]
+  invitations   Invitation[]
+  auditEvents   AuditEvent[]
+  clients       Client[]
+  expenses      Expense[]
+  assets        Asset[]
+  notifications Notification[]
 
   @@map("organizations")
 }
@@ -144,6 +145,7 @@ model Membership {
   invitationsSent           Invitation[]          @relation("InvitationInvitedBy")
   uploadedAssets            Asset[]
   ownedContentCalendarItems ContentCalendarItem[]
+  notifications             Notification[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -298,6 +300,7 @@ model Client {
   invitations          Invitation[]
   contentCalendarItems ContentCalendarItem[]
   shoots               Shoot[]
+  notifications        Notification[]
 
   @@index([organizationId])
   @@map("clients")
@@ -740,4 +743,36 @@ model CedarBrainRequest {
   createdAt      DateTime @default(now())
 
   @@map("cedar_brain_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications and Alerts (Section 30): "In-app notification center with
+// severity, category, client/resource, action, read/acknowledged state."
+// Written by packages/events' notifications.ts — the same append-then-read
+// pattern as AuditEvent, but user-facing and mutable (read/acknowledged
+// state changes in place, unlike the audit log).
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  membershipId   String
+  membership     Membership   @relation(fields: [membershipId], references: [id])
+  severity       String // INFO | WARNING | CRITICAL
+  category       String // e.g. approval_requested, quality_control_failed, content_publish_failed, task_overdue, project_overdue, content_overdue
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
+  resourceType   String?
+  resourceId     String?
+  title          String
+  body           String?
+  actionUrl      String?
+  status         String       @default("UNREAD") // UNREAD | READ | ACKNOWLEDGED
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([membershipId, status])
+  @@index([resourceType, resourceId, category])
+  @@map("notifications")
 }

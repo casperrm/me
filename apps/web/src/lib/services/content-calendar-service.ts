@@ -1,6 +1,6 @@
 import { requirePermission } from "@cedar/auth";
 import { prisma } from "@cedar/db";
-import { emitAuditEvent } from "@cedar/events";
+import { emitAuditEvent, notifyClientWriters } from "@cedar/events";
 import { AuthError } from "./auth-service";
 
 async function assertClientInOrg(clientId: string, organizationId: string) {
@@ -162,6 +162,22 @@ export async function setContentCalendarItemStatus(params: {
     result: "SUCCESS",
     changeSet: { before: { status: currentStatus }, after: { status: params.status } },
   });
+
+  // Section 30: "Escalation rules for ... failed workflows."
+  if (params.status === "FAILED") {
+    await notifyClientWriters({
+      organizationId: params.organizationId,
+      clientId: item.clientId,
+      excludeMembershipId: membership.id,
+      severity: "WARNING",
+      category: "content_publish_failed",
+      resourceType: "ContentCalendarItem",
+      resourceId: item.id,
+      title: `Content item failed: ${item.title}`,
+      body: updated.failureReason ?? undefined,
+      actionUrl: `/clients/${item.clientId}/content`,
+    });
+  }
 
   return updated;
 }

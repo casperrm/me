@@ -13,6 +13,7 @@
   "dependencies": {
     "@cedar/config": "*",
     "@cedar/db": "*",
+    "@cedar/events": "*",
     "@cedar/observability": "*",
     "bullmq": "^5.13.2",
     "ioredis": "^5.4.1"

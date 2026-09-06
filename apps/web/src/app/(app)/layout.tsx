@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireActor } from "@/lib/guards";
 import { isAuthorized } from "@cedar/auth";
 import { logoutAction } from "@/lib/actions/auth";
+import { unreadNotificationCount } from "@/lib/services/notification-service";
 
 // Every authenticated page reads the session cookie and queries per-user
 // data — none of it should ever be statically prerendered/cached.
@@ -29,12 +30,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     permission: "members:manage",
   }));
 
+  const unreadCount = await unreadNotificationCount(actor.membership.id);
+
   const navItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/clients", label: "Clients" },
-    { href: "/calendar", label: "Calendar" },
-    { href: "/command", label: "Cedar Command Center" },
-    ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions" }] : []),
+    { href: "/dashboard", label: "Dashboard", badge: 0 },
+    { href: "/clients", label: "Clients", badge: 0 },
+    { href: "/calendar", label: "Calendar", badge: 0 },
+    { href: "/notifications", label: "Notifications", badge: unreadCount },
+    { href: "/command", label: "Cedar Command Center", badge: 0 },
+    ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions", badge: 0 }] : []),
   ];
 
   return (
@@ -50,9 +54,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-md px-3 py-2 text-sm text-neutral-600 hover:bg-cedar-50 hover:text-cedar-800"
+                className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-neutral-600 hover:bg-cedar-50 hover:text-cedar-800"
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="rounded-full bg-cedar-600 px-1.5 py-0.5 text-xs font-medium text-white">{item.badge}</span>
+                )}
               </Link>
             ))}
           </nav>

@@ -10,6 +10,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@cedar/auth": "*",
     "@cedar/db": "*"
   },
   "devDependencies": {

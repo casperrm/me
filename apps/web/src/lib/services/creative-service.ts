@@ -1,6 +1,6 @@
 import { requireAnyPermission, requirePermission } from "@cedar/auth";
 import { prisma } from "@cedar/db";
-import { emitAuditEvent } from "@cedar/events";
+import { emitAuditEvent, notifyClientWriters } from "@cedar/events";
 import { AuthError } from "./auth-service";
 import { runQualityChecks } from "./qc-service";
 
@@ -230,6 +230,24 @@ export async function requestApproval(params: {
     clientId,
     result: "SUCCESS",
     changeSet: qcOverallStatus ? { qualityControl: qcOverallStatus } : undefined,
+  });
+
+  // Section 30: notify everyone who can act on this client that a review
+  // is waiting — severity reflects the Quality Control outcome so a
+  // failing check doesn't read the same as routine, healthy creative.
+  const severity = qcOverallStatus === "fail" ? "CRITICAL" : qcOverallStatus === "warning" ? "WARNING" : "INFO";
+  const { campaign } = version.creative;
+  await notifyClientWriters({
+    organizationId: params.organizationId,
+    clientId,
+    excludeMembershipId: membership.id,
+    severity,
+    category: "approval_requested",
+    resourceType: "CreativeVersion",
+    resourceId: version.id,
+    title: `Approval requested: ${version.creative.type} v${version.version}`,
+    body: qcOverallStatus && qcOverallStatus !== "pass" ? `Quality Control: ${qcOverallStatus}` : undefined,
+    actionUrl: `/clients/${clientId}/projects/${campaign.projectId}/campaigns/${campaign.id}/creatives/${version.creativeId}`,
   });
 
   return approval;
