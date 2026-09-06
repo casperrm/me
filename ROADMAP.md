@@ -60,7 +60,7 @@ canonical system.
       uploads, and creative approvals, in addition to seed data — still
       missing for task/invoice activity.
 
-## Phase 2 — Creative and Approval Operations: **in progress**
+## Phase 2 — Creative and Approval Operations: **complete**
 
 Deliverable: brief-to-client-approval lifecycle is operational.
 
