@@ -6,6 +6,12 @@
 // Command Center has a real, working end-to-end path to build on rather
 // than a mock.
 
+// Bumped manually whenever the system prompt below changes — the closest
+// thing to a real prompt version registry until Section 33's full one
+// exists (see ADR-007). Recorded on every CedarBrainRequest row so a
+// quality/cost regression can be traced to a specific prompt revision.
+export const CEDAR_BRAIN_PROMPT_VERSION = "v1";
+
 export type CedarAgent =
   | "marketing"
   | "design"
@@ -46,6 +52,7 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[]) {
         agent,
         output: `[stub] ${agent} would produce its part of this request here.`,
       })),
+      usage: null,
     };
   }
 
@@ -79,5 +86,12 @@ request, not generic marketing filler.`;
   const data = await res.json();
   const text = data.content?.map((block: { text?: string }) => block.text ?? "").join("\n") ?? "";
 
-  return { mode: "live" as const, summary: text, plan: agents.map((agent) => ({ agent, output: null })) };
+  return {
+    mode: "live" as const,
+    summary: text,
+    plan: agents.map((agent) => ({ agent, output: null })),
+    usage: data.usage
+      ? { inputTokens: data.usage.input_tokens as number, outputTokens: data.usage.output_tokens as number }
+      : null,
+  };
 }

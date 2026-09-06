@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@cedar/db";
 import { getCurrentActor } from "@/lib/current-actor";
-import { routeToAgents, callCedarBrain } from "@/lib/cedar-brain";
+import { routeToAgents, callCedarBrain, CEDAR_BRAIN_PROMPT_VERSION } from "@/lib/cedar-brain";
 
 export async function POST(req: Request) {
   const actor = await getCurrentActor();
@@ -14,25 +14,53 @@ export async function POST(req: Request) {
   }
 
   const agents = routeToAgents(prompt);
+  const startedAt = Date.now();
 
   try {
     const result = await callCedarBrain(prompt, agents);
+    const latencyMs = Date.now() - startedAt;
 
-    await prisma.cedarBrainRequest.create({
+    const record = await prisma.cedarBrainRequest.create({
       data: {
         organizationId: actor.organizationId,
         prompt,
         routedAgents: JSON.stringify(agents),
         response: JSON.stringify(result),
         clientId: clientId ?? null,
+        mode: result.mode,
+        modelName: result.mode === "live" ? "claude-sonnet-5" : null,
+        promptVersion: CEDAR_BRAIN_PROMPT_VERSION,
+        latencyMs,
+        success: true,
+        inputTokens: result.usage?.inputTokens ?? null,
+        outputTokens: result.usage?.outputTokens ?? null,
       },
     });
 
-    return NextResponse.json({ agents, ...result });
+    return NextResponse.json({ agents, ...result, cedarBrainRequestId: record.id });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Cedar Brain request failed" },
-      { status: 500 },
-    );
+    // Section 6.3's AI Supervisor needs failed requests logged too, not
+    // just successes — a request that errors out is exactly the signal
+    // it exists to surface (see ADR-007 and docs/specs/ai-supervisor.md).
+    const latencyMs = Date.now() - startedAt;
+    const errorMessage = err instanceof Error ? err.message : "Cedar Brain request failed";
+
+    await prisma.cedarBrainRequest.create({
+      data: {
+        organizationId: actor.organizationId,
+        prompt,
+        routedAgents: JSON.stringify(agents),
+        response: null,
+        clientId: clientId ?? null,
+        mode: "live",
+        modelName: "claude-sonnet-5",
+        promptVersion: CEDAR_BRAIN_PROMPT_VERSION,
+        latencyMs,
+        success: false,
+        errorMessage,
+      },
+    });
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

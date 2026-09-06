@@ -31,6 +31,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     permission: "members:manage",
   }));
 
+  const canSeeAiSupervisor = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "ai:supervise",
+  });
+
   const unreadCount = await unreadNotificationCount(actor.membership.id);
 
   const navItems = [
@@ -39,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/calendar", label: "Calendar", badge: 0 },
     { href: "/notifications", label: "Notifications", badge: unreadCount },
     { href: "/command", label: "Cedar Command Center", badge: 0 },
+    ...(canSeeAiSupervisor ? [{ href: "/command/supervisor", label: "AI Supervisor", badge: 0 }] : []),
     { href: "/metrics", label: "Metrics Catalog", badge: 0 },
     ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions", badge: 0 }] : []),
   ];

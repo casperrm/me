@@ -32,7 +32,8 @@ export type Permission =
   | "clients:write"
   | "finance:read"
   | "finance:write"
-  | "approvals:decide";
+  | "approvals:decide"
+  | "ai:supervise";
 
 export const ALL_PERMISSIONS: Permission[] = [
   "organization:manage",
@@ -44,6 +45,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "finance:read",
   "finance:write",
   "approvals:decide",
+  "ai:supervise",
 ];
 
 // Permissions a role holds organization-wide, with no client scoping
@@ -65,6 +67,7 @@ export const ROLE_GLOBAL_PERMISSIONS: Record<Exclude<Role, "OWNER">, Permission[
     "finance:read",
     "finance:write",
     "approvals:decide",
+    "ai:supervise",
   ],
   // Client-facing roles get nothing organization-wide by default — access
   // to a specific client comes from a ScopedGrant (Section 2.2: "scope"

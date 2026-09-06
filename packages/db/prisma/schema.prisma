@@ -146,6 +146,7 @@ model Membership {
   uploadedAssets            Asset[]
   ownedContentCalendarItems ContentCalendarItem[]
   notifications             Notification[]
+  flaggedCedarBrainRequests CedarBrainRequest[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -742,15 +743,35 @@ model MeetingAttendee {
 // Cedar Brain (Section 6-7): every command logged for Agency Memory.
 // ---------------------------------------------------------------------------
 
+// Section 6.3 AI Supervisor: "Track agent/model success rate, evaluation
+// score, latency, cost, retries, tool failures, hallucination/error
+// reports, and user corrections." Every field below is populated from a
+// real, measured value at request time (see ai-supervisor-service.ts /
+// docs/specs/ai-supervisor.md for exactly which sub-signals this covers
+// and which — evaluation score, retries, tool failures — have no real
+// data source yet and are not faked).
 model CedarBrainRequest {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   prompt         String
   routedAgents   String // JSON array
   response       String? // JSON
   clientId       String?
-  createdAt      DateTime @default(now())
+  mode           String // "live" | "stub"
+  modelName      String? // null for stub mode — no model was actually called
+  promptVersion  String // manually bumped constant in cedar-brain.ts when the system prompt changes
+  latencyMs      Int
+  success        Boolean
+  errorMessage   String?
+  inputTokens    Int? // from the Anthropic response's usage field — null for stub mode
+  outputTokens   Int?
+  flaggedIncorrect     Boolean    @default(false)
+  flaggedAt            DateTime?
+  flaggedByMembershipId String?
+  flaggedByMembership  Membership? @relation(fields: [flaggedByMembershipId], references: [id])
+  createdAt      DateTime  @default(now())
 
+  @@index([organizationId, createdAt])
   @@map("cedar_brain_requests")
 }
 

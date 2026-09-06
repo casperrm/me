@@ -9,6 +9,7 @@ type BrainResult = {
   mode: "stub" | "live";
   summary: string;
   plan: PlanItem[];
+  cedarBrainRequestId: string;
 };
 
 export default function CommandCenterPage() {
@@ -16,12 +17,15 @@ export default function CommandCenterPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BrainResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [flagged, setFlagged] = useState(false);
+  const [flagging, setFlagging] = useState(false);
 
   async function submit() {
     if (!prompt.trim()) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setFlagged(false);
     try {
       const res = await fetch("/api/cedar-brain", {
         method: "POST",
@@ -35,6 +39,17 @@ export default function CommandCenterPage() {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function flagAsIncorrect() {
+    if (!result) return;
+    setFlagging(true);
+    try {
+      const res = await fetch(`/api/cedar-brain/${result.cedarBrainRequestId}/flag`, { method: "POST" });
+      if (res.ok) setFlagged(true);
+    } finally {
+      setFlagging(false);
     }
   }
 
@@ -81,6 +96,19 @@ export default function CommandCenterPage() {
             </p>
           )}
           <p className="whitespace-pre-wrap text-sm">{result.summary}</p>
+          <div className="mt-3 border-t border-neutral-100 pt-3">
+            {flagged ? (
+              <span className="text-xs text-neutral-500">Flagged as incorrect — thanks for the correction.</span>
+            ) : (
+              <button
+                onClick={flagAsIncorrect}
+                disabled={flagging}
+                className="text-xs text-red-600 hover:underline disabled:opacity-50"
+              >
+                {flagging ? "Flagging…" : "Flag as incorrect"}
+              </button>
+            )}
+          </div>
         </Card>
       )}
     </div>

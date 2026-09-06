@@ -154,8 +154,25 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       exactly how far this is from the Bible's full orchestration
       lifecycle (no context retrieval, no evaluation, no cost governance,
       no per-agent specialization).
-- [ ] AI Gateway, prompt/model registry, governed retrieval, AI Supervisor
-      telemetry/evals — not started.
+- [x] AI Supervisor telemetry (Section 6.3) — every Cedar Brain request
+      (success or failure — previously only successes were logged, a
+      real gap this slice fixed) now records real mode, model name, a
+      manually-bumped prompt version constant, measured latency,
+      success/error outcome, and actual input/output token counts from
+      the Anthropic response. `/command/supervisor` (new `ai:supervise`
+      permission) surfaces real aggregates — success rate, average
+      latency, live/stub split, token totals, recent failures, and
+      user-flagged-incorrect responses (a real "Flag as incorrect"
+      button on the Command Center, satisfying Section 6.3's "user
+      corrections" signal). Explicit scope boundary in
+      `docs/specs/ai-supervisor.md`: no evaluation score (no eval
+      harness exists), no retry/tool-failure counts (no retry logic or
+      tool-calling exists to count), no cost-threshold alerting yet —
+      token counts stand in for "cost" rather than a computed dollar
+      figure that would need a hardcoded, staleness-prone price.
+- [ ] AI Gateway, full prompt/model version registry, governed
+      retrieval, per-agent specialization, evaluation harness — not
+      started.
 
 ## Phase 4 — Integrations and Publishing: not started
 
