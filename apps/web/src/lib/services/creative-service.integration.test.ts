@@ -23,6 +23,7 @@ async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.approval.deleteMany();
+  await prisma.qualityCheckResult.deleteMany();
   await prisma.creativeVersion.deleteMany();
   await prisma.creative.deleteMany();
   await prisma.campaign.deleteMany();

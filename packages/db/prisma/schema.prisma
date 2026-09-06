@@ -281,21 +281,26 @@ model BrandProfile {
 }
 
 model BrandProfileVersion {
-  id               String       @id @default(uuid())
-  brandProfileId   String
-  brandProfile     BrandProfile @relation(fields: [brandProfileId], references: [id])
-  version          Int
-  colors           String? // JSON: [{ name, hex }]
-  fonts            String? // JSON: [{ role, family }]
-  logoAssetIds     String? // JSON array of Asset ids
-  toneOfVoice      String?
-  visualStyle      String?
-  targetAudience   String?
-  products         String? // JSON array
-  approvedPatterns String? // JSON, with rationale (Section 5)
-  rejectedPatterns String? // JSON, with rationale (Section 5)
-  createdAt        DateTime     @default(now())
-  createdBy        String? // Membership id
+  id                  String       @id @default(uuid())
+  brandProfileId      String
+  brandProfile        BrandProfile @relation(fields: [brandProfileId], references: [id])
+  version             Int
+  colors              String? // JSON: [{ name, hex }]
+  fonts               String? // JSON: [{ role, family }]
+  logoAssetIds        String? // JSON array of Asset ids
+  toneOfVoice         String?
+  visualStyle         String?
+  targetAudience      String?
+  products            String? // JSON array
+  approvedPatterns    String? // JSON, with rationale (Section 5)
+  rejectedPatterns    String? // JSON, with rationale (Section 5)
+  // Section 5's "prohibited language ... claims, disclaimers" — the
+  // inputs Quality Control (Section 5/6.1/7) actually checks creative
+  // text against before client review. See qc-service.ts.
+  prohibitedLanguage  String? // JSON array of strings
+  requiredDisclaimers String? // JSON array of strings
+  createdAt           DateTime     @default(now())
+  createdBy           String? // Membership id
 
   @@unique([brandProfileId, version])
   @@map("brand_profile_versions")
@@ -497,7 +502,8 @@ model CreativeVersion {
   notes      String?
   createdAt  DateTime @default(now())
 
-  approvals Approval[]
+  approvals           Approval[]
+  qualityCheckResults QualityCheckResult[]
 
   @@map("creative_versions")
 }
@@ -512,6 +518,28 @@ model Approval {
   createdAt         DateTime        @default(now())
 
   @@map("approvals")
+}
+
+// Quality Control (Section 5: "Quality Control checks outputs for brand
+// consistency, spelling/language, required information, dimensions/
+// specifications, and obvious inconsistencies before client review";
+// Section 6.1/7 name this "Quality Control AI" in the orchestrated flow).
+// Run automatically by requestApproval — see qc-service.ts for what each
+// check actually does and the explicit scope boundary (deterministic
+// rule checks against Brand DNA + platform dimension specs, not an LLM
+// judgment call — no AI Foundation wiring exists yet for that, Phase 3).
+// Advisory, not a hard gate: a FAIL still lets the request through, but
+// is impossible to miss in the UI, matching "before client review"
+// rather than "instead of client review."
+model QualityCheckResult {
+  id                String          @id @default(uuid())
+  creativeVersionId String
+  creativeVersion   CreativeVersion @relation(fields: [creativeVersionId], references: [id])
+  overallStatus     String // pass | warning | fail
+  checks            String // JSON: [{ name, status, message }]
+  createdAt         DateTime        @default(now())
+
+  @@map("quality_check_results")
 }
 
 // ---------------------------------------------------------------------------

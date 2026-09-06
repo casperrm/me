@@ -12,6 +12,10 @@ export interface BrandVersionInput {
   products: string[];
   approvedPatterns: { pattern: string; rationale: string }[];
   rejectedPatterns: { pattern: string; rationale: string }[];
+  /** Section 5's "prohibited language" — scanned by Quality Control (qc-service.ts). */
+  prohibitedLanguage: string[];
+  /** Section 5's "claims, disclaimers" — checked for presence (as a warning) by Quality Control. */
+  requiredDisclaimers: string[];
 }
 
 /**
@@ -58,6 +62,8 @@ export async function createBrandVersion(params: {
         products: JSON.stringify(params.input.products),
         approvedPatterns: JSON.stringify(params.input.approvedPatterns),
         rejectedPatterns: JSON.stringify(params.input.rejectedPatterns),
+        prohibitedLanguage: JSON.stringify(params.input.prohibitedLanguage),
+        requiredDisclaimers: JSON.stringify(params.input.requiredDisclaimers),
         createdBy: membership.id,
       },
     });

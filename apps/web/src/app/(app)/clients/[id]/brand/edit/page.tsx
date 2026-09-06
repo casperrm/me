@@ -37,6 +37,8 @@ export default async function EditBrandDnaPage({ params }: { params: Promise<{ i
     products: parseJSON<string[]>(latest?.products, []),
     approvedPatterns: parseJSON<{ pattern: string; rationale: string }[]>(latest?.approvedPatterns, []),
     rejectedPatterns: parseJSON<{ pattern: string; rationale: string }[]>(latest?.rejectedPatterns, []),
+    prohibitedLanguage: parseJSON<string[]>(latest?.prohibitedLanguage, []),
+    requiredDisclaimers: parseJSON<string[]>(latest?.requiredDisclaimers, []),
   };
 
   return (

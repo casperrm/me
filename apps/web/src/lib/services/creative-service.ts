@@ -2,6 +2,7 @@ import { requireAnyPermission, requirePermission } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { emitAuditEvent } from "@cedar/events";
 import { AuthError } from "./auth-service";
+import { runQualityChecks } from "./qc-service";
 
 async function assertProjectInOrg(projectId: string, organizationId: string) {
   const project = await prisma.project.findFirst({
@@ -208,6 +209,17 @@ export async function requestApproval(params: {
     return approval;
   });
 
+  // Section 5: "Quality Control checks outputs ... before client review."
+  // Advisory only — a failing check is recorded and surfaced, never
+  // blocks the request. Never let a QC bug take down the approval
+  // request itself: log and move on.
+  let qcOverallStatus: string | undefined;
+  try {
+    qcOverallStatus = (await runQualityChecks(version.id)).overallStatus;
+  } catch (err) {
+    console.error("Quality Control check failed to run", err);
+  }
+
   await emitAuditEvent({
     organizationId: params.organizationId,
     actorType: "USER",
@@ -217,6 +229,7 @@ export async function requestApproval(params: {
     resourceId: version.id,
     clientId,
     result: "SUCCESS",
+    changeSet: qcOverallStatus ? { qualityControl: qcOverallStatus } : undefined,
   });
 
   return approval;

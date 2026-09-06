@@ -26,12 +26,16 @@ interface FormState {
   products: string[];
   approvedPatterns: PatternRow[];
   rejectedPatterns: PatternRow[];
+  prohibitedLanguage: string[];
+  requiredDisclaimers: string[];
 }
 
 export function BrandDnaForm({ clientId, initial }: { clientId: string; initial: FormState }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initial);
   const [productsText, setProductsText] = useState(initial.products.join("\n"));
+  const [prohibitedLanguageText, setProhibitedLanguageText] = useState(initial.prohibitedLanguage.join("\n"));
+  const [requiredDisclaimersText, setRequiredDisclaimersText] = useState(initial.requiredDisclaimers.join("\n"));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,6 +50,8 @@ export function BrandDnaForm({ clientId, initial }: { clientId: string; initial:
         body: JSON.stringify({
           ...form,
           products: productsText.split("\n").map((s) => s.trim()).filter(Boolean),
+          prohibitedLanguage: prohibitedLanguageText.split("\n").map((s) => s.trim()).filter(Boolean),
+          requiredDisclaimers: requiredDisclaimersText.split("\n").map((s) => s.trim()).filter(Boolean),
         }),
       });
       const data = await res.json();
@@ -213,6 +219,27 @@ export function BrandDnaForm({ clientId, initial }: { clientId: string; initial:
           </button>
         </Card>
       ))}
+
+      <Card title="Quality Control inputs (Section 5)">
+        <label className="mb-1 block text-xs font-medium text-neutral-600">
+          Prohibited language (one per line) — creative containing any of these fails Quality Control
+        </label>
+        <textarea
+          value={prohibitedLanguageText}
+          onChange={(e) => setProhibitedLanguageText(e.target.value)}
+          rows={3}
+          className="mb-3 w-full rounded-md border border-neutral-200 px-2 py-1 text-sm"
+        />
+        <label className="mb-1 block text-xs font-medium text-neutral-600">
+          Required disclaimers (one per line) — flagged as a warning when missing from creative text
+        </label>
+        <textarea
+          value={requiredDisclaimersText}
+          onChange={(e) => setRequiredDisclaimersText(e.target.value)}
+          rows={3}
+          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm"
+        />
+      </Card>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

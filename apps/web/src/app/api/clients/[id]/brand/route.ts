@@ -26,6 +26,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         products: Array.isArray(body.products) ? body.products : [],
         approvedPatterns: Array.isArray(body.approvedPatterns) ? body.approvedPatterns : [],
         rejectedPatterns: Array.isArray(body.rejectedPatterns) ? body.rejectedPatterns : [],
+        prohibitedLanguage: Array.isArray(body.prohibitedLanguage) ? body.prohibitedLanguage : [],
+        requiredDisclaimers: Array.isArray(body.requiredDisclaimers) ? body.requiredDisclaimers : [],
       },
     });
     return NextResponse.json({ ok: true, version: version.version });

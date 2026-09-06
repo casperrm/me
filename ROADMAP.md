@@ -105,8 +105,20 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       decision, always attributed to their own authenticated identity —
       `Approval.decidedBy` free text from a portal contact is discarded
       server-side, never trusted. See `docs/specs/client-portal.md`.
-- [ ] AI Quality Control (Section 23: brand consistency, spelling,
-      dimensions checks before client review) — not started.
+- [x] Quality Control (Section 5/6.1/7: brand consistency, spelling/
+      language, required information, dimensions/specifications before
+      client review) — runs automatically inside `requestApproval`:
+      prohibited-language scan and required-disclaimer presence check
+      against two new Brand DNA fields (`prohibitedLanguage`,
+      `requiredDisclaimers`), plus an image aspect-ratio check against a
+      static per-platform spec table (via `sharp`). Advisory, not a hard
+      gate — a FAIL is stored and rendered prominently on the Creative
+      detail page but never blocks the approval request, matching
+      Section 5's "before client review" as a visibility requirement.
+      Explicit scope boundary (see `docs/specs/quality-control.md`):
+      every check is a deterministic rule check, not an LLM judgment
+      call — no AI Foundation wiring exists yet for a genuine "does this
+      feel on-brand" assessment (Phase 3+).
 
 ## Phase 3 — AI Foundation and Command Center: **thin slice exists**
 

@@ -36,6 +36,8 @@ const sampleInput: BrandVersionInput = {
   products: ["Chargers"],
   approvedPatterns: [{ pattern: "Bold backgrounds", rationale: "High engagement" }],
   rejectedPatterns: [],
+  prohibitedLanguage: ["guaranteed results"],
+  requiredDisclaimers: ["Terms apply"],
 };
 
 let orgId: string;

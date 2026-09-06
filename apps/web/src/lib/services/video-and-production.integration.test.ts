@@ -21,6 +21,7 @@ async function wipeDatabase() {
   await prisma.shoot.deleteMany();
   await prisma.videoBriefVersion.deleteMany();
   await prisma.videoBrief.deleteMany();
+  await prisma.qualityCheckResult.deleteMany();
   await prisma.creativeVersion.deleteMany();
   await prisma.creative.deleteMany();
   await prisma.campaign.deleteMany();

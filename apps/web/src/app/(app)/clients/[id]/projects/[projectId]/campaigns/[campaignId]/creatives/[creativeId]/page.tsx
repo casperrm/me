@@ -34,6 +34,25 @@ const DECISION_STYLE: Record<string, string> = {
   canceled: "text-neutral-500",
 };
 
+const QC_BADGE_STYLE: Record<string, string> = {
+  pass: "bg-cedar-100 text-cedar-800",
+  warning: "bg-amber-50 text-amber-700",
+  fail: "bg-red-100 text-red-700",
+};
+
+const QC_CHECK_STYLE: Record<string, string> = {
+  pass: "text-cedar-700",
+  warning: "text-amber-700",
+  fail: "text-red-600",
+  skipped: "text-neutral-400",
+};
+
+interface QcCheck {
+  name: string;
+  status: string;
+  message: string;
+}
+
 export default async function CreativeDetailPage({
   params,
 }: {
@@ -52,7 +71,11 @@ export default async function CreativeDetailPage({
       campaign: { include: { project: { include: { client: true } } } },
       versions: {
         orderBy: { version: "desc" },
-        include: { approvals: { orderBy: { createdAt: "asc" } }, asset: true },
+        include: {
+          approvals: { orderBy: { createdAt: "asc" } },
+          asset: true,
+          qualityCheckResults: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
       },
       videoBrief: { include: { versions: { orderBy: { version: "desc" }, take: 1 } } },
     },
@@ -150,6 +173,22 @@ export default async function CreativeDetailPage({
                     </li>
                   ))}
                 </ul>
+              )}
+              {version.qualityCheckResults[0] && (
+                <div className="mt-2 rounded-md border border-neutral-100 p-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${QC_BADGE_STYLE[version.qualityCheckResults[0].overallStatus] ?? ""}`}>
+                      Quality Control: {version.qualityCheckResults[0].overallStatus}
+                    </span>
+                  </div>
+                  <ul className="mt-1 space-y-0.5">
+                    {parseJSON<QcCheck[]>(version.qualityCheckResults[0].checks, []).map((c, i) => (
+                      <li key={i} className={`text-xs ${QC_CHECK_STYLE[c.status] ?? "text-neutral-500"}`}>
+                        {c.name}: {c.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </li>
           ))}

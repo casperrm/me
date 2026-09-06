@@ -16,6 +16,7 @@ import { createContentCalendarItem, setContentCalendarItemStatus } from "./conte
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.contentCalendarItem.deleteMany();
+  await prisma.qualityCheckResult.deleteMany();
   await prisma.creativeVersion.deleteMany();
   await prisma.creative.deleteMany();
   await prisma.campaign.deleteMany();
