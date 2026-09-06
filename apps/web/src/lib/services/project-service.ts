@@ -104,6 +104,10 @@ export async function createTask(params: {
     changeSet: { title: task.title, projectId: project.id },
   });
 
+  await prisma.clientTimelineEvent.create({
+    data: { clientId: project.clientId, type: "task_created", summary: `Task "${task.title}" created.` },
+  });
+
   return task;
 }
 
@@ -146,6 +150,15 @@ export async function setTaskStatus(params: {
     result: "SUCCESS",
     changeSet: { before: { status: task.status }, after: { status: params.status } },
   });
+
+  // Only completion is timeline-worthy — every other status flip (e.g.
+  // todo -> in_progress) is routine progress, not an event worth
+  // surfacing on the client's activity history.
+  if (params.status === "done" && task.status !== "done") {
+    await prisma.clientTimelineEvent.create({
+      data: { clientId: task.project.clientId, type: "task_completed", summary: `Task "${task.title}" completed.` },
+    });
+  }
 
   return updated;
 }

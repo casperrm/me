@@ -92,8 +92,19 @@ describe("createProject / createTask / setTaskStatus", () => {
     });
     expect(task.status).toBe("todo");
 
+    const createdEvent = await prisma.clientTimelineEvent.findFirst({ where: { clientId: clientAId, type: "task_created" } });
+    expect(createdEvent).toBeTruthy();
+
     const updated = await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, status: "done" });
     expect(updated.status).toBe("done");
+
+    const completedEvent = await prisma.clientTimelineEvent.findFirst({ where: { clientId: clientAId, type: "task_completed" } });
+    expect(completedEvent).toBeTruthy();
+
+    // Setting it to "done" again must not create a second completion event.
+    await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, status: "done" });
+    const completedEventCount = await prisma.clientTimelineEvent.count({ where: { clientId: clientAId, type: "task_completed" } });
+    expect(completedEventCount).toBe(1);
   });
 
   it("rejects an assignee who isn't a member of the organization", async () => {

@@ -74,10 +74,18 @@ canonical system.
       records," not Section 28.2's paired "initiate permitted actions" —
       that belongs with Cedar Command Center, not a second parallel
       command-execution path.
-- [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
+- [x] Activity timeline (`ClientTimelineEvent`) now gets real writes from
       Brand DNA saves, project creation, campaign creation, asset
-      uploads, and creative approvals, in addition to seed data — still
-      missing for task/invoice activity.
+      uploads, creative approvals, task creation/completion, and invoice
+      creation/sending/payment. Invoices also gained their first real
+      write path (`invoice-service.ts`'s `createInvoice`/`sendInvoice`/
+      `markInvoicePaid`, gated on `finance:write`) — previously
+      seed-only, like `Expense` before `createExpense`. See
+      `docs/specs/activity-timeline.md` for the exact scope boundary:
+      automatic `OVERDUE` status transition isn't built (overdue is
+      already computed on the fly everywhere it's needed; storing it too
+      would create a second source of truth), and only task *completion*
+      (not every status flip) is timeline-worthy.
 
 ## Phase 2 — Creative and Approval Operations: **complete**
 

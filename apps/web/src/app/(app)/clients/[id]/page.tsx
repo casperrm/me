@@ -9,6 +9,8 @@ import { NewProjectForm } from "./NewProjectForm";
 import { AssetUploadForm } from "./AssetUploadForm";
 import { AssetsList } from "./AssetsList";
 import { AddExpenseForm } from "./AddExpenseForm";
+import { AddInvoiceForm } from "./AddInvoiceForm";
+import { InvoiceActions } from "./InvoiceActions";
 import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 
@@ -304,16 +306,17 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Invoices">
+        <Card title="Invoices" action={canWriteFinance && <AddInvoiceForm clientId={client.id} />}>
           {client.invoices.length === 0 ? (
             <p className="text-sm text-neutral-400">No invoices yet.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {client.invoices.map((inv) => (
-                <li key={inv.id} className="flex justify-between">
+                <li key={inv.id} className="flex items-center justify-between gap-2">
                   <span>{inv.issuedAt.toLocaleDateString()}</span>
                   <span>${(inv.amountCents / 100).toLocaleString()}</span>
                   <span className="text-xs text-neutral-500">{inv.status}</span>
+                  {canWriteFinance && <InvoiceActions invoiceId={inv.id} status={inv.status} />}
                 </li>
               ))}
             </ul>
