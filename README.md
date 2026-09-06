@@ -11,6 +11,7 @@
 5. [معمارية قاعدة البيانات والـ Knowledge Graph](./docs/05-database-knowledge-graph.md)
 6. [بنية الواجهة وتجربة المستخدم](./docs/06-ui-ux-architecture.md)
 7. [بنية الباك-إند والبنية السحابية](./docs/07-backend-cloud-architecture.md)
+8. [مواصفات الموديولات الكاملة (20 موديول)](./docs/08-module-specifications.md)
 
 ---
 
