@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isAuthorized } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
+import { NewProjectForm } from "./NewProjectForm";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +48,20 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   });
   if (!allowed) return <PermissionDenied message="You don't have access to this client." />;
 
+  const canWrite = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "clients:write",
+    clientId: client.id,
+  });
+
   const brandVersion = client.brandProfile?.versions[0];
   const services = parseJSON<string[]>(client.services, []);
   const colors = parseJSON<{ name: string; hex: string }[]>(brandVersion?.colors, []);
   const fonts = parseJSON<{ role: string; family: string }[]>(brandVersion?.fonts, []);
+  const products = parseJSON<string[]>(brandVersion?.products, []);
+  const approvedPatterns = parseJSON<{ pattern: string; rationale: string }[]>(brandVersion?.approvedPatterns, []);
+  const rejectedPatterns = parseJSON<{ pattern: string; rationale: string }[]>(brandVersion?.rejectedPatterns, []);
   const health = client.healthScores[0];
 
   return (
@@ -98,7 +110,17 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           )}
         </Card>
 
-        <Card title="Brand DNA" className="lg:col-span-2">
+        <Card
+          title={brandVersion ? `Brand DNA — v${brandVersion.version}` : "Brand DNA"}
+          className="lg:col-span-2"
+          action={
+            canWrite && (
+              <Link href={`/clients/${client.id}/brand/edit`} className="text-xs text-cedar-700 hover:underline">
+                {brandVersion ? "Edit (new version)" : "Add Brand DNA"}
+              </Link>
+            )
+          }
+        >
           {!brandVersion ? (
             <p className="text-sm text-neutral-400">
               No Brand DNA captured yet — the AI will need to be told the brand every time until this is filled in.
@@ -139,26 +161,63 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                 <div className="mb-1 text-xs font-medium text-neutral-500">Target audience</div>
                 <p className="text-sm">{brandVersion.targetAudience ?? "—"}</p>
               </div>
+              <div>
+                <div className="mb-1 text-xs font-medium text-neutral-500">Products</div>
+                <div className="flex flex-wrap gap-1">
+                  {products.map((p) => (
+                    <span key={p} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">
+                      {p}
+                    </span>
+                  ))}
+                  {products.length === 0 && <span className="text-xs text-neutral-400">—</span>}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="mb-1 text-xs font-medium text-neutral-500">Approved patterns</div>
+                <ul className="text-sm">
+                  {approvedPatterns.map((p, i) => (
+                    <li key={i}>
+                      <span className="font-medium">{p.pattern}</span>
+                      {p.rationale && <span className="text-neutral-400"> — {p.rationale}</span>}
+                    </li>
+                  ))}
+                  {approvedPatterns.length === 0 && <span className="text-xs text-neutral-400">—</span>}
+                </ul>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="mb-1 text-xs font-medium text-neutral-500">Rejected patterns</div>
+                <ul className="text-sm">
+                  {rejectedPatterns.map((p, i) => (
+                    <li key={i}>
+                      <span className="font-medium">{p.pattern}</span>
+                      {p.rationale && <span className="text-neutral-400"> — {p.rationale}</span>}
+                    </li>
+                  ))}
+                  {rejectedPatterns.length === 0 && <span className="text-xs text-neutral-400">—</span>}
+                </ul>
+              </div>
             </div>
           )}
         </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Projects">
+        <Card title="Projects" action={canWrite && <NewProjectForm clientId={client.id} />}>
           {client.projects.length === 0 ? (
             <p className="text-sm text-neutral-400">No projects yet.</p>
           ) : (
             <ul className="space-y-3">
               {client.projects.map((p) => (
                 <li key={p.id} className="text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{p.name}</span>
-                    <span className="text-xs text-neutral-500">{p.status}</span>
-                  </div>
-                  <div className="text-xs text-neutral-400">
-                    {p.campaigns.length} campaign(s) · {p.tasks.length} task(s)
-                  </div>
+                  <Link href={`/clients/${client.id}/projects/${p.id}`} className="block hover:text-cedar-700">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-xs text-neutral-500">{p.status}</span>
+                    </div>
+                    <div className="text-xs text-neutral-400">
+                      {p.campaigns.length} campaign(s) · {p.tasks.length} task(s)
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -38,14 +38,19 @@ deployment.
 Deliverable: Cedar Point can operate client/project work from one
 canonical system.
 
-- [x] Clients/contacts, Brand DNA (versioned), projects/tasks — schema and
-      a working `/clients` + `/clients/[id]` UI exist, carried forward
-      from before the Bible and re-validated against it (client isolation
-      enforced server-side, not just in the UI).
-- [ ] Calendar, search, notifications — not started.
-- [ ] Activity timeline exists at the data level (`ClientTimelineEvent`)
-      but nothing writes to it automatically yet from project/task/
-      campaign activity — currently only seed data populates it.
+- [x] Clients/contacts, Brand DNA (versioned, with a real edit UI at
+      `/clients/[id]/brand/edit` — see `docs/specs/brand-dna.md`),
+      projects/tasks (creation, assignment, status transitions — see
+      `docs/specs/projects-and-calendar.md`) with client isolation
+      enforced server-side, not just in the UI.
+- [x] Calendar — `/calendar` unifies task/project/invoice due dates,
+      scoped to what the actor can read. Meetings/shoots/campaign
+      launches will join the same query once those modules exist
+      (Phase 2/4) rather than becoming a parallel calendar.
+- [ ] Search, notifications — not started.
+- [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
+      Brand DNA saves and project creation, in addition to seed data —
+      still missing for task/campaign/invoice activity.
 
 ## Phase 2 — Creative and Approval Operations: not started
 
@@ -98,11 +103,13 @@ SLOs.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 
-- **No E2E/integration test layer yet** (Bible Section 32 lists API and
-  End-to-end as required test layers). Only `packages/domain` has real
-  tests today (13 unit tests covering the RBAC policy and Section 38
-  acceptance scenarios). Flagged explicitly in
-  `docs/specs/identity-access.md`.
+- **Integration tests exist for Identity & Access** (`apps/web/src/lib/services/identity.integration.test.ts`,
+  8 tests against a real dedicated Postgres database — bootstrap, login,
+  full invite→accept→scope-grant flow, last-owner protection). Still
+  missing: a true browser-driven E2E layer (Bible Section 32's "End-to-end"
+  row) and API-contract tests for the route handlers themselves (auth
+  headers, error envelopes, idempotency) — `tests/e2e/README.md` tracks
+  this as the next thing to add there.
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in

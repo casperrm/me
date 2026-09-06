@@ -23,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/clients", label: "Clients" },
+    { href: "/calendar", label: "Calendar" },
     { href: "/command", label: "Cedar Command Center" },
     ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions" }] : []),
   ];

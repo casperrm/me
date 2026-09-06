@@ -88,12 +88,19 @@ login failure rate, invitation acceptance rate, session count.
 - `packages/domain/src/policy.test.ts` — 13 unit tests covering role
   defaults, the Section 38 "scoped collaborator" scenario, the "cross-client
   access via guessed IDs" scenario, and the last-owner protection gate.
+- `apps/web/src/lib/services/identity.integration.test.ts` — 8 tests
+  against a dedicated real Postgres database (`cedarpoint_test`, see
+  `apps/web/vitest.config.ts`): organization bootstrap (success + guard
+  against a second bootstrap + short-password rejection), login (success/
+  failure + audit event written), the full invite → accept → scope-grant
+  flow with client isolation asserted via `isAuthorized` against real
+  rows, and last-owner revocation refusal. The Next.js request lifecycle
+  (`cookies()`/`headers()`) is mocked since it has no meaning outside an
+  actual HTTP request — everything else is real.
 - Manual smoke test performed for this slice (see `docs/adr/0006-*.md`
   for context): login → session cookie → `/dashboard`, `/team`, `/clients`
-  all return 200 with a valid session and redirect (307) without one;
-  audit event row confirmed written on login.
-- **Gap:** no automated integration/E2E test yet exercises the full
-  HTTP flow (login → protected page → logout) or the invite-accept flow.
-  Tracked as a Phase 1 follow-up — Section 32's "API" and "End-to-end"
-  test layers are not yet represented in this repo's test suite beyond
-  the domain-layer unit tests.
+  all return 200 with a valid session and redirect (307) without one.
+- **Remaining gap:** no browser-driven E2E test and no route-handler
+  contract tests (auth headers, error envelope shape, idempotency) yet —
+  Section 32's "End-to-end" and part of its "API" test-layer rows.
+  Tracked in `ROADMAP.md` and `tests/e2e/README.md`.

@@ -13,6 +13,7 @@ env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cedarpoint_ci
   REDIS_URL: redis://localhost:6379
   SESSION_SECRET: ci-only-secret-not-for-production-0000000000000000
+  PGPASSWORD: postgres
 
 jobs:
   build-and-test:
@@ -65,11 +66,20 @@ jobs:
       - name: Typecheck all workspaces
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm run test
-
       - name: Validate Postgres migrations apply cleanly
         run: npm run db:migrate:deploy
+
+      - name: Create and migrate the integration test database
+        # apps/web's vitest.config.ts points integration tests at
+        # cedarpoint_test by default — separate from cedarpoint_ci so
+        # bootstrapOrganization's "no organization exists yet" happy path
+        # has a real empty database to run against.
+        run: |
+          psql -h localhost -U postgres -c "CREATE DATABASE cedarpoint_test;"
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cedarpoint_test npm run db:migrate:deploy
+
+      - name: Unit + integration tests
+        run: npm run test
 
       - name: Build apps/web
         run: npm run build --workspace apps/web

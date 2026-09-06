@@ -1,15 +1,22 @@
 export function Card({
   title,
+  action,
   children,
   className = "",
 }: {
   title?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>
-      {title && <h3 className="mb-3 text-sm font-medium text-neutral-500">{title}</h3>}
+      {(title || action) && (
+        <div className="mb-3 flex items-center justify-between">
+          {title && <h3 className="text-sm font-medium text-neutral-500">{title}</h3>}
+          {action}
+        </div>
+      )}
       {children}
     </div>
   );

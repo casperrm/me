@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@cedar/db";
-import { isAuthorized } from "@cedar/auth";
 import { Card } from "@/components/Card";
 import { requireActor } from "@/lib/guards";
+import { getReadableClientIds } from "@/lib/readable-clients";
 
 export const dynamic = "force-dynamic";
 
@@ -19,20 +19,7 @@ export default async function ClientsPage() {
   // Section 38 acceptance scenario: a scoped collaborator only ever sees
   // the clients they've been granted, enforced here at the query layer —
   // not by fetching everything and hiding rows in the UI.
-  const canReadAll = await isAuthorized({
-    userId: actor.user.id,
-    organizationId: actor.organizationId,
-    permission: "clients:read",
-  });
-
-  const clientIdFilter = canReadAll
-    ? undefined
-    : (
-        await prisma.scopedGrant.findMany({
-          where: { membershipId: actor.membership.id, permission: "clients:read", clientId: { not: null } },
-          select: { clientId: true },
-        })
-      ).map((g) => g.clientId as string);
+  const clientIdFilter = await getReadableClientIds(actor);
 
   const clients = await prisma.client.findMany({
     where: {
@@ -55,7 +42,7 @@ export default async function ClientsPage() {
       {clients.length === 0 ? (
         <Card>
           <p className="text-sm text-neutral-400">
-            {canReadAll
+            {clientIdFilter === undefined
               ? "No clients yet. Run npm run db:seed for demo data."
               : "You haven't been granted access to any clients yet — ask an owner or admin."}
           </p>
