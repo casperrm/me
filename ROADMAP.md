@@ -81,7 +81,20 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       events. `PUBLISHED` means "the plan says this went out," not a real
       connector call — see `docs/specs/content-calendar.md` for the exact
       scope boundary (actual publish execution is Phase 4).
-- [ ] Video/production workflows (Section 11) — not started.
+- [x] Video/production workflows (Section 11) — `VideoBrief`/
+      `VideoBriefVersion` (versioned concept/hook/storyboard/script/
+      voiceover/caption/edit-instruction/music-note/platform-variant
+      planning, 1:1 with a `Creative`) and `Shoot` (schedule/location/
+      crew/equipment/permits/call sheet/shot list/product list/
+      references/status for Section 11.2 photography/production). Video
+      brief editor lives on the Creative detail page (video-type
+      creatives only); `/clients/[id]/shoots` covers scheduling. The
+      final video file's approval/publishing still goes through the
+      existing Creative/CreativeVersion/Approval pipeline rather than a
+      parallel one. Explicit scope boundary (see
+      `docs/specs/video-and-production.md`): Section 11's *AI* assistance
+      (shot-list generation, angle ideas, schedule suggestions) is not
+      built — this is the data model/workflow a human plans against.
 - [x] Client Portal (Section 15.2) — `/portal` + `/portal/[clientId]`
       curated view (pending approvals with a decide action, approved
       history, invoices, files); a `CLIENT_PORTAL` membership has zero

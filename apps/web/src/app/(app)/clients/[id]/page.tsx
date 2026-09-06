@@ -213,6 +213,9 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
               <Link href={`/clients/${client.id}/content`} className="text-xs text-cedar-700 hover:underline">
                 Content Calendar
               </Link>
+              <Link href={`/clients/${client.id}/shoots`} className="text-xs text-cedar-700 hover:underline">
+                Shoots
+              </Link>
               {canWrite && <NewProjectForm clientId={client.id} />}
             </div>
           }

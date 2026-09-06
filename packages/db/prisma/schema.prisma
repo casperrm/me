@@ -255,6 +255,7 @@ model Client {
   assets               Asset[]
   invitations          Invitation[]
   contentCalendarItems ContentCalendarItem[]
+  shoots               Shoot[]
 
   @@index([organizationId])
   @@map("clients")
@@ -351,6 +352,7 @@ model Project {
   tasks     Task[]
   campaigns Campaign[]
   assets    Asset[]
+  shoots    Shoot[]
 
   @@map("projects")
 }
@@ -401,8 +403,88 @@ model Creative {
   versions             CreativeVersion[]
   assets               Asset[]
   contentCalendarItems ContentCalendarItem[]
+  videoBrief           VideoBrief?
 
   @@map("creatives")
+}
+
+// ---------------------------------------------------------------------------
+// AI Video Studio (Section 11.1). Pre-production planning for a video
+// creative — concept, hook, storyboard, script, shot plan, voice-over
+// copy, subtitle/caption copy, edit instructions, music/asset notes, and
+// platform variants. Versioned the same way Brand DNA is (Section 5):
+// a save always inserts a new VideoBriefVersion rather than mutating the
+// latest one, "so historical creative can be evaluated against the plan
+// active when it was made." The eventual final video file, its approval,
+// and its publishing all go through the existing Creative/CreativeVersion/
+// Approval pipeline (Section 15.1) — this model is 1:1 with a Creative
+// and only covers the planning stage, not a parallel approval flow.
+model VideoBrief {
+  id             String   @id @default(uuid())
+  creativeId     String   @unique
+  creative       Creative @relation(fields: [creativeId], references: [id])
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  versions VideoBriefVersion[]
+
+  @@map("video_briefs")
+}
+
+model VideoBriefVersion {
+  id               String     @id @default(uuid())
+  videoBriefId     String
+  videoBrief       VideoBrief @relation(fields: [videoBriefId], references: [id])
+  version          Int
+  concept          String?
+  hook             String?
+  storyboardNotes  String?
+  script           String?
+  voiceoverCopy    String?
+  captionCopy      String?
+  editInstructions String?
+  musicNotes       String?
+  platformVariants String? // JSON array, e.g. ["9:16","1:1","16:9"]
+  createdAt        DateTime   @default(now())
+  createdBy        String? // Membership id
+
+  @@unique([videoBriefId, version])
+  @@map("video_brief_versions")
+}
+
+// ---------------------------------------------------------------------------
+// Photography / Production Module (Section 11.2): shoot schedule,
+// locations, contacts, crew, roles, equipment, permits/requirements, call
+// sheet, shot list, product list, references, status. Kept as one table
+// with JSON columns for the list-shaped fields (crew/equipment/shot
+// list/product list/references) rather than a table per list — same
+// pragmatic choice already made for Client.services and
+// BrandProfileVersion's colors/fonts/patterns; promote to real tables
+// if/when this needs relational querying (e.g. "find every shoot needing
+// a specific crew member").
+model Shoot {
+  id             String    @id @default(uuid())
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id])
+  projectId      String?
+  project        Project?  @relation(fields: [projectId], references: [id])
+  title          String
+  status         String    @default("PLANNED") // PLANNED | CONFIRMED | COMPLETED | CANCELED
+  scheduledAt    DateTime?
+  location       String?
+  crew           String? // JSON: [{ name, role, contact }]
+  equipment      String? // JSON array of strings
+  permits        String? // JSON array of strings
+  callSheetNotes String?
+  shotList       String? // JSON: [{ description, status }]
+  productList    String? // JSON array of strings
+  references     String? // JSON array of strings
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([clientId])
+  @@map("shoots")
 }
 
 model CreativeVersion {

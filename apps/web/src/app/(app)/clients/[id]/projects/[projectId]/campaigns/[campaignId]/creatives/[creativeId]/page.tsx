@@ -7,8 +7,18 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { AddVersionForm } from "./AddVersionForm";
 import { CreativeActions } from "./CreativeActions";
+import { VideoBriefForm } from "./VideoBriefForm";
 
 export const dynamic = "force-dynamic";
+
+function parseJSON<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-600",
@@ -44,6 +54,7 @@ export default async function CreativeDetailPage({
         orderBy: { version: "desc" },
         include: { approvals: { orderBy: { createdAt: "asc" } }, asset: true },
       },
+      videoBrief: { include: { versions: { orderBy: { version: "desc" }, take: 1 } } },
     },
   });
   if (!creative) notFound();
@@ -91,6 +102,26 @@ export default async function CreativeDetailPage({
       {canWrite && currentVersion && (
         <Card title={`Actions — version ${currentVersion.version}`}>
           <CreativeActions creativeVersionId={currentVersion.id} status={creative.status} />
+        </Card>
+      )}
+
+      {creative.type === "video" && canWrite && (
+        <Card title="Video brief (Section 11.1)">
+          <VideoBriefForm
+            creativeId={creative.id}
+            currentVersion={creative.videoBrief?.currentVersion ?? 0}
+            initial={{
+              concept: creative.videoBrief?.versions[0]?.concept ?? "",
+              hook: creative.videoBrief?.versions[0]?.hook ?? "",
+              storyboardNotes: creative.videoBrief?.versions[0]?.storyboardNotes ?? "",
+              script: creative.videoBrief?.versions[0]?.script ?? "",
+              voiceoverCopy: creative.videoBrief?.versions[0]?.voiceoverCopy ?? "",
+              captionCopy: creative.videoBrief?.versions[0]?.captionCopy ?? "",
+              editInstructions: creative.videoBrief?.versions[0]?.editInstructions ?? "",
+              musicNotes: creative.videoBrief?.versions[0]?.musicNotes ?? "",
+              platformVariants: parseJSON<string[]>(creative.videoBrief?.versions[0]?.platformVariants, []),
+            }}
+          />
         </Card>
       )}
 
