@@ -10,7 +10,7 @@
 // thing to a real prompt version registry until Section 33's full one
 // exists (see ADR-007). Recorded on every CedarBrainRequest row so a
 // quality/cost regression can be traced to a specific prompt revision.
-export const CEDAR_BRAIN_PROMPT_VERSION = "v1";
+export const CEDAR_BRAIN_PROMPT_VERSION = "v2";
 
 export type CedarAgent =
   | "marketing"
@@ -41,7 +41,7 @@ export function routeToAgents(prompt: string): CedarAgent[] {
   return matched;
 }
 
-export async function callCedarBrain(prompt: string, agents: CedarAgent[]) {
+export async function callCedarBrain(prompt: string, agents: CedarAgent[], governedContext?: string) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
@@ -61,7 +61,11 @@ operating system for a marketing agency. A request has already been routed to
 these specialist agents: ${agents.join(", ")}. Respond with what each of those
 agents would produce for the request below, combined into one clear,
 actionable plan a human can approve or edit. Be concrete and specific to the
-request, not generic marketing filler.`;
+request, not generic marketing filler.${
+    governedContext
+      ? `\n\nReal data retrieved for this request (Section 6.1 governed context — use it, don't contradict it, and don't invent facts beyond it):\n${governedContext}`
+      : ""
+  }`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

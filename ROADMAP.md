@@ -152,8 +152,20 @@ Deliverable: brief-to-client-approval lifecycle is operational.
 - [x] Cedar Command Center UI + a naive keyword-based agent router +
       direct Anthropic API call (or deterministic stub) — see ADR-007 for
       exactly how far this is from the Bible's full orchestration
-      lifecycle (no context retrieval, no evaluation, no cost governance,
-      no per-agent specialization).
+      lifecycle (no evaluation, no cost governance beyond what AI
+      Supervisor now tracks, no per-agent specialization).
+- [x] Governed context retrieval (Section 6.1) — Command Center's client
+      picker (scoped to what the actor can read) triggers a real
+      structured-query retrieval (`buildGovernedContext`) of that
+      client's Brand DNA, Client Health Score, and recent timeline
+      events, authorized *before* any data is touched and injected into
+      the model's system prompt with an explicit "don't invent facts
+      beyond this" instruction. The real sources retrieved are shown
+      back to the user, not hidden inside the model call. Explicit scope
+      boundary in `docs/specs/governed-context-retrieval.md`: structured
+      queries only, no semantic/vector retrieval (ADR-008 defers that —
+      no unstructured content exists yet to index), no cross-client or
+      knowledge-layer retrieval.
 - [x] AI Supervisor telemetry (Section 6.3) — every Cedar Brain request
       (success or failure — previously only successes were logged, a
       real gap this slice fixed) now records real mode, model name, a
@@ -170,7 +182,7 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       tool-calling exists to count), no cost-threshold alerting yet —
       token counts stand in for "cost" rather than a computed dollar
       figure that would need a hardcoded, staleness-prone price.
-- [ ] AI Gateway, full prompt/model version registry, governed
+- [ ] AI Gateway, full prompt/model version registry, semantic/vector
       retrieval, per-agent specialization, evaluation harness — not
       started.
 
