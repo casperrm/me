@@ -39,7 +39,7 @@ deployment.
       stated scope boundary: not yet enforced as mandatory for specific
       roles, and no WebAuthn/security-key option yet.
 
-## Phase 1 — Agency Core: **in progress**
+## Phase 1 — Agency Core: **complete**
 
 Deliverable: Cedar Point can operate client/project work from one
 canonical system.
