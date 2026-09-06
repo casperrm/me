@@ -56,16 +56,27 @@ canonical system.
       scanning is the one explicitly unbuilt piece.
 - [ ] Search, notifications — not started.
 - [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
-      Brand DNA saves, project creation, and asset uploads, in addition
-      to seed data — still missing for task/campaign/invoice activity.
+      Brand DNA saves, project creation, campaign creation, asset
+      uploads, and creative approvals, in addition to seed data — still
+      missing for task/invoice activity.
 
-## Phase 2 — Creative and Approval Operations: not started
+## Phase 2 — Creative and Approval Operations: **in progress**
 
-Content calendar, Creative Studio records, video/production workflows,
-versions/comments, approval engine, client portal, QC framework.
-`Creative`/`CreativeVersion`/`Approval` models exist in the schema
-(carried forward pre-Bible) but have no workflow UI — versions can be
-created, but there's no review/approve/request-changes screen yet.
+Deliverable: brief-to-client-approval lifecycle is operational.
+
+- [x] Campaigns, Creatives, versioning, and the full approval state
+      machine (requested → changes_requested/approved/canceled, with a
+      new version superseding whatever the previous one's state was) —
+      see `docs/specs/approvals.md`. A version can link to an uploaded
+      file from the Files module.
+- [ ] Content calendar (planning/scheduling, distinct from the Section 12
+      due-date calendar already built) — not started.
+- [ ] Video/production workflows (Section 11) — not started.
+- [ ] Client Portal (Section 15.2) — not started; `Approval.decidedBy`
+      is a free-text name today because there's no authenticated external
+      client to attribute the decision to yet.
+- [ ] AI Quality Control (Section 23: brand consistency, spelling,
+      dimensions checks before client review) — not started.
 
 ## Phase 3 — AI Foundation and Command Center: **thin slice exists**
 

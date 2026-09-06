@@ -7,6 +7,7 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskStatusForm } from "./TaskStatusForm";
+import { NewCampaignForm } from "./NewCampaignForm";
 
 export const dynamic = "force-dynamic";
 
@@ -89,15 +90,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         )}
       </Card>
 
-      <Card title="Campaigns">
+      <Card title="Campaigns" action={canWrite && <NewCampaignForm projectId={project.id} />}>
         {project.campaigns.length === 0 ? (
           <p className="text-sm text-neutral-400">No campaigns yet.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {project.campaigns.map((c) => (
-              <li key={c.id} className="flex justify-between">
-                <span>{c.name}</span>
-                <span className="text-xs text-neutral-500">{c.status}</span>
+              <li key={c.id}>
+                <Link
+                  href={`/clients/${project.clientId}/projects/${project.id}/campaigns/${c.id}`}
+                  className="flex justify-between hover:text-cedar-700"
+                >
+                  <span>{c.name}</span>
+                  <span className="text-xs text-neutral-500">{c.status}</span>
+                </Link>
               </li>
             ))}
           </ul>

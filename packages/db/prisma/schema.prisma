@@ -398,6 +398,7 @@ model CreativeVersion {
   creative   Creative @relation(fields: [creativeId], references: [id])
   version    Int
   assetId    String?
+  asset      Asset?   @relation(fields: [assetId], references: [id])
   notes      String?
   createdAt  DateTime @default(now())
 
@@ -447,6 +448,8 @@ model Asset {
   uploadedById   String?
   uploadedBy     Membership?  @relation(fields: [uploadedById], references: [id])
   createdAt      DateTime     @default(now())
+
+  creativeVersions CreativeVersion[]
 
   @@index([organizationId])
   @@index([clientId])
