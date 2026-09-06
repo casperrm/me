@@ -1,0 +1,201 @@
+import {
+  acceptInvitation as acceptInvitationRecord,
+  createInvitation as createInvitationRecord,
+  createSession,
+  hashPassword,
+  hashToken,
+  requirePermission,
+} from "@cedar/auth";
+import { canManageMembership, type Permission, type Role } from "@cedar/domain";
+import { prisma } from "@cedar/db";
+import { emitAuditEvent } from "@cedar/events";
+import { setSessionCookie } from "../session-cookie";
+import { AuthError } from "./auth-service";
+
+export async function createInvitation(params: {
+  actorUserId: string;
+  organizationId: string;
+  email: string;
+  role: Role;
+}) {
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "members:invite",
+  });
+
+  const { token, invitation } = await createInvitationRecord({
+    organizationId: params.organizationId,
+    email: params.email,
+    role: params.role,
+    invitedById: membership.id,
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "invitation.created",
+    resourceType: "Invitation",
+    resourceId: invitation.id,
+    result: "SUCCESS",
+    changeSet: { email: params.email, role: params.role },
+  });
+
+  return token;
+}
+
+export async function getInvitationPreview(token: string) {
+  const invitation = await prisma.invitation.findFirst({ where: { tokenHash: hashToken(token) } });
+  if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt < new Date()) {
+    return null;
+  }
+  return { email: invitation.email, role: invitation.role };
+}
+
+export async function acceptInvitationFlow(token: string, input: { name: string; password: string }) {
+  const invitation = await prisma.invitation.findFirst({ where: { tokenHash: hashToken(token) } });
+  if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt < new Date()) {
+    throw new AuthError("This invitation is invalid or has expired.");
+  }
+
+  const name = input.name.trim();
+  if (!name || input.password.length < 8) {
+    throw new AuthError("Enter your name and a password of at least 8 characters.");
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email: invitation.email } });
+  if (existingUser) {
+    throw new AuthError("An account with this email already exists. Log in, then reopen this invite link.");
+  }
+
+  const user = await prisma.user.create({
+    data: { email: invitation.email, name, passwordHash: await hashPassword(input.password) },
+  });
+
+  const membership = await acceptInvitationRecord(token, user.id);
+
+  await emitAuditEvent({
+    organizationId: invitation.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "invitation.accepted",
+    resourceType: "Membership",
+    resourceId: membership.id,
+    result: "SUCCESS",
+  });
+
+  const { token: sessionToken } = await createSession(user.id);
+  await setSessionCookie(sessionToken);
+}
+
+export async function changeMemberRole(params: {
+  actorUserId: string;
+  organizationId: string;
+  targetMembershipId: string;
+  newRole: Role;
+}) {
+  const actingMembership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "members:manage",
+  });
+
+  const target = await prisma.membership.findUniqueOrThrow({ where: { id: params.targetMembershipId } });
+  if (target.organizationId !== params.organizationId) throw new AuthError("Cross-organization membership access denied");
+
+  const ownerCount = await prisma.membership.count({
+    where: { organizationId: params.organizationId, role: "OWNER", status: "ACTIVE" },
+  });
+  const targetIsLastOwner = target.role === "OWNER" && ownerCount <= 1;
+
+  if (!canManageMembership({ actorRole: actingMembership.role, targetRole: target.role, targetIsLastOwner })) {
+    throw new AuthError("Not authorized to change this member's role.");
+  }
+
+  await prisma.membership.update({
+    where: { id: target.id },
+    data: { role: params.newRole, version: { increment: 1 } },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: actingMembership.id,
+    action: "membership.role_changed",
+    resourceType: "Membership",
+    resourceId: target.id,
+    result: "SUCCESS",
+    changeSet: { before: { role: target.role }, after: { role: params.newRole } },
+  });
+}
+
+export async function revokeMembership(params: { actorUserId: string; organizationId: string; targetMembershipId: string }) {
+  const actingMembership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "members:manage",
+  });
+
+  const target = await prisma.membership.findUniqueOrThrow({ where: { id: params.targetMembershipId } });
+  if (target.organizationId !== params.organizationId) throw new AuthError("Cross-organization membership access denied");
+
+  const ownerCount = await prisma.membership.count({
+    where: { organizationId: params.organizationId, role: "OWNER", status: "ACTIVE" },
+  });
+  const targetIsLastOwner = target.role === "OWNER" && ownerCount <= 1;
+
+  if (!canManageMembership({ actorRole: actingMembership.role, targetRole: target.role, targetIsLastOwner })) {
+    throw new AuthError("Not authorized to revoke this member.");
+  }
+
+  await prisma.membership.update({ where: { id: target.id }, data: { status: "REVOKED", version: { increment: 1 } } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: actingMembership.id,
+    action: "membership.revoked",
+    resourceType: "Membership",
+    resourceId: target.id,
+    result: "SUCCESS",
+  });
+}
+
+export async function grantClientScope(params: {
+  actorUserId: string;
+  organizationId: string;
+  targetMembershipId: string;
+  clientId: string;
+  permission: Permission;
+}) {
+  const actingMembership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "members:manage",
+  });
+
+  const [target, client] = await Promise.all([
+    prisma.membership.findUniqueOrThrow({ where: { id: params.targetMembershipId } }),
+    prisma.client.findUniqueOrThrow({ where: { id: params.clientId } }),
+  ]);
+  if (target.organizationId !== params.organizationId || client.organizationId !== params.organizationId) {
+    throw new AuthError("Cross-organization access denied");
+  }
+
+  await prisma.scopedGrant.create({
+    data: { membershipId: target.id, clientId: client.id, permission: params.permission, createdBy: actingMembership.id },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: actingMembership.id,
+    action: "scoped_grant.created",
+    resourceType: "Membership",
+    resourceId: target.id,
+    clientId: client.id,
+    result: "SUCCESS",
+    changeSet: { permission: params.permission },
+  });
+}

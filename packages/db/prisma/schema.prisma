@@ -1,0 +1,506 @@
+// Cedar Point OS — canonical relational schema.
+//
+// Authoritative source: docs/CEDAR_POINT_OS_BIBLE.md. Section references
+// in comments below point at that document. PostgreSQL is the system of
+// record (Section 27); nothing here should require an app-layer decision
+// to already know a Client/Organization exists — every table that can be
+// tenant- or client-scoped carries organizationId / clientId directly
+// (Section 27.1) so authorization can filter at the query layer, not after
+// the fact in application code.
+//
+// Identity is split into User (global person) and Membership (that
+// person's role within one Organization) per Section 3's domain model —
+// this is what makes "a user belongs to exactly one org" NOT an assumption
+// baked into the schema, even though Phase 0 only exercises one org per
+// user in practice.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & Access (Bible Section 2, 27.2 "Identity" table group)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  ADMIN
+  ACCOUNT_MANAGER
+  ADS_MANAGER
+  DESIGNER
+  VIDEO_PRODUCTION
+  FINANCE
+  CLIENT_PORTAL
+  CUSTOM
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  REVOKED
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships  Membership[]
+  invitations  Invitation[]
+  auditEvents  AuditEvent[]
+  clients      Client[]
+  expenses     Expense[]
+
+  @@map("organizations")
+}
+
+// Global person identity. Not org-scoped — org access is entirely through
+// Membership, so one person can belong to multiple organizations later
+// (e.g. a contractor working two agencies) without a schema change.
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  mfaEnabled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships Membership[]
+  sessions    Session[]
+  meetings    MeetingAttendee[]
+
+  @@map("users")
+}
+
+// A user's role within one organization. This — not User — is what
+// authorization checks against (Section 2.2: role + org + client + action).
+model Membership {
+  id             String           @id @default(uuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User             @relation(fields: [userId], references: [id])
+  role           Role
+  status         MembershipStatus @default(ACTIVE)
+  invitedById    String?
+  invitedBy      Membership?      @relation("MembershipInvitedBy", fields: [invitedById], references: [id])
+  invitedOthers  Membership[]     @relation("MembershipInvitedBy")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  version        Int              @default(1) // optimistic concurrency (Section 27.1)
+
+  scopedGrants   ScopedGrant[]
+  assignedTasks  Task[]
+  invitationsSent Invitation[]    @relation("InvitationInvitedBy")
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+  @@map("memberships")
+}
+
+// Invite-only access (Section 2.1 / 29 in the earlier vision). A Membership
+// row is only created once the invitation is accepted.
+model Invitation {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String
+  role           Role
+  tokenHash      String       @unique
+  invitedById    String
+  invitedBy      Membership   @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, email])
+  @@map("invitations")
+}
+
+// Server-side session (Section 23.1: secure session lifecycle, device
+// revocation). tokenHash stores a hash of the bearer token, never the
+// token itself — see ADR-006.
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  tokenHash  String    @unique
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Contextual permission beyond a role's default set — e.g. an
+// ACCOUNT_MANAGER scoped to only certain clients, or the entire permission
+// set for a CUSTOM role. Absence of a clientId means "organization-wide"
+// for that permission. See packages/domain for the permission catalog and
+// ADR-006 for why this is code-defined defaults + DB-backed exceptions
+// rather than a fully data-driven role_permissions table (deferred until
+// an admin-configurable policy builder is actually needed — Section 37).
+model ScopedGrant {
+  id           String      @id @default(uuid())
+  membershipId String
+  membership   Membership  @relation(fields: [membershipId], references: [id])
+  permission   String
+  clientId     String?
+  client       Client?     @relation(fields: [clientId], references: [id])
+  createdAt    DateTime    @default(now())
+  createdBy    String?
+
+  @@index([membershipId])
+  @@index([clientId])
+  @@map("scoped_grants")
+}
+
+// ---------------------------------------------------------------------------
+// Audit & Governance (Section 23.2 — minimum schema quoted directly)
+// ---------------------------------------------------------------------------
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  AI_AGENT
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+// Append-only by convention: application code must never UPDATE or DELETE
+// a row here (Section 27.1, "Audit records are append-oriented and
+// protected from ordinary mutation"). packages/events is the only writer.
+model AuditEvent {
+  id             String         @id @default(uuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  actorType      AuditActorType
+  actorId        String? // Membership id for USER, agent name for AI_AGENT, null for SYSTEM
+  action         String // e.g. "membership.role_changed", "invitation.accepted"
+  resourceType   String
+  resourceId     String
+  clientId       String?
+  timestamp      DateTime       @default(now())
+  correlationId  String?
+  sourceIp       String?
+  deviceMetadata String? // JSON
+  changeSet      String? // JSON: before/after summary, redacted of secrets
+  approvalId     String? // reserved for when the Approval model lands (Phase 2)
+  result         AuditResult
+  integrityHash  String? // sha256(prevHash + payload) — lightweight tamper-evidence chain, see ADR-006
+
+  @@index([organizationId, resourceType, resourceId])
+  @@index([organizationId, timestamp])
+  @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Clients & CRM (Section 4). Phase 0 needs enough of this to write
+// meaningful authorization tests (Section 38: "collaborator cannot access
+// unauthorized clients"); the rest of Section 4/5's richer client
+// operating system content below is genuinely Phase 1+ but is included now
+// because it was already built and maps directly onto Section 3's domain
+// model — it stays inert (unreachable without a Membership + permission)
+// until Phase 1 UI work exposes it.
+// ---------------------------------------------------------------------------
+
+model Client {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  companyName    String
+  industry       String?
+  lifecycleStage String       @default("ACTIVE") // PROSPECT | ACTIVE | PAUSED | CHURNED
+  services       String // JSON array
+  primaryContactName  String?
+  primaryContactEmail String?
+  connectedAccounts   String? // JSON: [{ platform, accountId, status }]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  brandProfile   BrandProfile?
+  projects       Project[]
+  invoices       Invoice[]
+  notes          Note[]
+  meetings       Meeting[]
+  timelineEvents ClientTimelineEvent[]
+  healthScores   ClientHealthScore[]
+  scopedGrants   ScopedGrant[]
+
+  @@index([organizationId])
+  @@map("clients")
+}
+
+// Section 5: Brand DNA, versioned. Renamed from the earlier "BrandDNA" to
+// match Section 3's "BrandProfile" domain entity name; versioning is a
+// separate table so historical creative can be evaluated against the
+// rules active when it was created (Section 5, first line).
+model BrandProfile {
+  id       String @id @default(uuid())
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id])
+
+  currentVersion Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions BrandProfileVersion[]
+
+  @@map("brand_profiles")
+}
+
+model BrandProfileVersion {
+  id             String       @id @default(uuid())
+  brandProfileId String
+  brandProfile   BrandProfile @relation(fields: [brandProfileId], references: [id])
+  version        Int
+  colors          String? // JSON: [{ name, hex }]
+  fonts           String? // JSON: [{ role, family }]
+  logoAssetIds    String? // JSON array of Asset ids
+  toneOfVoice     String?
+  visualStyle     String?
+  targetAudience  String?
+  products        String? // JSON array
+  approvedPatterns String? // JSON, with rationale (Section 5)
+  rejectedPatterns String? // JSON, with rationale (Section 5)
+  createdAt       DateTime @default(now())
+  createdBy       String? // Membership id
+
+  @@unique([brandProfileId, version])
+  @@map("brand_profile_versions")
+}
+
+model ClientTimelineEvent {
+  id         String   @id @default(uuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id])
+  type       String
+  summary    String
+  metadata   String? // JSON
+  occurredAt DateTime @default(now())
+
+  @@index([clientId, occurredAt])
+  @@map("client_timeline_events")
+}
+
+model ClientHealthScore {
+  id         String   @id @default(uuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id])
+  score      Int
+  factors    String? // JSON — explainable signals per Section 4.2
+  computedAt DateTime @default(now())
+
+  @@map("client_health_scores")
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@map("notes")
+}
+
+// ---------------------------------------------------------------------------
+// Projects, Tasks, Campaigns, Creatives (Sections 8, 10-12)
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String        @id @default(uuid())
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id])
+  name        String
+  status      String        @default("PLANNING") // PLANNING | IN_PROGRESS | IN_REVIEW | DELIVERED | ARCHIVED
+  dueDate     DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tasks       Task[]
+  campaigns   Campaign[]
+  assets      Asset[]
+
+  @@map("projects")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  status      String    @default("todo")
+  assigneeId  String?
+  assignee    Membership? @relation(fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("tasks")
+}
+
+model Campaign {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+  name           String
+  objective      String?
+  status         String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | ACTIVE | PAUSED | COMPLETED
+  platform       String?
+  externalId     String?
+  budgetCents    Int?
+  kpis           String? // JSON
+  createdAt      DateTime @default(now())
+
+  creatives Creative[]
+
+  @@map("campaigns")
+}
+
+model Creative {
+  id             String   @id @default(uuid())
+  campaignId     String
+  campaign       Campaign @relation(fields: [campaignId], references: [id])
+  type           String
+  platform       String?
+  status         String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+
+  versions CreativeVersion[]
+  assets   Asset[]
+
+  @@map("creatives")
+}
+
+model CreativeVersion {
+  id         String   @id @default(uuid())
+  creativeId String
+  creative   Creative @relation(fields: [creativeId], references: [id])
+  version    Int
+  assetId    String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  approvals Approval[]
+
+  @@map("creative_versions")
+}
+
+model Approval {
+  id                String          @id @default(uuid())
+  creativeVersionId String
+  creativeVersion   CreativeVersion @relation(fields: [creativeVersionId], references: [id])
+  decision          String // requested | changes_requested | approved | superseded | canceled (Section 15.1)
+  comment           String?
+  decidedBy         String?
+  createdAt         DateTime        @default(now())
+
+  @@map("approvals")
+}
+
+model Asset {
+  id         String    @id @default(uuid())
+  projectId  String?
+  project    Project?  @relation(fields: [projectId], references: [id])
+  creativeId String?
+  creative   Creative? @relation(fields: [creativeId], references: [id])
+  type       String
+  url        String
+  filename   String
+  sizeBytes  Int?
+  createdAt  DateTime  @default(now())
+
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------------------
+// Finance (Section 16)
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  amountCents Int
+  currency    String   @default("USD")
+  status      String   @default("DRAFT") // DRAFT | SENT | PAID | OVERDUE | FAILED
+  issuedAt    DateTime @default(now())
+  dueAt       DateTime?
+  paidAt      DateTime?
+
+  @@map("invoices")
+}
+
+model Expense {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  category       String
+  amountCents    Int
+  description    String?
+  incurredAt     DateTime     @default(now())
+
+  @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// Meetings (Section 13)
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id         String   @id @default(uuid())
+  clientId   String?
+  client     Client?  @relation(fields: [clientId], references: [id])
+  title      String
+  notes      String?
+  decisions  String? // JSON
+  followUps  String? // JSON
+  occurredAt DateTime @default(now())
+
+  attendees MeetingAttendee[]
+
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id        String  @id @default(uuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@map("meeting_attendees")
+}
+
+// ---------------------------------------------------------------------------
+// Cedar Brain (Section 6-7): every command logged for Agency Memory.
+// ---------------------------------------------------------------------------
+
+model CedarBrainRequest {
+  id           String   @id @default(uuid())
+  organizationId String
+  prompt       String
+  routedAgents String // JSON array
+  response     String? // JSON
+  clientId     String?
+  createdAt    DateTime @default(now())
+
+  @@map("cedar_brain_requests")
+}

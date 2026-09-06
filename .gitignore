@@ -1,16 +1,19 @@
 node_modules/
 .next/
-out/
-build/
 dist/
+build/
+out/
+coverage/
 
 # env
 .env
-.env*.local
+.env.*.local
+.env.local
 
 # prisma
-/prisma/dev.db
-/prisma/dev.db-journal
+/packages/db/prisma/dev.db
+*.db
+*.db-journal
 
 # misc
 .DS_Store

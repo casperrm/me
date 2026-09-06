@@ -1,108 +1,112 @@
 # Roadmap
 
-`VISION.md` has 41 sections. Building all of them at once isn't a plan,
-it's a wish list — this groups them into phases ordered by what has to
-exist before the next thing is safe or useful to build. Section numbers
-below refer to `VISION.md`.
+Canonical phase structure: `docs/CEDAR_POINT_OS_BIBLE.md` Section 36. This
+file tracks progress against it and adds the concrete next steps within
+each phase. Section numbers below refer to the Bible unless noted.
 
-Per the vision's own closing rule: before adding anything not listed here,
+Per Section 0.1: before adding anything not implied by the current phase,
 ask whether it saves time, improves quality, improves decision-making,
-preserves Cedar Point's knowledge, or increases profitability. If not,
-don't build it just to have it.
+preserves Cedar Point's knowledge, or increases profitability — and check
+`docs/adr/` for whether a related decision has already been deferred on
+purpose.
 
-## Phase 0 — Foundation (done, this repo)
+## Phase 0 — Foundation: **mostly done**
 
-- Data model covering Client, Brand DNA, Projects, Campaigns, Creatives +
-  approvals, Invoices/Expenses, Meetings, Audit Log (§2, §3, §22, §25,
-  §26, §30 schema-level).
-- Client Management: list + 360 profile page (§2, §3).
-- CEO Dashboard skeleton with real DB-backed metrics (§18).
-- Cedar Command Center + Cedar Brain router/stub, requests logged for
-  future Agency Memory use (§4, §5 logging, §32).
+Target deliverable (Section 36): secure owner login, invite-only
+membership, role assignment, audit trail, health endpoints, staging
+deployment.
 
-## Phase 1 — Access & Security
+- [x] Monorepo, environments config (`packages/config`), PostgreSQL +
+      migrations (`packages/db`).
+- [x] Authentication (session-based), organizations/memberships/
+      invitations, RBAC (`packages/domain`, `packages/auth`).
+- [x] Audit framework (`packages/events`, Section 23.2 schema).
+- [x] Base UI system, owner dashboard, team/permissions screens
+      (`apps/web`).
+- [x] Health endpoints (`apps/api` `/health` + `/ready`).
+- [ ] Queue/worker runtime exists (`apps/worker`) but carries no real
+      job yet — fine per ADR-004, not a blocker for this phase.
+- [ ] Object storage abstraction — not started (ADR-005).
+- [ ] **Staging deployment — not started.** `infra/` is empty; ADR-010
+      needs a decision before this can happen. This is Phase 0's one
+      concretely unmet deliverable.
+- [ ] MFA for privileged users (Section 23.1) — tracked gap in ADR-006,
+      not yet built.
 
-Nothing else should touch real client data until this exists.
+## Phase 1 — Agency Core: **in progress**
 
-- Invite-only auth, Owner/Admin roles, session handling (§29).
-- Enforce `AuditLog` writes on every mutating action (§30).
-- Client data isolation checks (org-scoped queries everywhere — currently
-  assumed single-org; needs real enforcement once there's more than one).
-- MFA, encryption at rest for secrets, backup strategy (§30).
-- Client Portal authentication foundation (§28) — the portal UI can come
-  later, but its auth model should be decided alongside Phase 1, not
-  bolted on after.
+Deliverable: Cedar Point can operate client/project work from one
+canonical system.
 
-## Phase 2 — Creative & Content Engine
+- [x] Clients/contacts, Brand DNA (versioned), projects/tasks — schema and
+      a working `/clients` + `/clients/[id]` UI exist, carried forward
+      from before the Bible and re-validated against it (client isolation
+      enforced server-side, not just in the UI).
+- [ ] Calendar, search, notifications — not started.
+- [ ] Activity timeline exists at the data level (`ClientTimelineEvent`)
+      but nothing writes to it automatically yet from project/task/
+      campaign activity — currently only seed data populates it.
 
-- AI Design Studio: idea → concept → design, using Brand DNA (§9).
-- Multi-Platform Creative Engine: real per-platform adaptation, not resize
-  (§10).
-- AI Video Studio: ideas, storyboards, scripts, platform cuts (§11).
-- Localization AI: culturally-adapted copy, not literal translation
-  (§12).
-- Approval & Revision System UI on top of the existing `Approval` /
-  `CreativeVersion` tables (§22).
-- AI Quality Control pass before client delivery (§23).
-- Content Planning & Publishing calendar, with the "AI prepares → human
-  approves → system executes" rule enforced for anything public or paid
-  (§21).
+## Phase 2 — Creative and Approval Operations: not started
 
-## Phase 3 — Campaigns & Integrations
+Content calendar, Creative Studio records, video/production workflows,
+versions/comments, approval engine, client portal, QC framework.
+`Creative`/`CreativeVersion`/`Approval` models exist in the schema
+(carried forward pre-Bible) but have no workflow UI — versions can be
+created, but there's no review/approve/request-changes screen yet.
 
-- Campaign & Ads Management UI over the existing `Campaign`/`Creative`
-  models — budgets, KPIs, testing, recommendations (§13).
-- Meta/TikTok/Google integrations + Integration Center showing connection
-  health across platforms (§14).
-- Agency troubleshooting knowledge base, seeded from real issues as they
-  get solved (§15).
+## Phase 3 — AI Foundation and Command Center: **thin slice exists**
 
-## Phase 4 — Finance & Business Intelligence
+- [x] Cedar Command Center UI + a naive keyword-based agent router +
+      direct Anthropic API call (or deterministic stub) — see ADR-007 for
+      exactly how far this is from the Bible's full orchestration
+      lifecycle (no context retrieval, no evaluation, no cost governance,
+      no per-agent specialization).
+- [ ] AI Gateway, prompt/model registry, governed retrieval, AI Supervisor
+      telemetry/evals — not started.
 
-- Payment & Billing Center + payment-failure knowledge base (§16).
-- Finance Hub: profitability per client/project, recurring revenue,
-  forecasts (§17).
-- AI Business Advisor over real financial + performance data (§19).
-- Opportunity Engine + live Client Health Score computation (the
-  `ClientHealthScore` model already exists; this phase makes the number
-  real instead of seeded) (§20).
-- Reverse Campaign Builder: work backward from a target with explicit
-  assumptions (§38).
+## Phase 4 — Integrations and Publishing: not started
 
-## Phase 5 — Intelligence Layers
+Connector SDK (`packages/connectors`, contract specified in Section 34),
+Integration Center, priority provider adapters (Meta/TikTok/Google/
+WhatsApp), sync/webhooks/reconciliation, publishing jobs, troubleshooting
+knowledge base.
 
-These sit above everything built so far and should stay read-only /
-recommend-only per §6.
+## Phase 5 — Finance and Executive Intelligence: **data model only**
 
-- Cedar Intelligence: monitors agents, workflows, performance; never
-  auto-executes (§6).
-- Cedar Living Intelligence / Market Intelligence feed (§7).
-- Marketing Idea AI at full depth, learning from Brand DNA + campaign
-  history (§8 — Phase 0 ships a thin version via Cedar Brain's marketing
-  routing; this is the learned/deep version).
-- Cedar Decision Engine: reasoning + risk + impact before big decisions,
-  human decides (§34).
-- Success Library: what worked and why, queryable (§37).
-- Cedar Digital Twin per client: predicts what a client will likely
-  approve before presenting it (§39).
+`Invoice`/`Expense`/`ClientHealthScore` models exist and the CEO Dashboard
+(`/dashboard`, gated on `finance:read`) computes real aggregates from
+them. Missing: profitability attribution by project/service/campaign,
+Client Health scoring as anything more than seeded/manual numbers,
+Opportunity Engine, AI Business Advisor, governed metrics catalog
+(Section 29).
 
-## Phase 6 — Operations & Scale
+## Phase 6 — Advanced Intelligence: not started
 
-- Photography/Production Module: shoots, shot lists, equipment, delivery
-  (§24).
-- Projects/Tasks/Calendar as a full UI (schema exists from Phase 0) (§25).
-- Files & Smart Asset Manager backed by real object storage (§26).
-- Meetings AI: extract decisions/tasks/follow-ups automatically (§27).
-- Client Portal UI (auth landed in Phase 1) (§28).
-- Workflow Automation builder (§31).
-- Knowledge Graph queries across the full schema (§33 — data shape exists
-  from Phase 0; this is the query/UX layer).
-- Cedar AI Supervisor: monitors agent quality/cost/reliability (§36).
-- Cedar Innovation Lab: surfaces underused features, bottlenecks, new
-  integrations worth considering (§35).
-- Operating Manual / documentation for every shipped feature (§40).
-- Scalability hardening pass: revisit multi-tenancy, rate limits, cost
-  controls now that real usage patterns exist (§41).
+Agency Memory, Success Library, Knowledge Graph query layer, Cedar
+Decision Engine, Cedar Intelligence, Living/Market Intelligence, Digital
+Twin, Innovation Lab, Experience Engine. `CedarBrainRequest` logs every
+Command Center call today, which is the raw material Agency Memory will
+eventually read from — nothing reads it back yet.
 
-Cedar AI Academy (mentioned in §40) stays explicitly out of scope until
-the team is large enough to need it.
+## Phase 7 — Scale Hardening: not started
+
+Load/performance testing toward 100 employees/500 clients, data
+lifecycle, advanced recovery, connector scaling, media pipeline
+optimization, security review, disaster recovery exercises, operational
+SLOs.
+
+## Cross-cutting gaps worth tracking regardless of phase
+
+- **No E2E/integration test layer yet** (Bible Section 32 lists API and
+  End-to-end as required test layers). Only `packages/domain` has real
+  tests today (13 unit tests covering the RBAC policy and Section 38
+  acceptance scenarios). Flagged explicitly in
+  `docs/specs/identity-access.md`.
+- **Known residual dependency vulnerability:** Next.js's own bundled
+  PostCSS carries a moderate/high-severity advisory range that only
+  resolves by upgrading to Next 16, which currently fails to build in
+  this npm-workspaces layout for reasons unrelated to our code (see
+  ADR-001). Accepted as low real-world risk (build-time only, no
+  untrusted CSS input) — revisit when a Next 16 patch fixes the build
+  issue upstream.

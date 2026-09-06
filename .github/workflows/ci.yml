@@ -1,0 +1,79 @@
+name: CI
+
+# Bible Section 31.2 CI/CD gates: lint/format/typecheck, unit tests,
+# migration validation, build, dependency scanning. Section 42.1's
+# "mandatory checkpoint after each slice" is what this workflow automates.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cedarpoint_ci
+  REDIS_URL: redis://localhost:6379
+  SESSION_SECRET: ci-only-secret-not-for-production-0000000000000000
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cedarpoint_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Write CI env file
+        run: |
+          cat > .env << EOF
+          DATABASE_URL=${DATABASE_URL}
+          REDIS_URL=${REDIS_URL}
+          SESSION_SECRET=${SESSION_SECRET}
+          EOF
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --workspace apps/web
+
+      - name: Typecheck all workspaces
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Validate Postgres migrations apply cleanly
+        run: npm run db:migrate:deploy
+
+      - name: Build apps/web
+        run: npm run build --workspace apps/web
+
+      - name: Dependency audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=critical
+        continue-on-error: false
