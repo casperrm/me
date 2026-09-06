@@ -1,5 +1,19 @@
 # Cedar Point OS
 
+## وثائق المشروع
+
+هاد الملف هو الجزء الأول (الملخص التنفيذي). باقي الرؤية والمعمارية موثّقة بالتفصيل بمجلد [`docs/`](./docs):
+
+1. الملخص التنفيذي — هالملف
+2. [رؤية المنتج وفلسفة النظام](./docs/02-vision-and-philosophy.md)
+3. [معمارية الموديولات الكاملة](./docs/03-module-architecture.md)
+4. [بنية الذكاء الاصطناعي والوكلاء الأذكياء](./docs/04-ai-agents-architecture.md)
+5. [معمارية قاعدة البيانات والـ Knowledge Graph](./docs/05-database-knowledge-graph.md)
+6. [بنية الواجهة وتجربة المستخدم](./docs/06-ui-ux-architecture.md)
+7. [بنية الباك-إند والبنية السحابية](./docs/07-backend-cloud-architecture.md)
+
+---
+
 ## الملخص التنفيذي
 
 **اسم المشروع:** Cedar Point OS
