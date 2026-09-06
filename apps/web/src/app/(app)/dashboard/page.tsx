@@ -4,6 +4,8 @@ import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { getClientProfitability } from "@/lib/services/profitability-service";
+import { getBusinessAdvisorBriefing } from "@/lib/services/business-advisor-service";
+import { generateBusinessAdvisorNarrative } from "@/lib/business-advisor-narrative";
 
 // Dashboard figures must always reflect current data, not a build-time snapshot.
 export const dynamic = "force-dynamic";
@@ -48,6 +50,9 @@ export default async function DashboardPage() {
       }),
       getClientProfitability(organizationId),
     ]);
+
+  const advisorBriefing = await getBusinessAdvisorBriefing(organizationId);
+  const advisorNarrative = await generateBusinessAdvisorNarrative(advisorBriefing);
 
   const revenueCents = invoices
     .filter((i) => i.status === "PAID")
@@ -161,6 +166,127 @@ export default async function DashboardPage() {
             overhead).
           </p>
         )}
+      </Card>
+
+      <Card
+        title="AI Business Advisor"
+        action={
+          <span className="text-xs text-neutral-400">
+            {advisorNarrative.mode === "live" ? "AI narrative" : "Deterministic summary — set ANTHROPIC_API_KEY for AI narrative"} (Section 16.2)
+          </span>
+        }
+      >
+        <p className="text-sm text-neutral-700">{advisorNarrative.text}</p>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Unprofitable engagements</h4>
+            {advisorBriefing.unprofitableEngagements.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">None.</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.unprofitableEngagements.map((e) => (
+                  <li key={e.clientId} className="flex justify-between">
+                    <Link href={`/clients/${e.clientId}`} className="hover:underline">
+                      {e.clientName}
+                    </Link>
+                    <span className="text-red-600">{money(e.profitCents)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Cost leakage</h4>
+            {advisorBriefing.costLeakage.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">No expenses logged yet.</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.costLeakage.map((c) => (
+                  <li key={c.category} className="flex justify-between">
+                    <span>{c.category}</span>
+                    <span className="text-neutral-500">
+                      {money(c.amountCents)} ({c.shareOfTotalPct.toFixed(0)}%)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Strong services</h4>
+            {advisorBriefing.strongServices.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">Not enough data yet (needs 2+ clients sharing a service).</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.strongServices.map((s) => (
+                  <li key={s.service} className="flex justify-between">
+                    <span>{s.service}</span>
+                    <span className="text-neutral-500">
+                      {s.profitableClientCount}/{s.totalClientCount} clients profitable
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Capacity risks</h4>
+            {advisorBriefing.capacityRisks.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">No team member is overloaded.</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.capacityRisks.map((r) => (
+                  <li key={r.membershipId} className="flex justify-between">
+                    <span>{r.memberName}</span>
+                    <span className="text-neutral-500">
+                      {r.openTaskCount} open, {r.overdueTaskCount} overdue
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Collection risks</h4>
+            {advisorBriefing.collectionRisks.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">No overdue unpaid invoices.</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.collectionRisks.map((r) => (
+                  <li key={r.clientId} className="flex justify-between">
+                    <Link href={`/clients/${r.clientId}`} className="hover:underline">
+                      {r.clientName}
+                    </Link>
+                    <span className="text-neutral-500">
+                      {money(r.overdueAmountCents)} ({r.overdueInvoiceCount})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">Upsell signals</h4>
+            {advisorBriefing.upsellRollup.length === 0 ? (
+              <p className="mt-1 text-sm text-neutral-400">No cross-client gaps found yet.</p>
+            ) : (
+              <ul className="mt-1 space-y-1 text-sm">
+                {advisorBriefing.upsellRollup.map((u) => (
+                  <li key={`${u.type}-${u.label}`} className="flex justify-between">
+                    <span>{u.label}</span>
+                    <span className="text-neutral-500">{u.clientCount} client(s)</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );

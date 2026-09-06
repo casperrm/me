@@ -156,7 +156,7 @@ Integration Center, priority provider adapters (Meta/TikTok/Google/
 WhatsApp), sync/webhooks/reconciliation, publishing jobs, troubleshooting
 knowledge base.
 
-## Phase 5 — Finance and Executive Intelligence: **in progress**
+## Phase 5 — Finance and Executive Intelligence: **complete except one deferred item**
 
 `Invoice`/`Expense`/`ClientHealthScore` models exist and the CEO Dashboard
 (`/dashboard`, gated on `finance:read`) computes real aggregates from
@@ -209,8 +209,28 @@ them.
       no connector or time-tracking data exists yet to compute them
       from, and a definition for a number that doesn't exist would be
       fabrication.
-- [ ] Missing: project/campaign/service-level profitability, AI
-      Business Advisor.
+- [x] AI Business Advisor (Section 16.2) — `getBusinessAdvisorBriefing`
+      combines six real signals into one CEO Dashboard briefing:
+      unprofitable engagements, cost leakage by expense category, strong
+      services (correlated with actually-profitable clients), team
+      capacity risks (open/overdue task load per member), collection
+      risks (overdue unpaid invoices), and an org-wide rollup of
+      Opportunity Engine gaps. An optional AI narrative
+      (`generateBusinessAdvisorNarrative`, same live/stub pattern as
+      Cedar Command Center) restates the data in prose when
+      `ANTHROPIC_API_KEY` is set, under an explicit instruction never to
+      add a number or claim beyond what was computed; the underlying
+      lists always render regardless, so nothing is unverifiable.
+      Explicit scope boundary in `docs/specs/business-advisor.md`:
+      capacity risk is a coarse task-count proxy (no time-tracking/
+      effort model exists), cost leakage identifies the largest category
+      but not root cause, and no signal here uses trend data.
+- [ ] Missing: project/campaign/service-level profitability (needs
+      `Invoice.projectId`/`Expense.projectId` and a billable line-item
+      model — no UI to populate that granularity exists yet; see
+      `docs/specs/profitability.md`).
+
+Phase 5's concretely buildable scope is now complete.
 
 ## Phase 6 — Advanced Intelligence: not started
 
