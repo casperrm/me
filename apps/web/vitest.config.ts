@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 // Integration tests exercise the real service layer against Postgres.
@@ -8,6 +9,12 @@ import { defineConfig } from "vitest/config";
 // TEST_DATABASE_URL if the default local connection string doesn't fit
 // your setup.
 export default defineConfig({
+  resolve: {
+    // Mirrors tsconfig.json's "@/*" path so route-handler contract tests
+    // (apps/web/src/app/api/**/*.route.test.ts) can import route.ts files
+    // that use the app's normal "@/..." import style.
+    alias: { "@": path.resolve(__dirname, "./src") },
+  },
   test: {
     env: {
       DATABASE_URL:

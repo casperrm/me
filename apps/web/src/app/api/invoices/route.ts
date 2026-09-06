@@ -9,7 +9,11 @@ export async function POST(req: Request) {
   if (!actor) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  if (!body?.clientId || !body?.amountCents) {
+  // amountCents must only be *present*, not truthy — a literal 0 is a
+  // real (if invalid) amount and should reach createInvoice's own
+  // "must be a positive number" message rather than being misreported
+  // here as "missing".
+  if (!body?.clientId || typeof body?.amountCents !== "number") {
     return NextResponse.json({ error: "Client and amount are required." }, { status: 400 });
   }
 

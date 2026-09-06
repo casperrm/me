@@ -318,8 +318,17 @@ SLOs.
   dev`) and what's still not covered (approval workflow, content
   calendar transitions, client portal, MFA — all have integration-test
   coverage but no browser E2E yet).
-- Still missing: API-contract tests for the route handlers themselves
-  (auth headers, error envelopes, idempotency).
+- **API-contract tests now exist for a representative set of route
+  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 18
+  tests) — the HTTP layer itself (auth gate, status codes, JSON
+  envelope), not just the service functions underneath, which were
+  already integration-tested. See `docs/specs/api-route-contracts.md`
+  for exactly which four routes and why. Found and fixed two real bugs:
+  `/api/expenses` and `/api/invoices` both misreported `amountCents: 0`
+  as "missing" instead of reaching the real "must be a positive number"
+  validation, because their pre-checks used a truthy check instead of a
+  type check. Not exhaustive — ~35 routes exist, 4 are covered to prove
+  the pattern; extending it is real follow-up work, not claimed done.
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in
