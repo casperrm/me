@@ -174,12 +174,31 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       retrieval, per-agent specialization, evaluation harness — not
       started.
 
-## Phase 4 — Integrations and Publishing: not started
+## Phase 4 — Integrations and Publishing: **starter slice exists**
 
-Connector SDK (`packages/connectors`, contract specified in Section 34),
-Integration Center, priority provider adapters (Meta/TikTok/Google/
-WhatsApp), sync/webhooks/reconciliation, publishing jobs, troubleshooting
-knowledge base.
+- [x] Connector SDK (`packages/connectors`) — the Section 34
+      `ConnectorAdapter` contract (authorize/refresh/healthCheck/sync/
+      handleWebhook/execute/reconcile/revoke), plus one real, fully
+      working implementation: `GenericWebhookAdapter`, a signed
+      provider-agnostic inbound webhook receiver needing no third-party
+      OAuth account. Integration Center (`/integrations`, gated on
+      `organization:manage`) — a real connection dashboard with
+      status/health/event-count, a create flow that reveals a one-time
+      signing secret, and a revoke action. The public webhook endpoint
+      verifies an HMAC-SHA256 signature and deduplicates replayed
+      events by idempotency key (Section 17.1) — proven end-to-end in
+      this slice's own smoke test with a `curl` request signed via
+      `openssl`, not just unit-tested in isolation. Explicit scope
+      boundary in `docs/specs/integration-center.md`: Meta/TikTok/
+      Google/WhatsApp adapters (Section 17.2) are not built — they need
+      real OAuth app registrations and credentials this environment
+      cannot obtain; `refresh`/`sync`/`execute`/`reconcile` are
+      legitimately not-applicable for *this* push-only connector
+      (documented per-method), not silently stubbed.
+- [ ] Priority provider adapters (Meta/TikTok/Google/WhatsApp) — blocked
+      on real OAuth credentials. Sync/reconciliation for a pull-based
+      provider, publishing jobs, troubleshooting knowledge base — not
+      started.
 
 ## Phase 5 — Finance and Executive Intelligence: **complete except one deferred item**
 

@@ -3,13 +3,25 @@
 - **Status:** Proposed (interim dev-only approach documented); production
   approach not yet decided
 - **Date:** 2026-09-06
+- **Updated:** 2026-09-06 — the first real connector now exists; see
+  below and `docs/specs/integration-center.md`.
 
 ## Context
 
 Bible Section 17.1 requires OAuth/service credentials in a secrets manager
-or encrypted credential vault, never plaintext in the database. No
-connectors exist yet (Phase 4), so there are no external credentials to
-store today.
+or encrypted credential vault, never plaintext in the database.
+
+**Update:** the first real connector now exists — a generic webhook
+receiver (`Connection.signingSecretEncrypted`, see
+`docs/specs/integration-center.md`). Its one secret is a self-generated
+HMAC signing key, not a third-party OAuth token, so it took the "at
+minimum, application-level encryption of credential columns" option
+this ADR already named below: AES-256-GCM via the same
+`encryptSecret`/`decryptSecret` primitive MFA already uses
+(`packages/auth/src/mfa.ts`), reused rather than duplicated. This is
+still not a real secrets manager — the encryption key is derived from
+`SESSION_SECRET`, the same interim posture as every other secret in
+this system today.
 
 ## Decision (current, interim — development only)
 

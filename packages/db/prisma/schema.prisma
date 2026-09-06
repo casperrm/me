@@ -58,6 +58,7 @@ model Organization {
   expenses      Expense[]
   assets        Asset[]
   notifications Notification[]
+  connections   Connection[]
 
   @@map("organizations")
 }
@@ -147,6 +148,7 @@ model Membership {
   ownedContentCalendarItems ContentCalendarItem[]
   notifications             Notification[]
   flaggedCedarBrainRequests CedarBrainRequest[]
+  createdConnections        Connection[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -805,4 +807,50 @@ model Notification {
   @@index([membershipId, status])
   @@index([resourceType, resourceId, category])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Integration Center (Section 17.1/34, Phase 4): "Connection dashboard shows
+// connected/not connected, scopes, token expiry, last sync, next retry,
+// errors, degraded status, and required user action." The one real
+// provider today is "generic_webhook" (packages/connectors'
+// GenericWebhookAdapter) — a signed inbound webhook receiver that needs no
+// third-party OAuth app registration. Meta/TikTok/Google/WhatsApp adapters
+// are not built (see docs/specs/integration-center.md): they need real
+// OAuth credentials this environment can't obtain.
+// ---------------------------------------------------------------------------
+
+model Connection {
+  id                     String    @id @default(uuid())
+  organizationId         String
+  organization           Organization @relation(fields: [organizationId], references: [id])
+  provider               String // "generic_webhook" is the only real provider implemented so far
+  name                   String // user-given label, e.g. "Zapier — lead form"
+  status                 String    @default("CONNECTED") // CONNECTED | DISCONNECTED | DEGRADED | ERROR
+  scopes                 String // JSON array — empty for generic_webhook, real for a future OAuth provider
+  signingSecretEncrypted String // AES-256-GCM, same encryptSecret/decryptSecret primitive as MFA (packages/auth)
+  lastEventAt            DateTime?
+  eventCount             Int       @default(0)
+  createdAt              DateTime  @default(now())
+  createdByMembershipId  String?
+  createdByMembership    Membership? @relation(fields: [createdByMembershipId], references: [id])
+
+  events ConnectionEvent[]
+
+  @@index([organizationId])
+  @@map("connections")
+}
+
+model ConnectionEvent {
+  id             String     @id @default(uuid())
+  connectionId   String
+  connection     Connection @relation(fields: [connectionId], references: [id])
+  idempotencyKey String // dedupes a retried webhook delivery (Section 17.1)
+  eventType      String?
+  payload        String // JSON — bounded, retained for debugging/audit (Section 34)
+  receivedAt     DateTime   @default(now())
+
+  @@unique([connectionId, idempotencyKey])
+  @@index([connectionId, receivedAt])
+  @@map("connection_events")
 }

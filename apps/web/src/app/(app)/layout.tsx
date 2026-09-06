@@ -37,6 +37,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     permission: "ai:supervise",
   });
 
+  const canSeeIntegrations = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "organization:manage",
+  });
+
   const unreadCount = await unreadNotificationCount(actor.membership.id);
 
   const navItems = [
@@ -47,6 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/command", label: "Cedar Command Center", badge: 0 },
     ...(canSeeAiSupervisor ? [{ href: "/command/supervisor", label: "AI Supervisor", badge: 0 }] : []),
     { href: "/metrics", label: "Metrics Catalog", badge: 0 },
+    ...(canSeeIntegrations ? [{ href: "/integrations", label: "Integration Center", badge: 0 }] : []),
     ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions", badge: 0 }] : []),
   ];
 

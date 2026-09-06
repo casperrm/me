@@ -1,6 +1,7 @@
-// Connector SDK + provider adapters for Meta, TikTok, Google, WhatsApp,
-// Canva, etc. (Bible Section 17, 34; Phase 4). The adapter contract is
-// specified in Section 34 (authorize/refresh/health_check/sync/
-// handle_webhook/execute/reconcile/revoke) — implement it here once the
-// first real integration is authorized. Not implemented yet.
-export {};
+// Connector SDK: the Section 34 adapter contract, plus provider adapters.
+// GenericWebhookAdapter is the one real, fully-working implementation so
+// far — see docs/specs/integration-center.md for what's built versus
+// deferred (Meta/TikTok/Google/WhatsApp need real OAuth app registrations
+// this environment can't obtain).
+export * from "./contract";
+export * from "./generic-webhook-adapter";
