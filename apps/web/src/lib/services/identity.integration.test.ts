@@ -103,7 +103,7 @@ describe("login", () => {
   it("succeeds with correct credentials and rejects wrong ones", async () => {
     await expect(login({ email: "owner@test.example", password: "wrong-password" })).rejects.toThrow(AuthError);
     await expect(login({ email: "nobody@test.example", password: "whatever12345" })).rejects.toThrow(AuthError);
-    await expect(login({ email: "owner@test.example", password: "correct-horse-battery" })).resolves.toBeUndefined();
+    await expect(login({ email: "owner@test.example", password: "correct-horse-battery" })).resolves.toEqual({ mfaRequired: false });
   });
 
   it("records an audit event on successful login", async () => {

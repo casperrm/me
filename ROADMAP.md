@@ -33,8 +33,10 @@ deployment.
 - [ ] **Staging deployment — not started.** `infra/` is empty; ADR-010
       needs a decision before this can happen. This is Phase 0's one
       concretely unmet deliverable.
-- [ ] MFA for privileged users (Section 23.1) — tracked gap in ADR-006,
-      not yet built.
+- [x] MFA (Section 23.1) — TOTP enrollment/login-challenge/recovery codes,
+      per-user opt-in from `/security`. See `docs/specs/mfa.md` for the
+      stated scope boundary: not yet enforced as mandatory for specific
+      roles, and no WebAuthn/security-key option yet.
 
 ## Phase 1 — Agency Core: **in progress**
 

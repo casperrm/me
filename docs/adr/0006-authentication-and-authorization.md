@@ -22,10 +22,24 @@ the minimum audit event schema.
   (`packages/auth/src/tokens.ts`), so a database read alone can't produce
   a usable session token. The token lives in an `httpOnly`, `sameSite=lax`
   cookie set by `apps/web`.
-- **MFA is not implemented yet.** This is a known gap against Section
-  23.1's "MFA for privileged users" — tracked here rather than silently
-  skipped. Add TOTP (or WebAuthn) enrollment on `User` before this system
-  holds real client data or a second real human user beyond development.
+- **MFA (TOTP)** is implemented — `packages/auth/src/mfa.ts` +
+  `apps/web/src/lib/services/mfa-service.ts`. A user enrolls voluntarily
+  from `/security`; `User.mfaSecretEncrypted` is set the moment
+  enrollment starts but `User.mfaEnabled` only flips to `true` once the
+  user proves possession of it with a real code, so an abandoned
+  enrollment attempt can never lock the account out. The secret is
+  AES-256-GCM encrypted at rest with a key derived from `SESSION_SECRET`
+  via `scrypt` (key separation from that secret's session-signing use,
+  without needing a second secret to generate/rotate/deploy). Ten
+  one-time recovery codes are issued on enrollment (hashed, same
+  pattern as session/invitation tokens) for when the authenticator
+  device is unavailable. `login()` never creates a session for an
+  MFA-enabled account on password alone — it returns a short-lived
+  (`PendingMfaLogin`, 5 min TTL) pending-login token instead, and only
+  `completeMfaLogin` (TOTP or a recovery code) issues the real session.
+  This is per-user opt-in, not yet enforced as mandatory for
+  OWNER/ADMIN roles specifically — see `docs/specs/mfa.md` for that
+  and other residual gaps (WebAuthn, admin-forced enrollment).
 
 **Authorization:**
 - `packages/domain`'s `can()` is the single, pure, framework-free decision

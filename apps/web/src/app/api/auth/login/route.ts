@@ -8,7 +8,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    await login({ email: body.email, password: body.password });
+    const result = await login({ email: body.email, password: body.password });
+    if (result.mfaRequired) {
+      return NextResponse.json({ ok: true, mfaRequired: true, pendingToken: result.pendingToken });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: 401 });

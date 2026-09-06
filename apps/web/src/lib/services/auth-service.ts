@@ -1,12 +1,14 @@
 import { headers } from "next/headers";
-import { createSession, hashPassword, revokeSession, verifyPassword, verifySessionToken } from "@cedar/auth";
+import { createSession, generateToken, hashPassword, hashToken, revokeSession, verifyPassword, verifySessionToken } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { emitAuditEvent } from "@cedar/events";
 import { setSessionCookie, getSessionToken, clearSessionCookie } from "../session-cookie";
 
+const PENDING_MFA_TTL_MS = 5 * 60 * 1000;
+
 export class AuthError extends Error {}
 
-async function requestMeta() {
+export async function requestMeta() {
   const h = await headers();
   return {
     ipAddress: h.get("x-forwarded-for") ?? undefined,
@@ -58,7 +60,15 @@ export async function bootstrapOrganization(input: { orgName: string; name: stri
   await setSessionCookie(token);
 }
 
-export async function login(input: { email: string; password: string }) {
+/**
+ * Returns either `{ mfaRequired: false }` (a session was created — same
+ * as before MFA existed) or `{ mfaRequired: true, pendingToken }` when
+ * the account has MFA enabled (Section 23.1): the password was correct,
+ * but no session is created until completeMfaLogin succeeds with that
+ * pendingToken. Never create a session on password verification alone
+ * once MFA is enabled — that would make MFA decorative.
+ */
+export async function login(input: { email: string; password: string }): Promise<{ mfaRequired: boolean; pendingToken?: string }> {
   const email = input.email.trim().toLowerCase();
   const user = await prisma.user.findUnique({ where: { email } });
   const valid = user ? await verifyPassword(input.password, user.passwordHash) : false;
@@ -70,6 +80,14 @@ export async function login(input: { email: string; password: string }) {
   const membership = await prisma.membership.findFirst({ where: { userId: user.id, status: "ACTIVE" } });
   if (!membership) {
     throw new AuthError("This account has no active organization membership.");
+  }
+
+  if (user.mfaEnabled) {
+    const pendingToken = generateToken();
+    await prisma.pendingMfaLogin.create({
+      data: { userId: user.id, tokenHash: hashToken(pendingToken), expiresAt: new Date(Date.now() + PENDING_MFA_TTL_MS) },
+    });
+    return { mfaRequired: true, pendingToken };
   }
 
   const meta = await requestMeta();
@@ -86,6 +104,8 @@ export async function login(input: { email: string; password: string }) {
     result: "SUCCESS",
     sourceIp: meta.ipAddress,
   });
+
+  return { mfaRequired: false };
 }
 
 export async function logout() {

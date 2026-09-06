@@ -65,19 +65,61 @@ model Organization {
 // Membership, so one person can belong to multiple organizations later
 // (e.g. a contractor working two agencies) without a schema change.
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  mfaEnabled   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String
+  name               String
+  mfaEnabled         Boolean  @default(false)
+  // AES-256-GCM ciphertext ("iv:authTag:ciphertext", hex) — see
+  // packages/auth/src/mfa.ts. Set as soon as enrollment starts; only
+  // `mfaEnabled` flips to true once the user proves possession of it by
+  // submitting a valid code, so an abandoned enrollment attempt never
+  // silently locks the account out.
+  mfaSecretEncrypted String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  memberships Membership[]
-  sessions    Session[]
-  meetings    MeetingAttendee[]
+  memberships      Membership[]
+  sessions         Session[]
+  meetings         MeetingAttendee[]
+  mfaRecoveryCodes MfaRecoveryCode[]
+  pendingMfaLogins PendingMfaLogin[]
 
   @@map("users")
+}
+
+// Section 23.1: "MFA for privileged users." One-time codes for when the
+// authenticator device is unavailable — generated in a batch on
+// enrollment (and on any later regeneration), shown to the user exactly
+// once, and never stored in plaintext (same hash-then-compare pattern as
+// Session/Invitation tokens).
+model MfaRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("mfa_recovery_codes")
+}
+
+// The gap between "password verified" and "session issued" for an
+// MFA-enrolled user. Short-lived (5 minutes) and single-use — consumed
+// the moment the TOTP/recovery-code challenge succeeds. Never holds
+// anything more sensitive than a reference to whose login is pending;
+// the password has already been verified by the time this row exists.
+model PendingMfaLogin {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("pending_mfa_logins")
 }
 
 // A user's role within one organization. This — not User — is what

@@ -62,6 +62,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="font-medium text-neutral-700">{actor.user.name}</div>
             <div>{actor.membership.role}</div>
           </div>
+          <Link href="/security" className="mt-2 block rounded-md px-3 py-2 text-left text-sm text-neutral-500 hover:bg-neutral-50">
+            Security
+          </Link>
           <form action={logoutAction}>
             <button type="submit" className="mt-2 w-full rounded-md px-3 py-2 text-left text-sm text-neutral-500 hover:bg-neutral-50">
               Log out
