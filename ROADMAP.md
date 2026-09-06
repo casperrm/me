@@ -307,11 +307,19 @@ SLOs.
 
 - **Integration tests exist for Identity & Access** (`apps/web/src/lib/services/identity.integration.test.ts`,
   8 tests against a real dedicated Postgres database — bootstrap, login,
-  full invite→accept→scope-grant flow, last-owner protection). Still
-  missing: a true browser-driven E2E layer (Bible Section 32's "End-to-end"
-  row) and API-contract tests for the route handlers themselves (auth
-  headers, error envelopes, idempotency) — `tests/e2e/README.md` tracks
-  this as the next thing to add there.
+  full invite→accept→scope-grant flow, last-owner protection).
+- **A real browser-driven E2E layer now exists** (Bible Section 32's
+  "End-to-end" row) — `tests/e2e/` (Playwright/Chromium): login →
+  protected page → logout, and the fuller invite → accept → real
+  RBAC-scoped session flow, run via `npm run test:e2e` against a
+  production build with the dev database reset to a known seeded state
+  first. See `tests/e2e/README.md` for a real dev-server-only flakiness
+  finding this work surfaced (fixed by building/starting, not `next
+  dev`) and what's still not covered (approval workflow, content
+  calendar transitions, client portal, MFA — all have integration-test
+  coverage but no browser E2E yet).
+- Still missing: API-contract tests for the route handlers themselves
+  (auth headers, error envelopes, idempotency).
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in

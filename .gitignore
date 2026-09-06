@@ -23,6 +23,11 @@ coverage/
 *.log
 npm-debug.log*
 
+# playwright e2e
+/test-results/
+/playwright-report/
+/blob-report/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
