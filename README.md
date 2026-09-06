@@ -12,7 +12,8 @@
 |---|-------|--------|
 | 01 | [الملخص التنفيذي](docs/blueprint/01-executive-summary.md) | ✅ منشور |
 | 02 | [رؤية المنتج والمعمارية](docs/blueprint/02-product-vision.md) | ✅ منشور |
-| 03 | System Architecture Blueprint (Cedar Core → واجهة المستخدم) | ⏳ قادم |
+| 03 | [مواصفات الموديولات الكاملة (20 موديول)](docs/blueprint/03-modules.md) | ✅ منشور |
+| 04 | System Architecture Blueprint (Cedar Core → واجهة المستخدم) | ⏳ قادم |
 
 سيتم إضافة بقية الفصول (الموديولات، معمارية البيانات، الوكلاء الذكيون، الحوكمة والصلاحيات، خارطة الطريق...) تباعًا بنفس النمط.
 
