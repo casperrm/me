@@ -66,7 +66,14 @@ canonical system.
       payment-risk and integration-degradation escalation triggers need
       modules that don't exist yet (real invoicing, Phase 4 connectors);
       email/push channels are adapters for later, not built.
-- [ ] Global search / command palette (Section 28.2) — not started.
+- [x] Global search / command palette (Section 28.2) — `⌘K`/`Ctrl+K`
+      overlay finding Clients/Projects/Campaigns/Creatives/Content
+      Calendar items/Shoots by name, scoped through the same
+      `getReadableClientIds` isolation the Section 12 calendar uses.
+      Explicit scope boundary in `docs/specs/search.md`: this is "find
+      records," not Section 28.2's paired "initiate permitted actions" —
+      that belongs with Cedar Command Center, not a second parallel
+      command-execution path.
 - [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
       Brand DNA saves, project creation, campaign creation, asset
       uploads, and creative approvals, in addition to seed data — still

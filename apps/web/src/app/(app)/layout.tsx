@@ -4,6 +4,7 @@ import { requireActor } from "@/lib/guards";
 import { isAuthorized } from "@cedar/auth";
 import { logoutAction } from "@/lib/actions/auth";
 import { unreadNotificationCount } from "@/lib/services/notification-service";
+import { CommandPalette } from "./CommandPalette";
 
 // Every authenticated page reads the session cookie and queries per-user
 // data — none of it should ever be statically prerendered/cached.
@@ -48,6 +49,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="mb-8 flex items-center gap-2 px-2">
             <div className="h-7 w-7 rounded-md bg-cedar-600" />
             <span className="text-sm font-semibold tracking-tight">Cedar Point OS</span>
+          </div>
+          <div className="mb-3">
+            <CommandPalette />
           </div>
           <nav className="space-y-1">
             {navItems.map((item) => (
