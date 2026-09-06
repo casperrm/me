@@ -31,7 +31,8 @@ export type Permission =
   | "clients:read"
   | "clients:write"
   | "finance:read"
-  | "finance:write";
+  | "finance:write"
+  | "approvals:decide";
 
 export const ALL_PERMISSIONS: Permission[] = [
   "organization:manage",
@@ -42,6 +43,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "clients:write",
   "finance:read",
   "finance:write",
+  "approvals:decide",
 ];
 
 // Permissions a role holds organization-wide, with no client scoping
@@ -62,6 +64,7 @@ export const ROLE_GLOBAL_PERMISSIONS: Record<Exclude<Role, "OWNER">, Permission[
     "clients:write",
     "finance:read",
     "finance:write",
+    "approvals:decide",
   ],
   // Client-facing roles get nothing organization-wide by default — access
   // to a specific client comes from a ScopedGrant (Section 2.2: "scope"
@@ -72,7 +75,14 @@ export const ROLE_GLOBAL_PERMISSIONS: Record<Exclude<Role, "OWNER">, Permission[
   DESIGNER: [],
   VIDEO_PRODUCTION: [],
   FINANCE: ["finance:read", "finance:write", "clients:read"],
-  CLIENT_PORTAL: [], // separate auth surface entirely — see Section 15.2, not implemented in Phase 0
+  // The Client Portal (Section 15.2): a real external client contact,
+  // scoped via ScopedGrant to exactly their own client(s) with
+  // "clients:read" (a curated /portal view, not the internal Client 360
+  // page) and "approvals:decide" (so THEIR decision — not an internal
+  // team member's free-text stand-in — is what gets recorded). Nothing
+  // else: no clients:write, no visibility into other clients, no
+  // organization-wide anything.
+  CLIENT_PORTAL: [],
   CUSTOM: [], // entirely defined by ScopedGrant rows
 };
 
@@ -83,4 +93,5 @@ export const ROLE_GLOBAL_PERMISSIONS: Record<Exclude<Role, "OWNER">, Permission[
 export const CLIENT_SCOPABLE_PERMISSIONS: ReadonlySet<Permission> = new Set([
   "clients:read",
   "clients:write",
+  "approvals:decide",
 ]);

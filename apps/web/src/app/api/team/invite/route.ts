@@ -3,6 +3,7 @@ import { AuthorizationError } from "@cedar/auth";
 import type { Role } from "@cedar/domain";
 import { getCurrentActor } from "@/lib/current-actor";
 import { createInvitation } from "@/lib/services/membership-service";
+import { AuthError } from "@/lib/services/auth-service";
 
 export async function POST(req: Request) {
   const actor = await getCurrentActor();
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
       organizationId: actor.organizationId,
       email: body.email,
       role: body.role as Role,
+      clientId: body.clientId || undefined,
     });
     // No email provider is wired up yet (Bible Section 30) — hand the
     // link back so the inviter can copy/send it manually.
@@ -27,6 +29,7 @@ export async function POST(req: Request) {
     if (err instanceof AuthorizationError) {
       return NextResponse.json({ error: "You don't have permission to invite members." }, { status: 403 });
     }
+    if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: 400 });
     throw err;
   }
 }

@@ -115,6 +115,14 @@ model Invitation {
   organization   Organization @relation(fields: [organizationId], references: [id])
   email          String
   role           Role
+  // Pre-scopes the invite to one client — required in practice for
+  // CLIENT_PORTAL invites (Section 15.2: a client contact must never end
+  // up with zero client access), optional for internal roles. On
+  // acceptance, a CLIENT_PORTAL invite with a clientId auto-creates the
+  // ScopedGrant(s) that make the portal usable immediately — see
+  // acceptInvitationFlow.
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
   tokenHash      String       @unique
   invitedById    String
   invitedBy      Membership   @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
@@ -244,6 +252,7 @@ model Client {
   healthScores   ClientHealthScore[]
   scopedGrants   ScopedGrant[]
   assets         Asset[]
+  invitations    Invitation[]
 
   @@index([organizationId])
   @@map("clients")

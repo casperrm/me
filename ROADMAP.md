@@ -72,9 +72,16 @@ Deliverable: brief-to-client-approval lifecycle is operational.
 - [ ] Content calendar (planning/scheduling, distinct from the Section 12
       due-date calendar already built) — not started.
 - [ ] Video/production workflows (Section 11) — not started.
-- [ ] Client Portal (Section 15.2) — not started; `Approval.decidedBy`
-      is a free-text name today because there's no authenticated external
-      client to attribute the decision to yet.
+- [x] Client Portal (Section 15.2) — `/portal` + `/portal/[clientId]`
+      curated view (pending approvals with a decide action, approved
+      history, invoices, files); a `CLIENT_PORTAL` membership has zero
+      org-wide permissions, all access comes from `ScopedGrant`s
+      auto-created on invitation acceptance; a new narrow
+      `approvals:decide` permission (OR'd with `clients:write` via
+      `requireAnyPermission`) lets a portal contact record their own
+      decision, always attributed to their own authenticated identity —
+      `Approval.decidedBy` free text from a portal contact is discarded
+      server-side, never trusted. See `docs/specs/client-portal.md`.
 - [ ] AI Quality Control (Section 23: brand consistency, spelling,
       dimensions checks before client review) — not started.
 

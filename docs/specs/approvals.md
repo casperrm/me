@@ -42,15 +42,16 @@ Section 15.1 and now reachable through real UI/services:
 
 ## Permissions
 
-Everything in this module — creating campaigns/creatives, adding
-versions, requesting approval, and recording a decision — requires
-`clients:write` on the owning client. There is currently no separate
-"approve" permission (Section 2.2 lists "approval rule" as its own
-authorization dimension) — internal team members who can write to a
-client can also approve on a client's behalf, which is the correct model
-until the Client Portal (Section 15.2) lets an actual external client
-record their own decision. `Approval.decidedBy` is a free-text name for
-exactly this reason (documented in the schema since before this slice).
+Creating campaigns/creatives, adding versions, and requesting approval all
+require `clients:write` on the owning client. Recording a decision
+(`recordApprovalDecision`) accepts **either** `clients:write` (an internal
+team member approving on a client's behalf) **or** the narrower
+`approvals:decide` (a Client Portal contact recording their own decision —
+see `client-portal.md`), via `requireAnyPermission`. `Approval.decidedBy`
+is free-text for internal staff recording a non-logged-in client contact's
+decision, but is always forced server-side to the actor's own name when
+the actor's role is `CLIENT_PORTAL` — see `client-portal.md`'s Security
+invariant.
 
 ## Events
 

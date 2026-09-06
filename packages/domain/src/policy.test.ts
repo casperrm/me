@@ -85,3 +85,28 @@ describe("canManageMembership — Section 2.3 role/permission escalation gate", 
     expect(canManageMembership({ actorRole: "ADMIN", targetRole: "ACCOUNT_MANAGER", targetIsLastOwner: false })).toBe(true);
   });
 });
+
+describe("can() — Section 15.2 scenario: a Client Portal contact is scoped to exactly their own client", () => {
+  const actor = { membershipId: "m6", role: "CLIENT_PORTAL" as const, status: "ACTIVE" as const };
+  const grants: Grant[] = [
+    { permission: "clients:read", clientId: CLIENT_A },
+    { permission: "approvals:decide", clientId: CLIENT_A },
+  ];
+
+  it("can decide approvals for their own client", () => {
+    expect(can({ actor, grants, permission: "approvals:decide", clientId: CLIENT_A })).toBe(true);
+  });
+
+  it("cannot decide approvals for a different client", () => {
+    expect(can({ actor, grants, permission: "approvals:decide", clientId: CLIENT_B })).toBe(false);
+  });
+
+  it("has no write access even to their own client — approvals:decide is not clients:write", () => {
+    expect(can({ actor, grants, permission: "clients:write", clientId: CLIENT_A })).toBe(false);
+  });
+
+  it("has no organization-wide permissions at all", () => {
+    expect(can({ actor, grants, permission: "organization:manage" })).toBe(false);
+    expect(can({ actor, grants, permission: "finance:read" })).toBe(false);
+  });
+});

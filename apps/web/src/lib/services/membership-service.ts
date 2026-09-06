@@ -17,6 +17,8 @@ export async function createInvitation(params: {
   organizationId: string;
   email: string;
   role: Role;
+  /** Required for CLIENT_PORTAL (Section 15.2) — see acceptInvitationFlow. */
+  clientId?: string;
 }) {
   const membership = await requirePermission({
     userId: params.actorUserId,
@@ -24,11 +26,21 @@ export async function createInvitation(params: {
     permission: "members:invite",
   });
 
+  if (params.role === "CLIENT_PORTAL" && !params.clientId) {
+    throw new AuthError("A Client Portal invite must specify which client it's for.");
+  }
+
+  if (params.clientId) {
+    const client = await prisma.client.findFirst({ where: { id: params.clientId, organizationId: params.organizationId } });
+    if (!client) throw new AuthError("Client not found.");
+  }
+
   const { token, invitation } = await createInvitationRecord({
     organizationId: params.organizationId,
     email: params.email,
     role: params.role,
     invitedById: membership.id,
+    clientId: params.clientId,
   });
 
   await emitAuditEvent({
@@ -38,6 +50,7 @@ export async function createInvitation(params: {
     action: "invitation.created",
     resourceType: "Invitation",
     resourceId: invitation.id,
+    clientId: params.clientId,
     result: "SUCCESS",
     changeSet: { email: params.email, role: params.role },
   });
@@ -46,11 +59,14 @@ export async function createInvitation(params: {
 }
 
 export async function getInvitationPreview(token: string) {
-  const invitation = await prisma.invitation.findFirst({ where: { tokenHash: hashToken(token) } });
+  const invitation = await prisma.invitation.findFirst({
+    where: { tokenHash: hashToken(token) },
+    include: { client: { select: { name: true } } },
+  });
   if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt < new Date()) {
     return null;
   }
-  return { email: invitation.email, role: invitation.role };
+  return { email: invitation.email, role: invitation.role, clientName: invitation.client?.name ?? null };
 }
 
 export async function acceptInvitationFlow(token: string, input: { name: string; password: string }) {
@@ -73,7 +89,7 @@ export async function acceptInvitationFlow(token: string, input: { name: string;
     data: { email: invitation.email, name, passwordHash: await hashPassword(input.password) },
   });
 
-  const membership = await acceptInvitationRecord(token, user.id);
+  const { membership } = await acceptInvitationRecord(token, user.id);
 
   await emitAuditEvent({
     organizationId: invitation.organizationId,
@@ -82,8 +98,23 @@ export async function acceptInvitationFlow(token: string, input: { name: string;
     action: "invitation.accepted",
     resourceType: "Membership",
     resourceId: membership.id,
+    clientId: invitation.clientId,
     result: "SUCCESS",
   });
+
+  // A Client Portal contact must be usable the moment they accept — grant
+  // the two permissions the portal needs, scoped to exactly the client
+  // the invite was for (Section 15.2). Nothing else touches this
+  // membership's ScopedGrants automatically; an admin can add/remove
+  // scope later from /team like any other member.
+  if (invitation.role === "CLIENT_PORTAL" && invitation.clientId) {
+    await prisma.scopedGrant.createMany({
+      data: [
+        { membershipId: membership.id, clientId: invitation.clientId, permission: "clients:read" },
+        { membershipId: membership.id, clientId: invitation.clientId, permission: "approvals:decide" },
+      ],
+    });
+  }
 
   const { token: sessionToken } = await createSession(user.id);
   await setSessionCookie(sessionToken);

@@ -65,3 +65,40 @@ export async function requirePermission(params: AuthorizeParams) {
 
   return loaded.membership;
 }
+
+export interface AuthorizeAnyParams {
+  userId: string;
+  organizationId: string;
+  permissions: Permission[];
+  clientId?: string;
+}
+
+/**
+ * Passes if the actor holds ANY of the listed permissions for the given
+ * scope. Exists for actions two different kinds of actor can legitimately
+ * take for different reasons — e.g. recording an approval decision is
+ * allowed either by an internal team member's `clients:write` (reviewing
+ * their own team's work) or by a Client Portal contact's narrower
+ * `approvals:decide` (Section 15.2) — without granting the portal contact
+ * `clients:write` just to reuse one check.
+ */
+export async function isAuthorizedAny(params: AuthorizeAnyParams): Promise<boolean> {
+  const loaded = await loadActorAndGrants(params.userId, params.organizationId);
+  if (!loaded) return false;
+  return params.permissions.some((permission) =>
+    can({ actor: loaded.actor, grants: loaded.grants, permission, clientId: params.clientId }),
+  );
+}
+
+export async function requireAnyPermission(params: AuthorizeAnyParams) {
+  const loaded = await loadActorAndGrants(params.userId, params.organizationId);
+  if (!loaded) throw new AuthorizationError(params.permissions[0], params.clientId);
+
+  const allowed = params.permissions.some((permission) =>
+    can({ actor: loaded.actor, grants: loaded.grants, permission, clientId: params.clientId }),
+  );
+
+  if (!allowed) throw new AuthorizationError(params.permissions[0], params.clientId);
+
+  return loaded.membership;
+}

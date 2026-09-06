@@ -21,7 +21,14 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
             <h1 className="mb-1 text-lg font-semibold">Join Cedar Point OS</h1>
             <p className="mb-4 text-xs text-neutral-500">
               Invited as <span className="font-medium">{invitation.email}</span> with the{" "}
-              <span className="font-medium">{invitation.role}</span> role.
+              <span className="font-medium">{invitation.role}</span> role
+              {invitation.clientName && (
+                <>
+                  {" "}
+                  for <span className="font-medium">{invitation.clientName}</span>
+                </>
+              )}
+              .
             </p>
             <AcceptInviteForm token={token} />
           </>

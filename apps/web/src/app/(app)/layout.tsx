@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireActor } from "@/lib/guards";
 import { isAuthorized } from "@cedar/auth";
 import { logoutAction } from "@/lib/actions/auth";
@@ -9,6 +10,14 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const actor = await requireActor();
+
+  // A Client Portal contact has zero organization-wide permissions by
+  // design (Section 15.2) — the internal app shell has nothing for them
+  // to see, so send them to their curated view instead of a wall of
+  // permission-denied cards.
+  if (actor.membership.role === "CLIENT_PORTAL") {
+    redirect("/portal");
+  }
 
   const canSeeTeam = await isAuthorized({
     userId: actor.user.id,

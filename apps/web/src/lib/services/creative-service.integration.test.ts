@@ -107,6 +107,7 @@ describe("full campaign -> creative -> approval lifecycle", () => {
 
     await recordApprovalDecision({
       actorUserId: ownerUserId,
+      actorName: "Owner",
       organizationId: orgId,
       creativeVersionId: v1.id,
       decision: "changes_requested",
@@ -127,6 +128,7 @@ describe("full campaign -> creative -> approval lifecycle", () => {
     await requestApproval({ actorUserId: ownerUserId, organizationId: orgId, creativeVersionId: v2.id });
     await recordApprovalDecision({
       actorUserId: ownerUserId,
+      actorName: "Owner",
       organizationId: orgId,
       creativeVersionId: v2.id,
       decision: "approved",
@@ -158,7 +160,7 @@ describe("full campaign -> creative -> approval lifecycle", () => {
 
     // Already approved by the previous test — no pending request left.
     await expect(
-      recordApprovalDecision({ actorUserId: ownerUserId, organizationId: orgId, creativeVersionId: v2.id, decision: "approved" }),
+      recordApprovalDecision({ actorUserId: ownerUserId, actorName: "Owner", organizationId: orgId, creativeVersionId: v2.id, decision: "approved" }),
     ).rejects.toThrow(AuthError);
   });
 

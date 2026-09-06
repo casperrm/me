@@ -55,7 +55,7 @@ export default async function TeamPage() {
 
       {canInvite.allowed && (
         <Card title="Invite a member">
-          <InviteForm roles={ASSIGNABLE_ROLES} />
+          <InviteForm roles={ASSIGNABLE_ROLES} clients={clients} />
         </Card>
       )}
 

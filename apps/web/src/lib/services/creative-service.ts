@@ -1,4 +1,4 @@
-import { requirePermission } from "@cedar/auth";
+import { requireAnyPermission, requirePermission } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { emitAuditEvent } from "@cedar/events";
 import { AuthError } from "./auth-service";
@@ -233,6 +233,7 @@ const STATUS_FOR_DECISION: Record<ApprovalDecision, string> = {
 
 export async function recordApprovalDecision(params: {
   actorUserId: string;
+  actorName: string;
   organizationId: string;
   creativeVersionId: string;
   decision: ApprovalDecision;
@@ -243,10 +244,15 @@ export async function recordApprovalDecision(params: {
 
   const version = await assertCreativeVersionInOrg(params.creativeVersionId, params.organizationId);
   const clientId = version.creative.campaign.project.clientId;
-  const membership = await requirePermission({
+  // Either an internal team member reviewing their own team's work
+  // (clients:write) or a Client Portal contact recording their own
+  // decision (approvals:decide, Section 15.2) — see the doc comment on
+  // requireAnyPermission for why this is an OR, not a new broader
+  // permission.
+  const membership = await requireAnyPermission({
     userId: params.actorUserId,
     organizationId: params.organizationId,
-    permission: "clients:write",
+    permissions: ["clients:write", "approvals:decide"],
     clientId,
   });
 
@@ -254,13 +260,21 @@ export async function recordApprovalDecision(params: {
     throw new AuthError("This version has no pending approval request.");
   }
 
+  // A Client Portal contact's decision is always attributed to their own
+  // authenticated name, never to whatever `decidedBy` text was submitted
+  // — otherwise a portal contact could record a decision under someone
+  // else's name. Free-text `decidedBy` is only trusted from internal
+  // staff, who use it to record a decision made by a client contact who
+  // isn't logged in themselves.
+  const decidedBy = membership.role === "CLIENT_PORTAL" ? params.actorName : params.decidedBy || undefined;
+
   const approval = await prisma.$transaction(async (tx) => {
     const approval = await tx.approval.create({
       data: {
         creativeVersionId: version.id,
         decision: params.decision,
         comment: params.comment || undefined,
-        decidedBy: params.decidedBy || undefined,
+        decidedBy,
       },
     });
     await tx.creative.update({ where: { id: version.creativeId }, data: { status: STATUS_FOR_DECISION[params.decision] } });
@@ -276,7 +290,7 @@ export async function recordApprovalDecision(params: {
     resourceId: version.id,
     clientId,
     result: "SUCCESS",
-    changeSet: { decision: params.decision, decidedBy: params.decidedBy },
+    changeSet: { decision: params.decision, decidedBy },
   });
 
   if (params.decision === "approved") {

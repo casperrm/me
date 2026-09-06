@@ -15,6 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
   try {
     await recordApprovalDecision({
       actorUserId: actor.user.id,
+      actorName: actor.user.name,
       organizationId: actor.organizationId,
       creativeVersionId: versionId,
       decision: body.decision as ApprovalDecision,
