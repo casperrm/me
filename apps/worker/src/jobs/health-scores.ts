@@ -1,5 +1,14 @@
 import { prisma } from "@cedar/db";
 import { logger } from "@cedar/observability";
+import {
+  approvalLatencyPenalty,
+  clampHealthScore,
+  HEALTH_SCORE_BASE,
+  overdueInvoicePenalty,
+  overdueProjectPenalty,
+  overdueTaskPenalty,
+  qcFailRatePenalty,
+} from "@cedar/metrics";
 
 export interface HealthFactor {
   signal: string;
@@ -31,12 +40,12 @@ const APPROVAL_LATENCY_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
  */
 export async function computeHealthScoreForClient(clientId: string): Promise<{ score: number; factors: HealthFactor[] }> {
   const factors: HealthFactor[] = [];
-  let score = 100;
+  let score = HEALTH_SCORE_BASE;
 
   const overdueTasks = await prisma.task.count({
     where: { project: { clientId }, dueDate: { lt: new Date() }, status: { not: "done" } },
   });
-  const taskPenalty = Math.min(overdueTasks * 5, 25);
+  const taskPenalty = overdueTaskPenalty(overdueTasks);
   score -= taskPenalty;
   factors.push({
     signal: "delivery_delays_tasks",
@@ -48,7 +57,7 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
   const overdueProjects = await prisma.project.count({
     where: { clientId, dueDate: { lt: new Date() }, status: { notIn: ["DELIVERED", "ARCHIVED"] } },
   });
-  const projectPenalty = Math.min(overdueProjects * 10, 20);
+  const projectPenalty = overdueProjectPenalty(overdueProjects);
   score -= projectPenalty;
   factors.push({
     signal: "delivery_delays_projects",
@@ -60,7 +69,7 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
   const overdueInvoices = await prisma.invoice.count({
     where: { clientId, dueAt: { lt: new Date() }, status: { not: "PAID" } },
   });
-  const invoicePenalty = Math.min(overdueInvoices * 15, 30);
+  const invoicePenalty = overdueInvoicePenalty(overdueInvoices);
   score -= invoicePenalty;
   factors.push({
     signal: "payment_status",
@@ -85,7 +94,7 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
     })
     .filter((ms): ms is number => ms !== null && ms >= 0);
   const avgTurnaroundHours = turnarounds.length > 0 ? turnarounds.reduce((a, b) => a + b, 0) / turnarounds.length / 3600000 : 0;
-  const approvalPenalty = avgTurnaroundHours > 72 ? 10 : avgTurnaroundHours > 24 ? 5 : 0;
+  const approvalPenalty = approvalLatencyPenalty(avgTurnaroundHours);
   score -= approvalPenalty;
   factors.push({
     signal: "approval_latency",
@@ -102,7 +111,7 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
   });
   const qcFailCount = recentQcResults.filter((r) => r.overallStatus === "fail").length;
   const qcFailRate = recentQcResults.length > 0 ? qcFailCount / recentQcResults.length : 0;
-  const qcPenalty = Math.round(qcFailRate * 20);
+  const qcPenalty = qcFailRatePenalty(qcFailRate);
   score -= qcPenalty;
   factors.push({
     signal: "unresolved_issues_qc",
@@ -111,7 +120,7 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
     explanation: "Share of recent creative versions whose automatic Quality Control check failed.",
   });
 
-  return { score: Math.max(0, Math.min(100, score)), factors };
+  return { score: clampHealthScore(score), factors };
 }
 
 export async function runHealthScoreJob(): Promise<number> {

@@ -1,4 +1,5 @@
 import { prisma } from "@cedar/db";
+import { computeMarginPct } from "@cedar/metrics";
 
 export interface ClientProfitability {
   clientId: string;
@@ -63,7 +64,7 @@ export async function getClientProfitability(organizationId: string): Promise<{
       revenueCents,
       costCents,
       profitCents,
-      marginPct: revenueCents > 0 ? (profitCents / revenueCents) * 100 : null,
+      marginPct: computeMarginPct(profitCents, revenueCents),
     };
   });
 

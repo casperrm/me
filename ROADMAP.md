@@ -194,8 +194,23 @@ them.
       industry benchmarking, and trend-based or AI-generated
       opportunities need modules or data sources that don't exist yet
       and are never faked.
+- [x] Governed metrics catalog (Section 29) — new `packages/metrics`
+      package: shared pure functions for every metric formula complex
+      enough to risk drift (client margin, all five Client Health Score
+      penalty formulas), now the single real definition imported by
+      both `apps/web`'s profitability service and `apps/worker`'s
+      health-score job (previously duplicated inline in each). A new
+      `/metrics` page documents every catalogued metric's formula,
+      unit, and source. Explicit scope boundary in
+      `docs/specs/metrics-catalog.md`: revenue/expense sums are
+      catalogued but not function-governed (a one-line aggregation
+      query isn't worth the `@cedar/db` coupling a shared function
+      would need); ROAS, CPA, and utilization have no entry at all —
+      no connector or time-tracking data exists yet to compute them
+      from, and a definition for a number that doesn't exist would be
+      fabrication.
 - [ ] Missing: project/campaign/service-level profitability, AI
-      Business Advisor, governed metrics catalog (Section 29).
+      Business Advisor.
 
 ## Phase 6 — Advanced Intelligence: not started
 
