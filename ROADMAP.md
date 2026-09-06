@@ -183,8 +183,19 @@ them.
       slice doesn't build (`Invoice.projectId`/`Expense.projectId`, a
       billable line-item model) — deferred with reasons given, not
       faked.
-- [ ] Missing: project/campaign/service-level profitability, Opportunity
-      Engine, AI Business Advisor, governed metrics catalog (Section 29).
+- [x] Opportunity Engine (Section 4.2) — `getOpportunitiesForClient`
+      surfaces evidence-backed service and creative-format gaps: a
+      service or creative format used by 2+ other distinct clients in
+      the organization but absent from this one, each with a literal
+      evidence count, never a prediction. Rendered on the client
+      profile page as an "Opportunities" card, gap-free clients show no
+      card. Explicit scope boundary in
+      `docs/specs/opportunity-engine.md`: intent signals, market/
+      industry benchmarking, and trend-based or AI-generated
+      opportunities need modules or data sources that don't exist yet
+      and are never faked.
+- [ ] Missing: project/campaign/service-level profitability, AI
+      Business Advisor, governed metrics catalog (Section 29).
 
 ## Phase 6 — Advanced Intelligence: not started
 

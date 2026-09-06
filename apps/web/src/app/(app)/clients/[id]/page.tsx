@@ -10,6 +10,7 @@ import { AssetUploadForm } from "./AssetUploadForm";
 import { AssetsList } from "./AssetsList";
 import { AddExpenseForm } from "./AddExpenseForm";
 import { buildSignedDownloadPath } from "@/lib/storage";
+import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   const rejectedPatterns = parseJSON<{ pattern: string; rationale: string }[]>(brandVersion?.rejectedPatterns, []);
   const health = client.healthScores[0];
   const healthFactors = parseJSON<{ signal: string; value: string; penalty: number; explanation: string }[]>(health?.factors, []);
+  const opportunities = await getOpportunitiesForClient(client.id, actor.organizationId);
 
   return (
     <div className="space-y-8">
@@ -105,6 +107,27 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           </details>
         )}
       </div>
+
+      {opportunities.length > 0 && (
+        <Card
+          title="Opportunities"
+          action={<span className="text-xs text-neutral-400">Decision support, not a recommendation (Section 4.2)</span>}
+        >
+          <ul className="space-y-2 text-sm">
+            {opportunities.map((o) => (
+              <li key={`${o.type}-${o.label}`} className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="rounded-full bg-cedar-50 px-2 py-0.5 text-xs text-cedar-700">
+                    {o.type === "service_gap" ? "Service" : "Format"}
+                  </span>{" "}
+                  <span className="font-medium">{o.label}</span>
+                </span>
+                <span className="text-xs text-neutral-500">{o.evidence}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Client info">
