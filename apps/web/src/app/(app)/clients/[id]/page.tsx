@@ -6,6 +6,9 @@ import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { NewProjectForm } from "./NewProjectForm";
+import { AssetUploadForm } from "./AssetUploadForm";
+import { AssetsList } from "./AssetsList";
+import { buildSignedDownloadPath } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +38,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       notes: { orderBy: { createdAt: "desc" } },
       timelineEvents: { orderBy: { occurredAt: "desc" } },
       healthScores: { orderBy: { computedAt: "desc" }, take: 1 },
+      assets: { orderBy: { createdAt: "desc" }, include: { uploadedBy: { include: { user: true } } } },
     },
   });
 
@@ -269,6 +273,24 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           )}
         </Card>
       </div>
+
+      <Card title="Files" action={canWrite && <AssetUploadForm clientId={client.id} />}>
+        {client.assets.length === 0 ? (
+          <p className="text-sm text-neutral-400">No files uploaded yet.</p>
+        ) : (
+          <AssetsList
+            canWrite={canWrite}
+            assets={client.assets.map((a) => ({
+              id: a.id,
+              filename: a.filename,
+              sizeBytes: a.sizeBytes,
+              downloadUrl: buildSignedDownloadPath(a.id),
+              uploadedByName: a.uploadedBy?.user.name ?? null,
+              createdAt: a.createdAt.toISOString(),
+            }))}
+          />
+        )}
+      </Card>
     </div>
   );
 }

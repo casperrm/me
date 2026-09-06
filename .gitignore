@@ -15,6 +15,9 @@ coverage/
 *.db
 *.db-journal
 
+# local dev file storage (Bible Section 14 — see apps/web/src/lib/storage)
+/apps/web/.storage/
+
 # misc
 .DS_Store
 *.log

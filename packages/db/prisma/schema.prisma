@@ -56,6 +56,7 @@ model Organization {
   auditEvents  AuditEvent[]
   clients      Client[]
   expenses     Expense[]
+  assets       Asset[]
 
   @@map("organizations")
 }
@@ -99,6 +100,7 @@ model Membership {
   scopedGrants   ScopedGrant[]
   assignedTasks  Task[]
   invitationsSent Invitation[]    @relation("InvitationInvitedBy")
+  uploadedAssets Asset[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -241,6 +243,7 @@ model Client {
   timelineEvents ClientTimelineEvent[]
   healthScores   ClientHealthScore[]
   scopedGrants   ScopedGrant[]
+  assets         Asset[]
 
   @@index([organizationId])
   @@map("clients")
@@ -415,18 +418,38 @@ model Approval {
   @@map("approvals")
 }
 
+// Files & Smart Asset Manager (Section 14). `storageKey` is the
+// backend-specific reference (see apps/web/src/lib/storage — a local
+// filesystem adapter today, S3-compatible in production per ADR-005);
+// application code should never construct a public URL from it directly,
+// always go through the storage adapter's signed-URL method so swapping
+// backends doesn't require touching every call site. Every asset is
+// organization-scoped (and usually client-scoped) so authorization can
+// filter at the query layer like everything else in this schema.
 model Asset {
-  id         String    @id @default(uuid())
-  projectId  String?
-  project    Project?  @relation(fields: [projectId], references: [id])
-  creativeId String?
-  creative   Creative? @relation(fields: [creativeId], references: [id])
-  type       String
-  url        String
-  filename   String
-  sizeBytes  Int?
-  createdAt  DateTime  @default(now())
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
+  creativeId     String?
+  creative       Creative?    @relation(fields: [creativeId], references: [id])
+  type           String // image | video | document | logo | font
+  filename       String
+  contentType    String?
+  sizeBytes      Int?
+  checksum       String? // sha256 of the file content — integrity + de-dupe
+  storageKey     String // backend-specific key/path
+  status         String       @default("AVAILABLE") // PENDING_SCAN | AVAILABLE | REJECTED — see ADR-005 for why virus scanning isn't wired to this yet
+  version        Int          @default(1)
+  uploadedById   String?
+  uploadedBy     Membership?  @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime     @default(now())
 
+  @@index([organizationId])
+  @@index([clientId])
   @@map("assets")
 }
 

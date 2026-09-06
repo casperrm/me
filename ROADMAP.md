@@ -26,7 +26,10 @@ deployment.
 - [x] Health endpoints (`apps/api` `/health` + `/ready`).
 - [ ] Queue/worker runtime exists (`apps/worker`) but carries no real
       job yet — fine per ADR-004, not a blocker for this phase.
-- [ ] Object storage abstraction — not started (ADR-005).
+- [x] Object storage abstraction — `StorageAdapter` interface with a
+      local-filesystem dev implementation, real checksums, signed
+      time-limited download URLs, upload validation (type/size).
+      Production S3-compatible backend still open — see ADR-005.
 - [ ] **Staging deployment — not started.** `infra/` is empty; ADR-010
       needs a decision before this can happen. This is Phase 0's one
       concretely unmet deliverable.
@@ -47,10 +50,14 @@ canonical system.
       scoped to what the actor can read. Meetings/shoots/campaign
       launches will join the same query once those modules exist
       (Phase 2/4) rather than becoming a parallel calendar.
+- [x] Files/assets — upload, download, delete with real validation,
+      checksums, and signed URLs on a dev-grade local storage backend
+      (see `docs/specs/files-and-assets.md`, ADR-005). Virus/malware
+      scanning is the one explicitly unbuilt piece.
 - [ ] Search, notifications — not started.
 - [ ] Activity timeline (`ClientTimelineEvent`) now gets real writes from
-      Brand DNA saves and project creation, in addition to seed data —
-      still missing for task/campaign/invoice activity.
+      Brand DNA saves, project creation, and asset uploads, in addition
+      to seed data — still missing for task/campaign/invoice activity.
 
 ## Phase 2 — Creative and Approval Operations: not started
 
