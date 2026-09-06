@@ -67,6 +67,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   const approvedPatterns = parseJSON<{ pattern: string; rationale: string }[]>(brandVersion?.approvedPatterns, []);
   const rejectedPatterns = parseJSON<{ pattern: string; rationale: string }[]>(brandVersion?.rejectedPatterns, []);
   const health = client.healthScores[0];
+  const healthFactors = parseJSON<{ signal: string; value: string; penalty: number; explanation: string }[]>(health?.factors, []);
 
   return (
     <div className="space-y-8">
@@ -76,10 +77,24 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           <p className="text-sm text-neutral-500">{client.companyName}</p>
         </div>
         {health && (
-          <div className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-center">
-            <div className="text-xs text-neutral-500">Client Health</div>
-            <div className="text-xl font-semibold text-cedar-700">{health.score}</div>
-          </div>
+          <details className="group rounded-lg border border-neutral-200 bg-white px-4 py-2 text-center">
+            <summary className="cursor-pointer list-none">
+              <div className="text-xs text-neutral-500">Client Health</div>
+              <div className="text-xl font-semibold text-cedar-700">{health.score}</div>
+            </summary>
+            {healthFactors.length > 0 && (
+              <ul className="mt-2 w-64 space-y-1 text-left text-xs text-neutral-500">
+                {healthFactors.map((f) => (
+                  <li key={f.signal} className="flex justify-between gap-2">
+                    <span title={f.explanation}>{f.value}</span>
+                    <span className={f.penalty > 0 ? "text-red-500" : "text-neutral-300"}>
+                      {f.penalty > 0 ? `-${f.penalty}` : "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
         )}
       </div>
 

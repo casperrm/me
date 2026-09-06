@@ -6,6 +6,7 @@ import IORedis from "ioredis";
 import { loadEnv } from "@cedar/config";
 import { logger } from "@cedar/observability";
 import { runEscalationScan } from "./jobs/escalations";
+import { runHealthScoreJob } from "./jobs/health-scores";
 
 const env = loadEnv();
 
@@ -13,10 +14,13 @@ const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
 const HEARTBEAT_QUEUE = "heartbeat";
 const ESCALATIONS_QUEUE = "escalations";
+const HEALTH_SCORES_QUEUE = "health-scores";
 const ESCALATION_INTERVAL_MS = 60 * 60 * 1000; // hourly
+const HEALTH_SCORE_INTERVAL_MS = 24 * 60 * 60 * 1000; // daily
 
 const heartbeatQueue = new Queue(HEARTBEAT_QUEUE, { connection });
 const escalationsQueue = new Queue(ESCALATIONS_QUEUE, { connection });
+const healthScoresQueue = new Queue(HEALTH_SCORES_QUEUE, { connection });
 
 const heartbeatWorker = new Worker(
   HEARTBEAT_QUEUE,
@@ -39,9 +43,22 @@ const escalationsWorker = new Worker(
   { connection },
 );
 
+// Section 4.2: recomputes an explainable Client Health Score for every
+// client daily — see jobs/health-scores.ts for exactly which signals are
+// real vs. explicitly out of scope.
+const healthScoresWorker = new Worker(
+  HEALTH_SCORES_QUEUE,
+  async (job) => {
+    const count = await runHealthScoreJob();
+    logger.info("health score job finished", { jobId: job.id, clientsScored: count });
+  },
+  { connection },
+);
+
 for (const [name, worker] of [
   ["heartbeat", heartbeatWorker],
   ["escalations", escalationsWorker],
+  ["health-scores", healthScoresWorker],
 ] as const) {
   worker.on("failed", (job, err) => {
     logger.error(`${name} job failed`, { jobId: job?.id, error: String(err) });
@@ -58,7 +75,12 @@ async function main() {
     // already-overdue items waiting up to an hour for their first check.
     { repeat: { every: ESCALATION_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10 },
   );
-  logger.info("apps/worker started", { env: env.NODE_ENV, queues: [HEARTBEAT_QUEUE, ESCALATIONS_QUEUE] });
+  await healthScoresQueue.add(
+    "score",
+    {},
+    { repeat: { every: HEALTH_SCORE_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10 },
+  );
+  logger.info("apps/worker started", { env: env.NODE_ENV, queues: [HEARTBEAT_QUEUE, ESCALATIONS_QUEUE, HEALTH_SCORES_QUEUE] });
 }
 
 main().catch((err) => {
@@ -69,7 +91,9 @@ main().catch((err) => {
 process.on("SIGTERM", async () => {
   await heartbeatWorker.close();
   await escalationsWorker.close();
+  await healthScoresWorker.close();
   await heartbeatQueue.close();
   await escalationsQueue.close();
+  await healthScoresQueue.close();
   process.exit(0);
 });

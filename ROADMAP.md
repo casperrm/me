@@ -156,14 +156,24 @@ Integration Center, priority provider adapters (Meta/TikTok/Google/
 WhatsApp), sync/webhooks/reconciliation, publishing jobs, troubleshooting
 knowledge base.
 
-## Phase 5 — Finance and Executive Intelligence: **data model only**
+## Phase 5 — Finance and Executive Intelligence: **in progress**
 
 `Invoice`/`Expense`/`ClientHealthScore` models exist and the CEO Dashboard
 (`/dashboard`, gated on `finance:read`) computes real aggregates from
-them. Missing: profitability attribution by project/service/campaign,
-Client Health scoring as anything more than seeded/manual numbers,
-Opportunity Engine, AI Business Advisor, governed metrics catalog
-(Section 29).
+them.
+
+- [x] Client Health Score (Section 4.2) — a real daily worker job now
+      computes an explainable score from real signals (overdue tasks/
+      projects, overdue unpaid invoices, approval latency, Quality
+      Control failure rate), replacing the seeded/manual number; the
+      client profile page shows the full factor breakdown, not just the
+      score. Explicit scope boundary in `docs/specs/client-health.md`:
+      campaign trends, communication gaps, satisfaction signals, and
+      renewal proximity (also named in Section 4.2) need modules that
+      don't exist yet and are never faked.
+- [ ] Missing: profitability attribution by project/service/campaign,
+      Opportunity Engine, AI Business Advisor, governed metrics catalog
+      (Section 29).
 
 ## Phase 6 — Advanced Intelligence: not started
 
