@@ -322,14 +322,17 @@ SLOs.
   full invite→accept→scope-grant flow, last-owner protection).
 - **A real browser-driven E2E layer now exists** (Bible Section 32's
   "End-to-end" row) — `tests/e2e/` (Playwright/Chromium): login →
-  protected page → logout, and the fuller invite → accept → real
-  RBAC-scoped session flow, run via `npm run test:e2e` against a
-  production build with the dev database reset to a known seeded state
-  first. See `tests/e2e/README.md` for a real dev-server-only flakiness
-  finding this work surfaced (fixed by building/starting, not `next
-  dev`) and what's still not covered (approval workflow, content
-  calendar transitions, client portal, MFA — all have integration-test
-  coverage but no browser E2E yet).
+  protected page → logout; the fuller invite → accept → real
+  RBAC-scoped session flow; and Section 15.1's approval workflow (create
+  a creative → request approval → record a real decision, asserting the
+  status badge itself transitions DRAFT → PENDING_APPROVAL → APPROVED,
+  navigated by real link text so it survives a fresh `db:reset`). Run
+  via `npm run test:e2e` against a production build with the dev
+  database reset to a known seeded state first. See `tests/e2e/README.md`
+  for a real dev-server-only flakiness finding this work surfaced
+  (fixed by building/starting, not `next dev`) and what's still not
+  covered (Content Calendar transitions, Client Portal, MFA — all have
+  integration-test coverage but no browser E2E yet).
 - **API-contract tests now exist for a representative set of route
   handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 18
   tests) — the HTTP layer itself (auth gate, status codes, JSON

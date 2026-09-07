@@ -18,6 +18,16 @@ browser (Playwright/Chromium) — not curl, not a mock DOM.
   permission check refuses the newly created `ACCOUNT_MANAGER` member —
   proving this is a genuine RBAC-scoped session for that exact member,
   not merely "some page loaded."
+- **`approval-workflow.spec.ts`** — Bible Section 15.1's approval
+  lifecycle: navigates to the seeded client's project/campaign,
+  creates a new creative (starts at `DRAFT`), clicks "Request
+  approval" (a fresh creative has no `Approval` row at all until this
+  real transition happens), confirms the status badge itself updates
+  to `PENDING_APPROVAL` (not just the button), then records a real
+  "Approve" decision and confirms both the confirmation message and
+  the status badge show `APPROVED`. Navigates by visible link text
+  (client/project/campaign names from the seed), not hardcoded ids, so
+  it survives a fresh `db:reset` generating new ids every run.
 
 ## Running it
 
@@ -47,10 +57,9 @@ in case a future dev-mode-driven test setup hits it again.
 
 ## What's still not covered
 
-- Approval workflow (request → decide), Content Calendar status
-  transitions, Client Portal access as an external contact, MFA
-  enrollment/challenge — all have integration-test coverage
-  (`apps/web/src/lib/services/*.integration.test.ts`) but no
+- Content Calendar status transitions, Client Portal access as an
+  external contact, MFA enrollment/challenge — all have integration-test
+  coverage (`apps/web/src/lib/services/*.integration.test.ts`) but no
   browser-driven E2E yet. Add here as the highest-value flows are
   identified, not as a blanket "cover everything" pass.
 - API-contract tests for the route handlers themselves (auth headers,
