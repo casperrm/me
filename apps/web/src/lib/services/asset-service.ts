@@ -27,6 +27,39 @@ const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
 
 export class AssetValidationError extends AuthError {}
 
+// Bounds every asset-picker dropdown to a real search instead of loading
+// a client's entire file history into a <select> — Phase 7 scale
+// hardening's last remaining audit item (see
+// docs/specs/asset-picker-search.md). A blank query returns the most
+// recent files (a real, useful default), not an error.
+const ASSET_SEARCH_RESULTS_LIMIT = 10;
+
+export async function searchClientAssets(params: {
+  actorUserId: string;
+  organizationId: string;
+  clientId: string;
+  query: string;
+}) {
+  await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:read",
+    clientId: params.clientId,
+  });
+
+  const q = params.query.trim();
+  return prisma.asset.findMany({
+    where: {
+      clientId: params.clientId,
+      status: "AVAILABLE",
+      ...(q ? { filename: { contains: q, mode: "insensitive" as const } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: ASSET_SEARCH_RESULTS_LIMIT,
+    select: { id: true, filename: true },
+  });
+}
+
 function assetTypeFromContentType(contentType: string): string {
   if (contentType.startsWith("image/")) return "image";
   if (contentType === "application/pdf") return "document";

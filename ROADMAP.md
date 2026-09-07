@@ -468,11 +468,27 @@ SLOs.
       content calendar fix. Same `PAGE_SIZE=20` pattern. Verified live
       against the seeded dev database: inserted 24 temporary shoots,
       confirmed page 1/page 2 split exactly 20/4 — see
-      `docs/specs/shoots-pagination.md`. This closes every ranked item
-      from the Phase 7 audit except asset-picker dropdowns, which needs
-      a real search-as-you-type redesign rather than a pagination
-      change — tracked as its own follow-up, not silently folded into
-      any of these six slices.
+      `docs/specs/shoots-pagination.md`.
+- [x] **Search-as-you-type asset picker.** The last remaining ranked
+      item from the Phase 7 audit — the one item that explicitly needed
+      a real UX redesign, not a pagination change. The "Add new
+      version" form's asset dropdown loaded every one of a client's
+      files into a plain `<select>`; replaced with a real
+      search-as-you-type picker (`searchClientAssets()`, a bounded
+      10-result `filename contains` search; `GET
+      /api/clients/[id]/assets/search`; a new `AssetPicker.tsx`
+      component with debounced fetch and click-to-select). The page's
+      unbounded `findMany` was removed entirely rather than merely
+      bounded — a picker fetches on demand, so there's no preview list
+      to maintain at all. Verified with 5 new route-contract tests plus
+      a live smoke test at both the HTTP and real-browser level
+      (Playwright): typed "hero" into the actual picker on a real
+      creative's page, confirmed the dropdown showed exactly the
+      matching file, clicked it, confirmed the UI updated — see
+      `docs/specs/asset-picker-search.md`, including why this is
+      representative (the one asset picker in the app) rather than an
+      exhaustive sweep for every possible unbounded dropdown. **This
+      closes every ranked item from the Phase 7 scale-hardening audit.**
 
 ## Cross-cutting gaps worth tracking regardless of phase
 

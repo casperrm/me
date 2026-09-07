@@ -99,10 +99,6 @@ export default async function CreativeDetailPage({
     clientId,
   });
 
-  const assets = canWrite
-    ? await prisma.asset.findMany({ where: { clientId }, orderBy: { createdAt: "desc" }, select: { id: true, filename: true } })
-    : [];
-
   const currentVersion = creative.versions.find((v) => v.version === creative.currentVersion);
 
   return (
@@ -197,7 +193,7 @@ export default async function CreativeDetailPage({
 
       {canWrite && (
         <Card title="Add new version">
-          <AddVersionForm creativeId={creative.id} assets={assets} />
+          <AddVersionForm creativeId={creative.id} clientId={clientId} />
         </Card>
       )}
     </div>
