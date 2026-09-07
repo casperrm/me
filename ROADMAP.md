@@ -332,13 +332,16 @@ SLOs.
   real TOTP secret via `/security`, computes a valid code with `otplib`
   against the secret the page displays, then proves via a real logout/
   login that the account is actually challenged on its next login, not
-  just that enrollment succeeded). All navigate by real link text so
-  they survive a fresh `db:reset` generating new ids every run. Run via
-  `npm run test:e2e` against a production build with the dev database
-  reset to a known seeded state first. See `tests/e2e/README.md` for a
-  real dev-server-only flakiness finding this work surfaced (fixed by
-  building/starting, not `next dev`) and what's still not covered
-  (Content Calendar transitions).
+  just that enrollment succeeded); and Section 9's Content Calendar
+  (creates a content item and moves it through two real, server-
+  validated transitions, BRIEF → DRAFT → INTERNAL_REVIEW). All navigate
+  by real link text so they survive a fresh `db:reset` generating new
+  ids every run. Run via `npm run test:e2e` against a production build
+  with the dev database reset to a known seeded state first. See
+  `tests/e2e/README.md` for a real dev-server-only flakiness finding
+  this work surfaced (fixed by building/starting, not `next dev`) —
+  every flow originally named as a gap here now has coverage; what's
+  left is depth (more permutations), not breadth.
 - **API-contract tests now exist for a representative set of route
   handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 18
   tests) — the HTTP layer itself (auth gate, status codes, JSON

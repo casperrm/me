@@ -44,6 +44,14 @@ browser (Playwright/Chromium) — not curl, not a mock DOM.
   a code on its *next real login* — not just that the enrollment API
   call returned 200. Password alone is confirmed insufficient (still on
   `/login`) before the real second-factor code is submitted.
+- **`content-calendar.spec.ts`** — Bible Section 9: creates a content
+  item through the real UI (starts at `BRIEF`) and moves it through two
+  real, server-validated transitions (`BRIEF → DRAFT → INTERNAL_REVIEW`),
+  asserting the status badge itself updates each time.
+  `ContentItemStatusForm.tsx`'s own comment notes the server
+  re-validates every transition regardless of what the UI's dropdown
+  offers — this test proves that real chain through the actual UI, not
+  a mocked click handler.
 
 ## Running it
 
@@ -73,10 +81,14 @@ in case a future dev-mode-driven test setup hits it again.
 
 ## What's still not covered
 
-- Content Calendar status transitions — has integration-test coverage
-  (`apps/web/src/lib/services/content-calendar.integration.test.ts`)
-  but no browser-driven E2E yet. Add here as the highest-value flows
-  are identified, not as a blanket "cover everything" pass.
+Every flow originally named in this file's own gap list now has
+browser E2E coverage. What's left is depth, not breadth — more
+permutations of the flows above (e.g. a "changes requested" approval
+decision, MFA recovery-code login, additional Content Calendar
+transition branches) and any newly-built feature reaching the same bar
+as it ships. Add here as the next highest-value gap is identified, not
+as a blanket "cover everything" pass.
+
 - API-contract tests exist for a representative set of route handlers
   (`apps/web/src/app/api/**/*.route.contract.test.ts`, see
   `docs/specs/api-route-contracts.md`) but not all ~35 routes —
