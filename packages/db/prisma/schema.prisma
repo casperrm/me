@@ -415,16 +415,17 @@ model Project {
 }
 
 model Task {
-  id         String      @id @default(uuid())
-  projectId  String
-  project    Project     @relation(fields: [projectId], references: [id])
-  title      String
-  status     String      @default("todo")
-  priority   String      @default("medium") // low | medium | high — see docs/specs/projects-and-calendar.md
-  assigneeId String?
-  assignee   Membership? @relation(fields: [assigneeId], references: [id])
-  dueDate    DateTime?
-  createdAt  DateTime    @default(now())
+  id            String      @id @default(uuid())
+  projectId     String
+  project       Project     @relation(fields: [projectId], references: [id])
+  title         String
+  status        String      @default("todo")
+  priority      String      @default("medium") // low | medium | high — see docs/specs/projects-and-calendar.md
+  assigneeId    String?
+  assignee      Membership? @relation(fields: [assigneeId], references: [id])
+  dueDate       DateTime?
+  estimateHours Float?
+  createdAt     DateTime    @default(now())
 
   checklistItems TaskChecklistItem[]
 
@@ -792,25 +793,25 @@ model MeetingAttendee {
 // and which — evaluation score, retries, tool failures — have no real
 // data source yet and are not faked).
 model CedarBrainRequest {
-  id             String    @id @default(uuid())
-  organizationId String
-  prompt         String
-  routedAgents   String // JSON array
-  response       String? // JSON
-  clientId       String?
-  mode           String // "live" | "stub"
-  modelName      String? // null for stub mode — no model was actually called
-  promptVersion  String // manually bumped constant in cedar-brain.ts when the system prompt changes
-  latencyMs      Int
-  success        Boolean
-  errorMessage   String?
-  inputTokens    Int? // from the Anthropic response's usage field — null for stub mode
-  outputTokens   Int?
-  flaggedIncorrect     Boolean    @default(false)
-  flaggedAt            DateTime?
+  id                    String      @id @default(uuid())
+  organizationId        String
+  prompt                String
+  routedAgents          String // JSON array
+  response              String? // JSON
+  clientId              String?
+  mode                  String // "live" | "stub"
+  modelName             String? // null for stub mode — no model was actually called
+  promptVersion         String // manually bumped constant in cedar-brain.ts when the system prompt changes
+  latencyMs             Int
+  success               Boolean
+  errorMessage          String?
+  inputTokens           Int? // from the Anthropic response's usage field — null for stub mode
+  outputTokens          Int?
+  flaggedIncorrect      Boolean     @default(false)
+  flaggedAt             DateTime?
   flaggedByMembershipId String?
-  flaggedByMembership  Membership? @relation(fields: [flaggedByMembershipId], references: [id])
-  createdAt      DateTime  @default(now())
+  flaggedByMembership   Membership? @relation(fields: [flaggedByMembershipId], references: [id])
+  createdAt             DateTime    @default(now())
 
   @@index([organizationId, createdAt])
   @@map("cedar_brain_requests")
@@ -824,11 +825,11 @@ model CedarBrainRequest {
 // signal (like a build status), not tenant data. See
 // docs/specs/ai-eval-harness.md for what this does and does not cover.
 model AiEvalRun {
-  id          String         @id @default(uuid())
+  id          String   @id @default(uuid())
   suite       String // e.g. "cedar-brain-routing"
   totalCases  Int
   passedCases Int
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime @default(now())
 
   results AiEvalResult[]
 
@@ -931,19 +932,19 @@ model Notification {
 // ---------------------------------------------------------------------------
 
 model Connection {
-  id                     String    @id @default(uuid())
+  id                     String       @id @default(uuid())
   organizationId         String
   organization           Organization @relation(fields: [organizationId], references: [id])
   provider               String // "generic_webhook" is the only real provider implemented so far
   name                   String // user-given label, e.g. "Zapier — lead form"
-  status                 String    @default("CONNECTED") // CONNECTED | DISCONNECTED | DEGRADED | ERROR
+  status                 String       @default("CONNECTED") // CONNECTED | DISCONNECTED | DEGRADED | ERROR
   scopes                 String // JSON array — empty for generic_webhook, real for a future OAuth provider
   signingSecretEncrypted String // AES-256-GCM, same encryptSecret/decryptSecret primitive as MFA (packages/auth)
   lastEventAt            DateTime?
-  eventCount             Int       @default(0)
-  createdAt              DateTime  @default(now())
+  eventCount             Int          @default(0)
+  createdAt              DateTime     @default(now())
   createdByMembershipId  String?
-  createdByMembership    Membership? @relation(fields: [createdByMembershipId], references: [id])
+  createdByMembership    Membership?  @relation(fields: [createdByMembershipId], references: [id])
 
   events ConnectionEvent[]
 

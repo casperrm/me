@@ -120,6 +120,19 @@ describe("POST /api/projects/[projectId]/tasks", () => {
     expect(rejected.status).toBe(400);
   });
 
+  it("persists a real estimate when given, and rejects a negative one", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ title: "Scoped work", estimateHours: 3.5 }), { params: Promise.resolve({ projectId }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const stored = await prisma.task.findUnique({ where: { id: body.taskId } });
+    expect(stored?.estimateHours).toBe(3.5);
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const rejected = await POST(request({ title: "Bad estimate", estimateHours: -2 }), { params: Promise.resolve({ projectId }) });
+    expect(rejected.status).toBe(400);
+  });
+
   it("returns 400 for a project in a different organization", async () => {
     const otherOrg = await prisma.organization.create({ data: { name: "Other Org" } });
     const otherClient = await prisma.client.create({ data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" } });

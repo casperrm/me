@@ -61,6 +61,13 @@ async function assertProjectInOrg(projectId: string, organizationId: string) {
 const TASK_PRIORITIES = ["low", "medium", "high"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
+function validateEstimateHours(estimateHours: number | null | undefined) {
+  if (estimateHours === null || estimateHours === undefined) return;
+  if (!Number.isFinite(estimateHours) || estimateHours < 0) {
+    throw new AuthError("Task estimate must be a non-negative number of hours.");
+  }
+}
+
 export async function createTask(params: {
   actorUserId: string;
   organizationId: string;
@@ -69,6 +76,7 @@ export async function createTask(params: {
   assigneeId?: string;
   dueDate?: Date;
   priority?: TaskPriority;
+  estimateHours?: number;
 }) {
   const project = await assertProjectInOrg(params.projectId, params.organizationId);
   const membership = await requirePermission({
@@ -84,6 +92,8 @@ export async function createTask(params: {
     throw new AuthError("Invalid task priority.");
   }
 
+  validateEstimateHours(params.estimateHours);
+
   if (params.assigneeId) {
     const assignee = await prisma.membership.findFirst({
       where: { id: params.assigneeId, organizationId: params.organizationId },
@@ -98,6 +108,7 @@ export async function createTask(params: {
       assigneeId: params.assigneeId,
       dueDate: params.dueDate,
       priority: params.priority,
+      estimateHours: params.estimateHours,
     },
   });
 
@@ -207,6 +218,46 @@ export async function setTaskPriority(params: {
     clientId: task.project.clientId,
     result: "SUCCESS",
     changeSet: { before: { priority: task.priority }, after: { priority: params.priority } },
+  });
+
+  return updated;
+}
+
+export async function setTaskEstimate(params: {
+  actorUserId: string;
+  organizationId: string;
+  taskId: string;
+  estimateHours: number | null;
+}) {
+  validateEstimateHours(params.estimateHours);
+
+  const task = await prisma.task.findUnique({
+    where: { id: params.taskId },
+    include: { project: { include: { client: true } } },
+  });
+  if (!task || task.project.client.organizationId !== params.organizationId) {
+    throw new AuthError("Task not found.");
+  }
+
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: task.project.clientId,
+  });
+
+  const updated = await prisma.task.update({ where: { id: task.id }, data: { estimateHours: params.estimateHours } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task.estimate_changed",
+    resourceType: "Task",
+    resourceId: task.id,
+    clientId: task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { before: { estimateHours: task.estimateHours }, after: { estimateHours: params.estimateHours } },
   });
 
   return updated;

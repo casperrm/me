@@ -9,6 +9,7 @@ import { getProjectProfitability } from "@/lib/services/profitability-service";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskStatusForm } from "./TaskStatusForm";
 import { TaskPriorityForm } from "./TaskPriorityForm";
+import { TaskEstimateForm } from "./TaskEstimateForm";
 import { TaskChecklist } from "./TaskChecklist";
 import { NewCampaignForm } from "./NewCampaignForm";
 
@@ -135,11 +136,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <div className="flex items-center gap-1">
                     {canWrite ? (
                       <>
+                        <TaskEstimateForm taskId={task.id} clientId={project.clientId} projectId={project.id} estimateHours={task.estimateHours} />
                         <TaskPriorityForm taskId={task.id} clientId={project.clientId} projectId={project.id} priority={task.priority} />
                         <TaskStatusForm taskId={task.id} clientId={project.clientId} projectId={project.id} status={task.status} />
                       </>
                     ) : (
                       <>
+                        {task.estimateHours !== null && <span className="text-xs text-neutral-500">{task.estimateHours}h</span>}
                         <span className="text-xs text-neutral-500">{PRIORITY_LABEL[task.priority] ?? task.priority}</span>
                         <span className="text-xs text-neutral-500">{STATUS_LABEL[task.status] ?? task.status}</span>
                       </>

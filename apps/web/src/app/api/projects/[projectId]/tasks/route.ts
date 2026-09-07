@@ -21,6 +21,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ project
       assigneeId: body.assigneeId || undefined,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       priority: body.priority || undefined,
+      estimateHours: body.estimateHours !== undefined && body.estimateHours !== null && body.estimateHours !== ""
+        ? Number(body.estimateHours)
+        : undefined,
     });
     return NextResponse.json({ ok: true, taskId: task.id });
   } catch (err) {

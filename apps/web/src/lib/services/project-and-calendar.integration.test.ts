@@ -17,6 +17,7 @@ import {
   createProject,
   createTask,
   deleteTaskChecklistItem,
+  setTaskEstimate,
   setTaskPriority,
   setTaskStatus,
   toggleTaskChecklistItem,
@@ -156,6 +157,36 @@ describe("createProject / createTask / setTaskStatus", () => {
     const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
     await expect(
       createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "X", assigneeId: "not-a-real-id" }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("creates a task with an explicit estimate and allows changing or clearing it", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: project.id,
+      title: "Estimated task",
+      estimateHours: 2.5,
+    });
+    expect(task.estimateHours).toBe(2.5);
+
+    const updated = await setTaskEstimate({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, estimateHours: 4 });
+    expect(updated.estimateHours).toBe(4);
+
+    const cleared = await setTaskEstimate({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, estimateHours: null });
+    expect(cleared.estimateHours).toBeNull();
+  });
+
+  it("rejects a negative or non-finite estimate on both create and update", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    await expect(
+      createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Bad estimate", estimateHours: -1 }),
+    ).rejects.toThrow(AuthError);
+
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Valid task" });
+    await expect(
+      setTaskEstimate({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, estimateHours: NaN }),
     ).rejects.toThrow(AuthError);
   });
 
