@@ -1,9 +1,9 @@
 # Module: API Route-Contract Tests
 
-Status: **Implemented (representative slice)**. Closes the gap
-`ROADMAP.md`'s cross-cutting section had tracked: "API-contract tests
-for the route handlers themselves (auth headers, error envelopes,
-idempotency)."
+Status: **Implemented (representative slice, extended once)**. Closes
+the gap `ROADMAP.md`'s cross-cutting section had tracked: "API-contract
+tests for the route handlers themselves (auth headers, error
+envelopes, idempotency)."
 
 ## Purpose
 
@@ -87,19 +87,55 @@ must be a positive number."
   `status` column actually transitions (`PENDING_APPROVAL`, then
   `APPROVED`) in the database, not just that the response was `200`.
 
+## Extension slice: 6 more routes
+
+A later slice, prompted by this doc's own "not exhaustive" note, added
+contract tests for six more routes covering shapes the first batch
+didn't: an unauthenticated entry point that itself creates the
+session cookie, and three real 403-cases from `clients:write`/nothing
+gates on notification ownership rather than a role.
+
+- **`POST /api/auth/login`** — the one route with no `getCurrentActor`
+  to mock at all, since it's what creates a session in the first
+  place. Mocks `next/headers` directly (the same in-memory cookie
+  store `identity.integration.test.ts` uses) instead: 400 for missing
+  fields, 401 for wrong credentials (and confirms no cookie gets set),
+  401 for a nonexistent email (without a different error message that
+  would leak account existence), and 200 with a real session cookie
+  and a real persisted `Session` row on success.
+- **`POST /api/notifications/[id]/read`,
+  `/api/notifications/[id]/acknowledge`,
+  `/api/notifications/mark-all-read`** — the ownership model here is
+  per-`membershipId`, not a role permission, so the 400 case that
+  matters is a different membership's own notification (proving
+  `assertOwnedByMembership` is actually wired through the route, not
+  just unit-tested in isolation), and `mark-all-read`'s test creates
+  notifications for two different memberships in the same organization
+  to prove it updates only the caller's own, not every notification in
+  the org.
+- **`POST /api/content/[itemId]/status`,
+  `POST /api/shoots/[shootId]/status`** — same shape as the earlier
+  batch's finance routes (401/400/403), plus the state-machine-specific
+  case each service actually enforces: an invalid `BRIEF → SCHEDULED`
+  transition surfaces the real "Cannot move from..." message for
+  content items, an unrecognized status string surfaces "Invalid shoot
+  status" for shoots, and a cross-organization item/shoot id is
+  rejected exactly like every other module's cross-tenant check.
+
 ## Scope boundary — stated explicitly
 
-**Not exhaustive.** There are roughly 35 API routes in this app; six
-were chosen to establish and prove the reusable pattern across the
-distinct contract shapes that actually exist (session-gated write,
-non-session HMAC-gated write, a route with real cross-cutting
-side-effects like AI telemetry and context retrieval, and a
-multi-step real-world workflow). Extending coverage to the remaining
-routes is real, valuable, follow-up work — not claimed as done here.
-Idempotency is proven for the one route that actually has an
-idempotency mechanism (`/api/integrations/webhooks/[id]`); routes with
-no such mechanism aren't tested for it, since there's nothing there to
-test.
+**Still not exhaustive.** There are roughly 38 API routes in this app;
+15 now have contract tests (proving the pattern across session-gated
+writes, non-session HMAC-gated writes, membership-owned-not-role-gated
+writes, state-machine transitions, and the login route that creates
+the session itself). Extending coverage to the remaining ~23 routes
+(asset up/download, campaign/creative/task/project CRUD, MFA
+challenge/confirm/disable/setup, invite-accept, integrations/
+connections, search) is real, valuable, follow-up work — not claimed
+as done here. Idempotency is proven for the one route that actually
+has an idempotency mechanism (`/api/integrations/webhooks/[id]`);
+routes with no such mechanism aren't tested for it, since there's
+nothing there to test.
 
 ## Acceptance tests
 
@@ -109,8 +145,22 @@ test.
 - `apps/web/src/app/api/cedar-brain/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/team/invite/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/creative-versions/[versionId]/approval.route.contract.test.ts` — 7 tests.
-- Manual smoke test performed for this slice against the real running
-  server: confirmed `amountCents: 0` on both `/api/expenses` and
-  `/api/invoices` now correctly returns "Amount must be a positive
+- `apps/web/src/app/api/auth/login/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/notifications/[id]/read/route.contract.test.ts` — 3 tests.
+- `apps/web/src/app/api/notifications/[id]/acknowledge/route.contract.test.ts` — 3 tests.
+- `apps/web/src/app/api/notifications/mark-all-read/route.contract.test.ts` — 2 tests.
+- `apps/web/src/app/api/content/[itemId]/status/route.contract.test.ts` — 6 tests.
+- `apps/web/src/app/api/shoots/[shootId]/status/route.contract.test.ts` — 6 tests.
+- Manual smoke test performed for the first slice against the real
+  running server: confirmed `amountCents: 0` on both `/api/expenses`
+  and `/api/invoices` now correctly returns "Amount must be a positive
   number" instead of the misleading "required" message — no dev
   database mutation occurred (both requests were correctly rejected).
+- Manual smoke test performed for the extension slice against a real
+  running production server (`npm run start`): logged in as the seeded
+  owner through the real `/api/auth/login` route (not mocked), loaded
+  `/dashboard` with the resulting session cookie, and called
+  `/api/notifications/mark-all-read` for real — confirmed it returned
+  200 and, via a direct SQL check, that the dev database has no
+  notification rows at all (so this was a genuine no-op against real
+  data, not a state change requiring cleanup).
