@@ -394,6 +394,18 @@ SLOs.
       temporary clients (31 total), confirmed page 1/page 2 split
       exactly 24/7 with correct boundary links, cross-checked against
       `select count(*)` — see `docs/specs/clients-list-pagination.md`.
+- [x] **Content Calendar pagination.** The per-client content calendar
+      table fetched every scheduling item a client has ever had,
+      unbounded across months and years of ongoing content production.
+      Same `PAGE_SIZE=20` offset pagination shape as the two prior
+      list-pagination slices. The New Content Item form's
+      campaign/creative/member dropdowns are deliberately left
+      unbounded — they're the audit's separate "asset-picker dropdowns"
+      item, needing a real search-as-you-type redesign rather than a
+      one-line pagination change, so folding them in here would have
+      been scope creep. Verified live against the seeded dev database:
+      inserted 25 temporary items, confirmed page 1/page 2 split
+      exactly 20/5 — see `docs/specs/content-calendar-pagination.md`.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 

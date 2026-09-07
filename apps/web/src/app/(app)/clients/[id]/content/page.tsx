@@ -3,12 +3,21 @@ import { notFound } from "next/navigation";
 import { isAuthorized } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
+import { Pagination } from "@/components/Pagination";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { NewContentItemForm } from "./NewContentItemForm";
 import { ContentItemStatusForm } from "./ContentItemStatusForm";
 
 export const dynamic = "force-dynamic";
+
+// Bounds the content calendar table regardless of how much scheduling
+// history a client accumulates (Phase 7 scale hardening; see
+// docs/specs/dashboard-aggregates.md's audit trail). The New Content
+// Item form's campaign/creative/member dropdowns are left unbounded —
+// they're the "asset-picker dropdowns" item from that same audit,
+// ranked as its own separate follow-up rather than folded in here.
+const PAGE_SIZE = 20;
 
 const STATUS_STYLE: Record<string, string> = {
   BRIEF: "bg-neutral-100 text-neutral-600",
@@ -20,8 +29,15 @@ const STATUS_STYLE: Record<string, string> = {
   FAILED: "bg-red-50 text-red-700",
 };
 
-export default async function ContentCalendarPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ContentCalendarPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { id } = await params;
+  const { page: pageParam } = await searchParams;
   const actor = await requireActor();
 
   const client = await prisma.client.findFirst({ where: { id, organizationId: actor.organizationId } });
@@ -42,12 +58,18 @@ export default async function ContentCalendarPage({ params }: { params: Promise<
     clientId: client.id,
   });
 
-  const [items, campaigns, creatives, members] = await Promise.all([
+  const rawPage = Number(pageParam) || 1;
+  const page = rawPage >= 1 ? Math.floor(rawPage) : 1;
+
+  const [items, totalCount, campaigns, creatives, members] = await Promise.all([
     prisma.contentCalendarItem.findMany({
       where: { clientId: client.id },
       include: { campaign: true, creative: true, owner: { include: { user: true } } },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    prisma.contentCalendarItem.count({ where: { clientId: client.id } }),
     prisma.campaign.findMany({ where: { project: { clientId: client.id } }, select: { id: true, name: true } }),
     prisma.creative.findMany({
       where: { campaign: { project: { clientId: client.id } } },
@@ -57,6 +79,7 @@ export default async function ContentCalendarPage({ params }: { params: Promise<
       ? prisma.membership.findMany({ where: { organizationId: actor.organizationId, status: "ACTIVE" }, include: { user: true } })
       : Promise.resolve([]),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -130,6 +153,7 @@ export default async function ContentCalendarPage({ params }: { params: Promise<
             </table>
           </div>
         )}
+        <Pagination basePath={`/clients/${client.id}/content`} page={page} totalPages={totalPages} totalCount={totalCount} />
       </Card>
     </div>
   );
