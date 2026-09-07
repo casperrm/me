@@ -34,29 +34,25 @@ Any static host works. Two easy options:
 On non-Netlify hosts, the contact form falls back to opening a pre-filled
 email to `consultingcedarpoint@gmail.com`.
 
-## Swapping in your real photos and video
+## Design decisions (no photos or video)
 
-This was built before your photos/brand video arrived, so a few things are
-placeholders on purpose:
+There's no client photography or brand video behind this site, so the
+design leans on color and typography instead of imagery:
 
-1. **Portfolio images** — in `index.html`, search for `PLACEHOLDER CASE STUDY`.
-   Each `.portfolio-media` div currently uses a CSS gradient (`grad-crepe`,
-   `grad-barber`, `grad-mobile` in `style.css`). Replace the div's content
-   with an `<img>` tag pointing at a real photo once you send them, e.g.:
-   ```html
-   <div class="portfolio-media">
-     <img src="assets/img/work/candy-crepe.jpg" alt="Candy Crêpe campaign" />
-   </div>
-   ```
-2. **Testimonials** — search for `PLACEHOLDER TESTIMONIALS` in `index.html`.
-   Replace the sample quotes with real client feedback before launch.
-3. **Colors from your video** — the palette is defined once, at the top of
-   `assets/css/style.css` under `:root`. Once you send the brand video, pull
-   2–3 dominant colors from it and update `--mint`, `--mint2` and `--amber`
-   there; everything else on the site references those variables.
-4. **Logo mark** — the brand mark is inline SVG in `index.html` (header/footer)
-   and in `assets/img/favicon.svg`. If you have a real logo file, swap the
-   `<svg>` for an `<img>` tag.
+- **Portfolio cards** use a bold gradient tile per brand (`grad-crepe`,
+  `grad-barber`, `grad-mobile` in `style.css`) with a simple line-icon
+  watermark (`.portfolio-icon` in `index.html`) representing the industry.
+  This is a deliberate, finished design — not a stand-in.
+- **Brand colors** come from the dark green/mint palette already established
+  by Cedar Intelligence, defined once at the top of `assets/css/style.css`
+  under `:root` (`--mint`, `--mint2`, `--amber`, etc.).
+- **Testimonials** are sample quotes attributed to the three case-study
+  clients — swap in real feedback whenever you have it (search
+  `PLACEHOLDER TESTIMONIALS` in `index.html`).
+
+If real photos or video ever do become available, drop an `<img>`/`<video>`
+into a `.portfolio-media` div in place of its gradient + icon, and pull 2–3
+accent colors from the footage into the `:root` variables above.
 
 ## Sections included
 

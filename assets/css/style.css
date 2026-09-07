@@ -145,8 +145,10 @@ button{font:inherit}
 /* ---------- Portfolio ---------- */
 .portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .portfolio-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
-.portfolio-media{height:190px;position:relative;display:flex;align-items:flex-end;padding:14px}
-.portfolio-tag{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:rgba(7,16,13,.55);color:#fff;padding:6px 10px;border-radius:999px;backdrop-filter:blur(4px)}
+.portfolio-media{height:190px;position:relative;overflow:hidden}
+.portfolio-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;opacity:.32}
+.portfolio-icon svg{width:92px;height:92px}
+.portfolio-tag{position:absolute;left:14px;bottom:14px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:rgba(7,16,13,.55);color:#fff;padding:6px 10px;border-radius:999px;backdrop-filter:blur(4px)}
 .grad-crepe{background:linear-gradient(135deg,#7a2a24,#e2bb69 120%)}
 .grad-barber{background:linear-gradient(135deg,#101010,#2c2418 70%,#5c4a24)}
 .grad-mobile{background:linear-gradient(135deg,#0c2b3a,#1a5c53)}
