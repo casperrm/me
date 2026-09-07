@@ -20,6 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ project
       title: body.title,
       assigneeId: body.assigneeId || undefined,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+      priority: body.priority || undefined,
     });
     return NextResponse.json({ ok: true, taskId: task.id });
   } catch (err) {

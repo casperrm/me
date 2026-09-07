@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended once)**. Bible
+Status: **Partially implemented (Phase 1 slice, extended twice)**. Bible
 reference: Section 12.
 
 ## Purpose
@@ -12,15 +12,14 @@ across modules, so nothing is tracked in a separate spreadsheet.
 ## What's not built yet
 
 Section 12 also calls for **milestones and dependencies with
-overdue/risk signals**, task **priority/estimate/comments/attachments**,
-and **reusable project templates** — none of that exists. `Task`
-checklist is now real (see below); priority, estimate, comments, and
-attachments are still just title + status + assignee + due date +
-checklist. `Project` has no milestone concept separate from its own
-single `dueDate`. This is a deliberate scope cut, not an oversight —
-extend `Task`/`Project` further (or add a `Milestone` model) when a real
-need for dependency tracking or templates shows up, rather than
-modeling it speculatively now.
+overdue/risk signals**, task **estimate/comments/attachments**, and
+**reusable project templates** — none of that exists. `Task` checklist
+and priority are now real (see below); estimate, comments, and
+attachments are still not modeled. `Project` has no milestone concept
+separate from its own single `dueDate`. This is a deliberate scope cut,
+not an oversight — extend `Task`/`Project` further (or add a `Milestone`
+model) when a real need for dependency tracking or templates shows up,
+rather than modeling it speculatively now.
 
 ## Entities
 
@@ -30,6 +29,10 @@ modeling it speculatively now.
 | `Task` | `@cedar/db` | Belongs to a `Project`; `assigneeId` references a `Membership`, not a `User` — assignment is org-scoped. |
 | `TaskChecklistItem` | `@cedar/db` | Belongs to a `Task`. Flat, ordered (`position`, append-only — no reordering support), independently checkable (`done`). No nesting, no per-item assignee/due date. |
 
+`Task.priority` is a plain `String @default("medium")` (like `status`),
+not an enum — validated against a fixed set (`low`/`medium`/`high`) in
+`project-service.ts`, the same convention used for `status`.
+
 No new tables for calendar — `getUpcomingEvents` is a read-only query
 across existing tables, per Section 12's "Calendar unifies deadlines..."
 rather than a calendar being its own data store.
@@ -37,28 +40,33 @@ rather than a calendar being its own data store.
 ## Permissions
 
 - Read: `clients:read` on the project's/task's owning client.
-- Write (create project, create task, change task status, add/toggle/
-  delete a checklist item): `clients:write` on the owning client. There
-  is no separate "task-level" permission — anyone who can write to the
-  client can manage all of its projects/tasks/checklist items. Revisit
-  if a role ever needs write access to tasks but not, say, Brand DNA.
+- Write (create project, create task, change task status/priority, add/
+  toggle/delete a checklist item): `clients:write` on the owning client.
+  There is no separate "task-level" permission — anyone who can write to
+  the client can manage all of its projects/tasks/checklist items.
+  Revisit if a role ever needs write access to tasks but not, say, Brand
+  DNA.
 
 ## Events
 
 `project.created`, `task.created`, `task.status_changed`,
-`task_checklist_item.created`, `task_checklist_item.toggled`,
-`task_checklist_item.deleted` (audit), plus a `project_created`
-`ClientTimelineEvent` (checklist items are routine sub-task bookkeeping,
-not client-facing activity, so they don't get a timeline event the way
-task completion does).
+`task.priority_changed`, `task_checklist_item.created`,
+`task_checklist_item.toggled`, `task_checklist_item.deleted` (audit),
+plus a `project_created` `ClientTimelineEvent` (checklist items and
+priority changes are routine sub-task bookkeeping, not client-facing
+activity, so they don't get a timeline event the way task completion
+does).
 
 ## APIs / entry points
 
 - `POST /api/clients/[id]/projects` — create a project.
 - `POST /api/projects/[projectId]/tasks` — create a task, optional
-  `assigneeId` (a Membership id) and `dueDate`.
+  `assigneeId` (a Membership id), `dueDate`, and `priority`
+  (`low`/`medium`/`high`, defaults to `medium` when omitted).
 - `setTaskStatusAction` (server action) — change a task's status; bound
   directly to a `<select>` in the UI, no client-side fetch needed.
+- `setTaskPriorityAction` (server action) — change a task's priority;
+  same pattern, a second `<select>` next to the status one.
 - `POST /api/tasks/[taskId]/checklist` — add a checklist item (`text`),
   appended at the end (`position` = current item count).
 - `POST /api/checklist-items/[id]/toggle` — flip `done`; no request
@@ -71,13 +79,16 @@ task completion does).
   detail page) with an inline "+ New project" quick-add
   (`clients:write` only).
 - `/clients/[id]/projects/[projectId]` — task list with inline status
-  changes, a "new task" form (assignee dropdown populated from active
-  org memberships), campaign list (read-only), and now a per-task
-  checklist: a `done/total` count, each item with a checkbox and (for
-  writers) a delete button, and an "+ Checklist item" quick-add. The
-  checklist section is hidden entirely for a read-only viewer when a
-  task has no items, so it never clutters the list with an empty
-  affordance no one can use.
+  and priority changes (color-coded `<select>`s — grey/amber/red for
+  low/medium/high — side by side for a writer, plain text badges for a
+  read-only viewer), a "new task" form (assignee dropdown populated from
+  active org memberships, plus a priority selector defaulting to
+  "Medium"), campaign list (read-only), and a per-task checklist: a
+  `done/total` count, each item with a checkbox and (for writers) a
+  delete button, and an "+ Checklist item" quick-add. The checklist
+  section is hidden entirely for a read-only viewer when a task has no
+  items, so it never clutters the list with an empty affordance no one
+  can use.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates. Reuses
@@ -107,23 +118,28 @@ feeding the future Client Health Score (Section 4.2).
   (`createTask` checks the `assigneeId` resolves to a `Membership` in the
   same organization) rather than silently creating a dangling reference.
 - **Invalid task status value:** rejected before any database write.
+- **Invalid task priority value:** rejected before any database write,
+  both at creation (`createTask`) and on change (`setTaskPriority`) —
+  same fixed-set validation used for status.
 - **Empty checklist item text:** rejected before any database write,
   same as an empty task title.
 
 ## Acceptance tests
 
 - `apps/web/src/lib/services/project-and-calendar.integration.test.ts` —
-  14 tests against real Postgres (up from 6): project creation +
-  timeline event, cross-organization project rejection, task
-  creation/assignment/status transition, invalid-assignee rejection,
-  permission rejection for a role without `clients:write`, and
+  12 tests against real Postgres: project creation + timeline event,
+  cross-organization project rejection, task creation/assignment/status
+  transition (asserting the `medium` default priority), invalid-assignee
+  rejection, permission rejection for a role without `clients:write`,
   `getUpcomingEvents` unifying task/project/invoice due dates within a
-  window with correct client-scoping and chronological ordering — plus
-  a new block covering checklist items: items append in order with the
-  correct `position`, a real toggle flips `done` and flips back, delete
-  actually removes the row and leaves the others intact, an empty-text
-  add is rejected, a `clients:write`-less write is rejected, and a
-  cross-organization task or item is rejected for both add and toggle.
+  window with correct client-scoping and chronological ordering, a
+  checklist block (items append in order with the correct `position`, a
+  real toggle flips `done` and flips back, delete actually removes the
+  row and leaves the others intact, an empty-text add is rejected, a
+  `clients:write`-less write is rejected, and a cross-organization task
+  or item is rejected for both add and toggle), and a priority block:
+  `setTaskPriority` actually persists a new value and rejects both an
+  invalid priority and a cross-organization task.
 - `apps/web/src/app/api/tasks/[taskId]/checklist/route.contract.test.ts`
   — 5 tests (401/400 missing text/403/200 with a real persisted row at
   `position: 0`/400 cross-organization).
@@ -133,6 +149,12 @@ feeding the future Client Health Score (Section 4.2).
 - `apps/web/src/app/api/checklist-items/[id]/route.contract.test.ts`
   (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
   cross-organization).
+- `apps/web/src/app/api/projects/[projectId]/tasks/route.contract.test.ts`
+  — 6 tests (up from 4): the existing 401/400-missing-title/403/200
+  cases (the 200 case now also asserts the real row's `priority`
+  defaults to `medium`), plus a new test that persists an explicit
+  `priority: "high"` and rejects an invalid priority value, and the
+  existing cross-organization-project rejection.
 - Manual smoke test performed for the Phase 1 slice: created a project
   and task via the real HTTP routes while logged in, confirmed both
   appeared on `/calendar` and the project detail page rendered
@@ -147,3 +169,14 @@ feeding the future Client Health Score (Section 4.2).
   from the DOM. Cross-checked via `psql` afterward that the dev
   database had zero leftover `task_checklist_items` rows — the UI's own
   delete step already cleaned up after itself.
+- Manual smoke test performed for the priority slice against a real
+  running production server: logged in as the seeded owner via
+  `POST /api/auth/login`, created a real task with `priority: "high"`
+  through the real `POST /api/projects/[projectId]/tasks` route,
+  confirmed the persisted value via `psql`. Then, through a real
+  headless browser on the actual project detail page, changed the same
+  task's priority to "Low" via the real `TaskPriorityForm` dropdown
+  (the real `setTaskPriorityAction` server action), reloaded the page,
+  and confirmed the dropdown still showed "Low" — cross-checked against
+  `psql` showing `priority = 'low'` in the database. Deleted the
+  smoke-test task afterward to leave the dev database clean.

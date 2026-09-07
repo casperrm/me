@@ -17,6 +17,7 @@ import {
   createProject,
   createTask,
   deleteTaskChecklistItem,
+  setTaskPriority,
   setTaskStatus,
   toggleTaskChecklistItem,
 } from "./project-service";
@@ -99,6 +100,7 @@ describe("createProject / createTask / setTaskStatus", () => {
       assigneeId: ownerMembership.id,
     });
     expect(task.status).toBe("todo");
+    expect(task.priority).toBe("medium"); // default when not specified
 
     const createdEvent = await prisma.clientTimelineEvent.findFirst({ where: { clientId: clientAId, type: "task_created" } });
     expect(createdEvent).toBeTruthy();
@@ -113,6 +115,41 @@ describe("createProject / createTask / setTaskStatus", () => {
     await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, status: "done" });
     const completedEventCount = await prisma.clientTimelineEvent.count({ where: { clientId: clientAId, type: "task_completed" } });
     expect(completedEventCount).toBe(1);
+  });
+
+  it("creates a task with an explicit priority and allows changing it", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: project.id,
+      title: "High priority task",
+      priority: "high",
+    });
+    expect(task.priority).toBe("high");
+
+    const updated = await setTaskPriority({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, priority: "low" });
+    expect(updated.priority).toBe("low");
+  });
+
+  it("rejects an invalid priority value on both create and update", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    await expect(
+      createTask({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        projectId: project.id,
+        title: "Bad priority",
+        // @ts-expect-error deliberately invalid at the type level too
+        priority: "urgent",
+      }),
+    ).rejects.toThrow(AuthError);
+
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Valid task" });
+    await expect(
+      // @ts-expect-error deliberately invalid at the type level too
+      setTaskPriority({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, priority: "urgent" }),
+    ).rejects.toThrow(AuthError);
   });
 
   it("rejects an assignee who isn't a member of the organization", async () => {

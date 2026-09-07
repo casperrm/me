@@ -8,6 +8,7 @@ export function NewTaskForm({ projectId, members }: { projectId: string; members
   const [title, setTitle] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [priority, setPriority] = useState("medium");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +20,7 @@ export function NewTaskForm({ projectId, members }: { projectId: string; members
       const res = await fetch(`/api/projects/${projectId}/tasks`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, assigneeId: assigneeId || undefined, dueDate: dueDate || undefined }),
+        body: JSON.stringify({ title, assigneeId: assigneeId || undefined, dueDate: dueDate || undefined, priority }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -29,6 +30,7 @@ export function NewTaskForm({ projectId, members }: { projectId: string; members
       setTitle("");
       setAssigneeId("");
       setDueDate("");
+      setPriority("medium");
       router.refresh();
     } finally {
       setLoading(false);
@@ -70,6 +72,18 @@ export function NewTaskForm({ projectId, members }: { projectId: string; members
           onChange={(e) => setDueDate(e.target.value)}
           className="rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
         />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-neutral-600">Priority</label>
+        <select
+          value={priority}
+          onChange={(e) => setPriority(e.target.value)}
+          className="rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
       </div>
       <button
         type="submit"

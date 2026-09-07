@@ -104,7 +104,20 @@ describe("POST /api/projects/[projectId]/tasks", () => {
     expect(body).toEqual({ ok: true, taskId: expect.any(String) });
 
     const stored = await prisma.task.findUnique({ where: { id: body.taskId } });
-    expect(stored).toMatchObject({ projectId, title: "Ship the deck", status: "todo" });
+    expect(stored).toMatchObject({ projectId, title: "Ship the deck", status: "todo", priority: "medium" });
+  });
+
+  it("persists a real priority when given, and rejects an invalid one", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ title: "Urgent fix", priority: "high" }), { params: Promise.resolve({ projectId }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const stored = await prisma.task.findUnique({ where: { id: body.taskId } });
+    expect(stored?.priority).toBe("high");
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const rejected = await POST(request({ title: "Bad priority", priority: "urgent" }), { params: Promise.resolve({ projectId }) });
+    expect(rejected.status).toBe(400);
   });
 
   it("returns 400 for a project in a different organization", async () => {

@@ -58,6 +58,9 @@ async function assertProjectInOrg(projectId: string, organizationId: string) {
   return project;
 }
 
+const TASK_PRIORITIES = ["low", "medium", "high"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
 export async function createTask(params: {
   actorUserId: string;
   organizationId: string;
@@ -65,6 +68,7 @@ export async function createTask(params: {
   title: string;
   assigneeId?: string;
   dueDate?: Date;
+  priority?: TaskPriority;
 }) {
   const project = await assertProjectInOrg(params.projectId, params.organizationId);
   const membership = await requirePermission({
@@ -75,6 +79,10 @@ export async function createTask(params: {
   });
 
   if (!params.title.trim()) throw new AuthError("Task title is required.");
+
+  if (params.priority && !TASK_PRIORITIES.includes(params.priority)) {
+    throw new AuthError("Invalid task priority.");
+  }
 
   if (params.assigneeId) {
     const assignee = await prisma.membership.findFirst({
@@ -89,6 +97,7 @@ export async function createTask(params: {
       title: params.title.trim(),
       assigneeId: params.assigneeId,
       dueDate: params.dueDate,
+      priority: params.priority,
     },
   });
 
@@ -159,6 +168,46 @@ export async function setTaskStatus(params: {
       data: { clientId: task.project.clientId, type: "task_completed", summary: `Task "${task.title}" completed.` },
     });
   }
+
+  return updated;
+}
+
+export async function setTaskPriority(params: {
+  actorUserId: string;
+  organizationId: string;
+  taskId: string;
+  priority: TaskPriority;
+}) {
+  if (!TASK_PRIORITIES.includes(params.priority)) throw new AuthError("Invalid task priority.");
+
+  const task = await prisma.task.findUnique({
+    where: { id: params.taskId },
+    include: { project: { include: { client: true } } },
+  });
+  if (!task || task.project.client.organizationId !== params.organizationId) {
+    throw new AuthError("Task not found.");
+  }
+
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: task.project.clientId,
+  });
+
+  const updated = await prisma.task.update({ where: { id: task.id }, data: { priority: params.priority } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task.priority_changed",
+    resourceType: "Task",
+    resourceId: task.id,
+    clientId: task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { before: { priority: task.priority }, after: { priority: params.priority } },
+  });
 
   return updated;
 }
