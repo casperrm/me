@@ -429,3 +429,107 @@ export async function addTaskComment(params: {
 
   return comment;
 }
+
+/**
+ * Section 12's "milestones... with overdue/risk signals" — see the
+ * schema comment on `Milestone` for why "overdue" is computed
+ * (`!done && dueDate < now`) rather than stored. No dependency graph
+ * between milestones — see docs/specs/projects-and-calendar.md.
+ */
+export async function createMilestone(params: {
+  actorUserId: string;
+  organizationId: string;
+  projectId: string;
+  name: string;
+  dueDate: Date;
+}) {
+  const project = await assertProjectInOrg(params.projectId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: project.clientId,
+  });
+
+  const name = params.name.trim();
+  if (!name) throw new AuthError("Milestone name is required.");
+
+  const milestone = await prisma.milestone.create({
+    data: { projectId: project.id, name, dueDate: params.dueDate },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "milestone.created",
+    resourceType: "Milestone",
+    resourceId: milestone.id,
+    clientId: project.clientId,
+    result: "SUCCESS",
+    changeSet: { projectId: project.id, name: milestone.name, dueDate: milestone.dueDate },
+  });
+
+  return milestone;
+}
+
+async function assertMilestoneInOrg(milestoneId: string, organizationId: string) {
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+    include: { project: { include: { client: true } } },
+  });
+  if (!milestone || milestone.project.client.organizationId !== organizationId) {
+    throw new AuthError("Milestone not found.");
+  }
+  return milestone;
+}
+
+export async function toggleMilestone(params: { actorUserId: string; organizationId: string; milestoneId: string }) {
+  const milestone = await assertMilestoneInOrg(params.milestoneId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: milestone.project.clientId,
+  });
+
+  const updated = await prisma.milestone.update({ where: { id: milestone.id }, data: { done: !milestone.done } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "milestone.toggled",
+    resourceType: "Milestone",
+    resourceId: milestone.id,
+    clientId: milestone.project.clientId,
+    result: "SUCCESS",
+    changeSet: { before: { done: milestone.done }, after: { done: updated.done } },
+  });
+
+  return updated;
+}
+
+export async function deleteMilestone(params: { actorUserId: string; organizationId: string; milestoneId: string }) {
+  const milestone = await assertMilestoneInOrg(params.milestoneId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: milestone.project.clientId,
+  });
+
+  await prisma.milestone.delete({ where: { id: milestone.id } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "milestone.deleted",
+    resourceType: "Milestone",
+    resourceId: milestone.id,
+    clientId: milestone.project.clientId,
+    result: "SUCCESS",
+    changeSet: { name: milestone.name },
+  });
+}

@@ -14,6 +14,7 @@ import { TaskEstimateForm } from "./TaskEstimateForm";
 import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
+import { Milestones } from "./Milestones";
 import { NewCampaignForm } from "./NewCampaignForm";
 
 function money(cents: number) {
@@ -43,6 +44,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         orderBy: { createdAt: "asc" },
       },
       campaigns: true,
+      milestones: { orderBy: { dueDate: "asc" } },
     },
   });
   if (!project) notFound();
@@ -127,6 +129,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </Card>
       )}
+
+      <Card title="Milestones">
+        <Milestones
+          projectId={project.id}
+          canWrite={canWrite}
+          milestones={project.milestones.map((m) => ({
+            id: m.id,
+            name: m.name,
+            dueDate: m.dueDate.toISOString(),
+            done: m.done,
+            overdue: !m.done && m.dueDate.getTime() < Date.now(),
+          }))}
+        />
+      </Card>
 
       <Card title="Tasks">
         {project.tasks.length === 0 ? (

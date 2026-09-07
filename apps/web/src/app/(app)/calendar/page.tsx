@@ -12,6 +12,7 @@ const TYPE_LABEL: Record<string, string> = {
   invoice_due: "Invoice",
   content_due: "Content",
   content_publish: "Publish",
+  milestone_due: "Milestone",
 };
 
 const TYPE_STYLE: Record<string, string> = {
@@ -20,6 +21,7 @@ const TYPE_STYLE: Record<string, string> = {
   invoice_due: "bg-neutral-100 text-neutral-600",
   content_due: "bg-purple-50 text-purple-700",
   content_publish: "bg-purple-100 text-purple-800",
+  milestone_due: "bg-emerald-50 text-emerald-700",
 };
 
 export default async function CalendarPage() {
@@ -69,6 +71,9 @@ export default async function CalendarPage() {
                         {event.title}
                       </Link>
                       <span className="text-xs text-neutral-400">— {event.clientName}</span>
+                      {event.overdue && (
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">Overdue</span>
+                      )}
                     </li>
                   ))}
                 </ul>

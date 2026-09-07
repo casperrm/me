@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended five times)**.
+Status: **Partially implemented (Phase 1 slice, extended six times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -11,12 +11,14 @@ across modules, so nothing is tracked in a separate spreadsheet.
 
 ## What's not built yet
 
-Section 12 also calls for **milestones and dependencies with
-overdue/risk signals** and **reusable project templates** — neither
-exists. `Task` checklist, priority, estimate, comments, and attachments
-are now real (see below). `Project` has no milestone concept separate
-from its own single `dueDate`. This is a deliberate scope cut, not an
-oversight — extend `Task`/`Project` further (or add a `Milestone` model)
+Section 12 also calls for **task dependencies** and **reusable project
+templates** — neither exists. `Task` checklist, priority, estimate,
+comments, and attachments are now real, and `Project` now has
+`Milestone`s with an overdue signal (see below). There is still no
+dependency graph between tasks or milestones — a milestone can't declare
+"blocked by" another milestone or task, so nothing here computes project
+*risk* beyond a simple overdue flag per milestone. This is a deliberate
+scope cut, not an oversight — add a `TaskDependency`/blocking-edge model
 when a real need for dependency tracking or templates shows up, rather
 than modeling it speculatively now.
 
@@ -28,6 +30,12 @@ than modeling it speculatively now.
 | `Task` | `@cedar/db` | Belongs to a `Project`; `assigneeId` references a `Membership`, not a `User` — assignment is org-scoped. |
 | `TaskChecklistItem` | `@cedar/db` | Belongs to a `Task`. Flat, ordered (`position`, append-only — no reordering support), independently checkable (`done`). No nesting, no per-item assignee/due date. |
 | `TaskComment` | `@cedar/db` | Belongs to a `Task`, attributed to the `Membership` that wrote it. Flat, append-only — no edit, no delete, no threading. |
+| `Milestone` | `@cedar/db` | Belongs to a `Project`. A required `dueDate`, independently markable `done`. No dependency graph between milestones or tasks. |
+
+A milestone's "overdue" state is **computed**, not stored:
+`!done && dueDate < now`. A stored status would drift the instant "now"
+moves past `dueDate` without a write happening, so both `calendar-service.ts`
+and the project detail page compute it fresh on every read instead.
 
 Task attachments reuse `Asset` (Section 14's Files model) rather than a
 separate table — `Asset` gained a nullable `taskId` alongside its
@@ -50,10 +58,11 @@ rather than a calendar being its own data store.
 - Read: `clients:read` on the project's/task's owning client.
 - Write (create project, create task, change task status/priority/
   estimate, add/toggle/delete a checklist item, add a comment, upload/
-  delete an attachment): `clients:write` on the owning client. There is
-  no separate "task-level" permission — anyone who can write to the
-  client can manage all of its projects/tasks/checklist items/comments/
-  attachments. Revisit if a role ever needs write access to tasks but
+  delete an attachment, create/toggle/delete a milestone):
+  `clients:write` on the owning client. There is no separate "task-level"
+  or "project-level" permission — anyone who can write to the client can
+  manage all of its projects/tasks/checklist items/comments/attachments/
+  milestones. Revisit if a role ever needs write access to tasks but
   not, say, Brand DNA.
 
 ## Events
@@ -63,11 +72,12 @@ rather than a calendar being its own data store.
 `task_checklist_item.created`, `task_checklist_item.toggled`,
 `task_checklist_item.deleted`, `task_comment.created`,
 `task_attachment.uploaded`, plus the existing `asset.deleted` for a
-removed attachment (audit), plus a `project_created`
+removed attachment, `milestone.created`, `milestone.toggled`,
+`milestone.deleted` (audit), plus a `project_created`
 `ClientTimelineEvent` (checklist items, priority/estimate changes,
-comments, and attachments are routine sub-task bookkeeping, not
-client-facing activity, so they don't get a timeline event the way task
-completion does).
+comments, attachments, and milestone changes are routine project
+bookkeeping, not client-facing activity, so they don't get a timeline
+event the way task completion does).
 
 ## APIs / entry points
 
@@ -99,13 +109,23 @@ completion does).
   existing generic `GET /api/assets/[id]/download` (signed-token) and
   `DELETE /api/assets/[id]` routes — an attachment is just an `Asset`
   row with `taskId` set, so nothing task-specific needed to exist there.
+- `POST /api/projects/[projectId]/milestones` — create a milestone
+  (`name`, required `dueDate`).
+- `POST /api/milestones/[id]/toggle` — flip `done`; no request body,
+  the current value is read and inverted server-side (same pattern as
+  the checklist-item toggle route).
+- `DELETE /api/milestones/[id]` — remove a milestone.
 
 ## UI
 
 - `/clients/[id]` — "Projects" card lists projects (linking to their
   detail page) with an inline "+ New project" quick-add
   (`clients:write` only).
-- `/clients/[id]/projects/[projectId]` — task list with inline estimate,
+- `/clients/[id]/projects/[projectId]` — a "Milestones" card above
+  Tasks: a checkbox-toggle list (name, due date, a red "Overdue" badge
+  when `!done && dueDate < now`, and for writers a delete button), plus
+  a compact "new milestone" form (name + date input). Then the task
+  list with inline estimate,
   status, and priority changes (an hours input with a "Set" button, then
   color-coded `<select>`s — grey/amber/red for low/medium/high — side by
   side for a writer, plain text badges/`"Nh"` for a read-only viewer), a
@@ -129,10 +149,16 @@ completion does).
   and "Attach" button beneath.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
-  task due dates, project due dates, invoice due dates. Reuses
-  `getReadableClientIds` — the same client-visibility rule as `/clients`.
-  Checklist items have no due date of their own, so they don't appear
-  here — they're sub-steps of a task, not independently schedulable.
+  task due dates, project due dates, invoice due dates, and now
+  milestone due dates (a green "Milestone" badge, plus the same red
+  "Overdue" badge used on the project page when applicable — the same
+  `!done && dueDate < now` formula, computed independently in
+  `calendar-service.ts` and on the project page rather than shared,
+  since each already has the row in hand). Reuses `getReadableClientIds` —
+  the same client-visibility rule as `/clients`. Checklist items,
+  comments, and attachments have no due date of their own, so they don't
+  appear here — they're sub-steps of a task, not independently
+  schedulable.
 
 ## Jobs
 
@@ -170,28 +196,41 @@ feeding the future Client Health Score (Section 4.2).
   rejected before storage or the database is touched — the same
   validation `uploadAsset` already applies to client-level files, shared
   via one `validateUpload` helper rather than duplicated.
+- **Empty milestone name:** rejected before any database write, same
+  pattern as an empty task title.
+- **Cross-organization milestone `id`:** rejected by walking
+  milestone → project → client → `organizationId`, same pattern as
+  checklist items/comments.
 
 ## Acceptance tests
 
 - `apps/web/src/lib/services/project-and-calendar.integration.test.ts` —
-  18 tests against real Postgres: project creation + timeline event,
+  23 tests against real Postgres: project creation + timeline event,
   cross-organization project rejection, task creation/assignment/status
   transition (asserting the `medium` default priority), invalid-assignee
   rejection, permission rejection for a role without `clients:write`,
-  `getUpcomingEvents` unifying task/project/invoice due dates within a
-  window with correct client-scoping and chronological ordering, a
-  checklist block (items append in order with the correct `position`, a
-  real toggle flips `done` and flips back, delete actually removes the
+  `getUpcomingEvents` unifying task/project/invoice/milestone due dates
+  within a window with correct client-scoping and chronological
+  ordering (now asserting `milestone_due` is among the returned types),
+  a checklist block (items append in order with the correct `position`,
+  a real toggle flips `done` and flips back, delete actually removes the
   row and leaves the others intact, an empty-text add is rejected, a
   `clients:write`-less write is rejected, and a cross-organization task
   or item is rejected for both add and toggle), a priority block:
   `setTaskPriority` actually persists a new value and rejects both an
   invalid priority and a cross-organization task, an estimate block:
   `setTaskEstimate` persists a new value, clears it back to `null`, and
-  rejects both a negative/`NaN` estimate on create and on change, and a
+  rejects both a negative/`NaN` estimate on create and on change, a
   comments block: `addTaskComment` persists in order with the real
   author's `Membership` id, rejects an empty comment, rejects a
-  `clients:write`-less write, and rejects a cross-organization task.
+  `clients:write`-less write, and rejects a cross-organization task, a
+  milestones block: `createMilestone`/`toggleMilestone`/
+  `deleteMilestone` round-trip a real row, an empty name is rejected, a
+  `clients:write`-less write is rejected, and a cross-organization
+  project or milestone is rejected for both create and toggle, and a
+  dedicated overdue-signal test: three real milestones (one past-due and
+  not done, one past-due and done, one future) confirm `getUpcomingEvents`
+  flags `overdue: true` on exactly the first.
 - `apps/web/src/app/api/tasks/[taskId]/checklist/route.contract.test.ts`
   — 5 tests (401/400 missing text/403/200 with a real persisted row at
   `position: 0`/400 cross-organization).
@@ -223,6 +262,15 @@ feeding the future Client Health Score (Section 4.2).
   `clients/[id]/assets/route.contract.test.ts` (401/400 no file/403/400
   disallowed content type/200 with a real persisted row and a real file
   on disk/400 cross-organization).
+- `apps/web/src/app/api/projects/[projectId]/milestones/route.contract.test.ts`
+  — 6 tests (401/400 missing name/400 missing dueDate/403/200 with a
+  real persisted row/400 cross-organization).
+- `apps/web/src/app/api/milestones/[id]/toggle/route.contract.test.ts`
+  — 4 tests (401/403/200 flips then flips back, cross-checked against
+  the real row/400 cross-organization).
+- `apps/web/src/app/api/milestones/[id]/route.contract.test.ts`
+  (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
+  cross-organization).
 - Manual smoke test performed for the Phase 1 slice: created a project
   and task via the real HTTP routes while logged in, confirmed both
   appeared on `/calendar` and the project detail page rendered
@@ -283,3 +331,19 @@ feeding the future Client Health Score (Section 4.2).
   `Asset` row and the on-disk file were gone — the UI's own delete step
   already cleaned up after itself, same as the checklist slice. Deleted
   the smoke-test task afterward to leave the dev database clean.
+- Manual smoke test performed for the milestones slice against a real
+  running production server: created a real past-due milestone through
+  the real `POST /api/projects/[projectId]/milestones` route, confirmed
+  it persisted via `psql`. Through a real headless browser on the
+  project detail page, confirmed the real "Overdue" badge rendered;
+  clicked its checkbox to mark it done and confirmed (after a reload)
+  the badge disappeared and the checkbox stayed checked; toggled it back
+  to not-done and clicked delete, then confirmed it was gone from the
+  DOM after a reload. Separately created a real milestone due within the
+  next 60 days and confirmed it appeared on the real `/calendar` page
+  with the correct "Milestone" badge — validating the calendar
+  integration on a date the 60-day window actually covers (the earlier
+  past-due milestone deliberately falls outside that forward-looking
+  window, which is correct behavior, not a bug). Deleted both
+  smoke-test milestones afterward via `psql` to leave the dev database
+  clean.

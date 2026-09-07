@@ -15,12 +15,15 @@ import { AuthError } from "./auth-service";
 import {
   addTaskChecklistItem,
   addTaskComment,
+  createMilestone,
   createProject,
   createTask,
+  deleteMilestone,
   deleteTaskChecklistItem,
   setTaskEstimate,
   setTaskPriority,
   setTaskStatus,
+  toggleMilestone,
   toggleTaskChecklistItem,
 } from "./project-service";
 import { createContentCalendarItem } from "./content-calendar-service";
@@ -33,6 +36,7 @@ async function wipeDatabase() {
   await prisma.taskComment.deleteMany();
   await prisma.taskChecklistItem.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.milestone.deleteMany();
   await prisma.project.deleteMany();
   await prisma.invoice.deleteMany();
   await prisma.scopedGrant.deleteMany();
@@ -318,6 +322,69 @@ describe("addTaskComment", () => {
   });
 });
 
+describe("createMilestone / toggleMilestone / deleteMilestone", () => {
+  it("creates a milestone, toggles it done, and deletes it", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const milestone = await createMilestone({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: project.id,
+      name: "Kickoff",
+      dueDate: new Date("2030-01-15"),
+    });
+    expect(milestone.done).toBe(false);
+
+    const toggled = await toggleMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: milestone.id });
+    expect(toggled.done).toBe(true);
+    const toggledBack = await toggleMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: milestone.id });
+    expect(toggledBack.done).toBe(false);
+
+    await deleteMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: milestone.id });
+    expect(await prisma.milestone.findUnique({ where: { id: milestone.id } })).toBeNull();
+  });
+
+  it("rejects an empty milestone name", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    await expect(
+      createMilestone({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "   ", dueDate: new Date("2030-01-01") }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a write from a member with no clients:write on the project's client", async () => {
+    const designer = await prisma.user.findFirstOrThrow({ where: { email: "proj-designer@test.example" } });
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    await expect(
+      createMilestone({ actorUserId: designer.id, organizationId: orgId, projectId: project.id, name: "Should fail", dueDate: new Date("2030-01-01") }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a project or milestone from a different organization", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Milestone Other Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "milestone-other-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await createProject({ actorUserId: otherOwner.id, organizationId: otherOrg.id, clientId: otherClient.id, name: "Other Project" });
+    const otherMilestone = await createMilestone({
+      actorUserId: otherOwner.id,
+      organizationId: otherOrg.id,
+      projectId: otherProject.id,
+      name: "Other Milestone",
+      dueDate: new Date("2030-01-01"),
+    });
+
+    await expect(
+      createMilestone({ actorUserId: ownerUserId, organizationId: orgId, projectId: otherProject.id, name: "Nope", dueDate: new Date("2030-01-01") }),
+    ).rejects.toThrow(AuthError);
+    await expect(
+      toggleMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: otherMilestone.id }),
+    ).rejects.toThrow(AuthError);
+  });
+});
+
 describe("getUpcomingEvents", () => {
   it("unifies task, project, invoice, and content calendar dates within the window and scopes by client", async () => {
     const projectA = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
@@ -351,17 +418,49 @@ describe("getUpcomingEvents", () => {
       publishAt: new Date("2030-06-20"),
     });
 
+    await createMilestone({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: projectA.id,
+      name: "Beta launch",
+      dueDate: new Date("2030-06-18"),
+    });
+
     const from = new Date("2030-06-01");
     const to = new Date("2030-06-30");
 
     const allEvents = await getUpcomingEvents({ organizationId: orgId, from, to });
     const types = allEvents.map((e) => e.type).sort();
-    expect(types).toEqual(["content_due", "content_publish", "invoice_due", "project_due", "task_due"]);
+    expect(types).toEqual(["content_due", "content_publish", "invoice_due", "milestone_due", "project_due", "task_due"]);
     // Sorted chronologically.
     expect(allEvents[0].date.getTime()).toBeLessThanOrEqual(allEvents[allEvents.length - 1].date.getTime());
 
     const scopedToA = await getUpcomingEvents({ organizationId: orgId, clientIds: [clientAId], from, to });
     expect(scopedToA.every((e) => e.clientId === clientAId)).toBe(true);
     expect(scopedToA.some((e) => e.title === projectB.name)).toBe(false);
+  });
+
+  it("flags a milestone as overdue only when it's past due and not done", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const now = new Date();
+    const past = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const future = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const overdueMilestone = await createMilestone({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "Overdue milestone", dueDate: past });
+    const doneMilestone = await createMilestone({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "Done milestone", dueDate: past });
+    await toggleMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: doneMilestone.id });
+    await createMilestone({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "Future milestone", dueDate: future });
+
+    const from = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const to = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const events = await getUpcomingEvents({ organizationId: orgId, clientIds: [clientAId], from, to });
+    const milestoneEvents = events.filter((e) => e.type === "milestone_due");
+
+    expect(milestoneEvents.find((e) => e.title === "Overdue milestone")?.overdue).toBe(true);
+    expect(milestoneEvents.find((e) => e.title === "Done milestone")?.overdue).toBe(false);
+    expect(milestoneEvents.find((e) => e.title === "Future milestone")?.overdue).toBe(false);
+
+    await prisma.milestone.delete({ where: { id: overdueMilestone.id } });
+    await prisma.milestone.deleteMany({ where: { projectId: project.id, name: { in: ["Done milestone", "Future milestone"] } } });
   });
 });

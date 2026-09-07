@@ -405,14 +405,35 @@ model Project {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  tasks     Task[]
-  campaigns Campaign[]
-  assets    Asset[]
-  shoots    Shoot[]
-  invoices  Invoice[]
-  expenses  Expense[]
+  tasks      Task[]
+  campaigns  Campaign[]
+  assets     Asset[]
+  shoots     Shoot[]
+  invoices   Invoice[]
+  expenses   Expense[]
+  milestones Milestone[]
 
   @@map("projects")
+}
+
+// Section 12's "milestones... with overdue/risk signals" — the smallest
+// real cut of that gap: a named deadline on a project, independently
+// markable done, with "overdue" computed as `!done && dueDate < now`
+// rather than stored (a stored status would drift the moment "now"
+// moves past `dueDate` without a write happening). No dependency graph
+// between milestones — see docs/specs/projects-and-calendar.md for the
+// scope boundary (task_dependencies is a separate, still-open gap).
+model Milestone {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  name      String
+  dueDate   DateTime
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@map("milestones")
 }
 
 model Task {
