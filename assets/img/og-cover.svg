@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="80%" cy="10%" r="60%">
+      <stop offset="0%" stop-color="#32c681" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#32c681" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#07100d"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <path d="M120 210 90 260h20l-30 45h30l-25 45h120l-25-45h30l-30-45h20l-30-50Z" fill="#72e6ae"/>
+  <rect x="108" y="345" width="24" height="46" fill="#72e6ae"/>
+  <text x="200" y="300" font-family="Sora, sans-serif" font-weight="800" font-size="54" fill="#f0f6f2">CEDAR POINT</text>
+  <text x="200" y="345" font-family="Sora, sans-serif" font-weight="700" font-size="22" letter-spacing="8" fill="#72e6ae">MEDIA</text>
+  <text x="200" y="405" font-family="Inter, sans-serif" font-size="24" fill="#a5b6ae">Social media, backed by intelligence.</text>
+</svg>
