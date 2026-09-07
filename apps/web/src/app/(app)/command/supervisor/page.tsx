@@ -1,9 +1,12 @@
+import { isAuthorized } from "@cedar/auth";
 import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { getAiSupervisorSummary } from "@/lib/services/ai-supervisor-service";
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
+import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { RunEvalButton } from "./RunEvalButton";
+import { SetAiBudgetForm } from "./SetAiBudgetForm";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +18,11 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns] = await Promise.all([
+  const [summary, evalRuns, budgetStatus, canManageBudget] = await Promise.all([
     getAiSupervisorSummary(actor.organizationId),
     getRecentEvalRuns(),
+    getAiBudgetStatus(actor.organizationId),
+    isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
   ]);
   const latestEvalRun = evalRuns[0];
 
@@ -131,6 +136,36 @@ export default async function AiSupervisorPage() {
               </ul>
             </div>
           </div>
+        )}
+      </Card>
+
+      <Card title="AI budget">
+        {budgetStatus.monthlyTokenLimit === null ? (
+          <p className="text-sm text-neutral-400">
+            No monthly token budget set — live Cedar Brain requests are unrestricted.
+          </p>
+        ) : (
+          <div className="text-sm">
+            <div className="flex items-center justify-between">
+              <span>Used this month</span>
+              <span className={budgetStatus.overBudget ? "font-medium text-red-600" : ""}>
+                {budgetStatus.usedTokensThisMonth.toLocaleString()} / {budgetStatus.monthlyTokenLimit.toLocaleString()}{" "}
+                tokens
+              </span>
+            </div>
+            {budgetStatus.overBudget && (
+              <p className="mt-1 text-xs text-red-600">
+                Budget exceeded — live Cedar Brain requests are blocked until next month.
+              </p>
+            )}
+          </div>
+        )}
+        {canManageBudget ? (
+          <SetAiBudgetForm currentLimit={budgetStatus.monthlyTokenLimit} />
+        ) : (
+          <p className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-400">
+            Only an owner or admin (organization:manage) can change this.
+          </p>
         )}
       </Card>
     </div>

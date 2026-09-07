@@ -217,15 +217,36 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       live-response quality" reasoning and what's explicitly deferred
       (a live-response LLM-judge harness; scheduled/CI-triggered runs —
       today it's on-demand only).
+- [x] AI Budget Governance (Section 33) — the specific mechanism the
+      per-agent-output slice cited as missing. A real, enforced monthly
+      token budget: `AiBudget` (one row per organization, created only
+      when an owner/admin explicitly sets one — no default is ever
+      fabricated), `getAiBudgetStatus` computing real usage from
+      `CedarBrainRequest` for the current calendar month, and
+      enforcement in `/api/cedar-brain/route.ts` that rejects a live
+      call with 402 *before* any real API spend once the organization
+      is over budget (stub mode is never blocked, since it costs
+      nothing either way). `alertIfOverBudget` closes the actual
+      "cost-threshold alerting" gap `ai-supervisor.md` had flagged as
+      missing — a deduplicated notification (once per 24h) to every
+      `ai:supervise` holder. A new "AI budget" card on
+      `/command/supervisor` shows usage vs. limit and lets an
+      `organization:manage` holder set or clear it. Verified live
+      against the seeded dev database: set a real 5,000-token budget,
+      inserted a real 5,500-token live-mode request, confirmed the page
+      showed the exact over-budget arithmetic. See
+      `docs/specs/ai-budget-governance.md`, including why this closes
+      the *blocker* the per-agent-fan-out decision cited, without
+      itself reopening that decision — true per-agent specialization
+      remains its own separate, not-yet-started slice.
 - [ ] AI Gateway, full prompt/model version registry, semantic/vector
-      retrieval, live-response evaluation scoring — not started. True
-      per-agent specialization (a separate Anthropic call per routed
-      agent, each with its own specialist prompt) is also not started —
-      deliberately gated on Section 33's budget/cost-governance
-      mechanism existing first, since it would multiply real API spend
-      per request with no safety net (see
-      `docs/specs/cedar-brain-per-agent-output.md`). What *is* built:
-      real per-agent output structure within the existing single call.
+      retrieval, live-response evaluation scoring, true per-agent
+      specialization (a separate Anthropic call per routed agent, each
+      with its own specialist prompt) — not started. What *is* built:
+      real per-agent output structure within the existing single call
+      (`docs/specs/cedar-brain-per-agent-output.md`), and the budget
+      mechanism above that a future per-agent-fan-out slice would rely
+      on.
 
 ## Phase 4 — Integrations and Publishing: **starter slice exists**
 

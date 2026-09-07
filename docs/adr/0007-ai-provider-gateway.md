@@ -12,6 +12,11 @@
   within the existing single API call (Section 4/6.1); see
   `docs/specs/cedar-brain-per-agent-output.md`. Deliberately did NOT
   move to one API call per agent — see that doc for why.
+- **Updated:** 2026-09-07 — added real AI budget governance at the
+  organization level (Section 33); see
+  `docs/specs/ai-budget-governance.md`. This is the specific mechanism
+  the per-agent-output update above cited as missing — it closes that
+  blocker without itself reopening the per-agent-fan-out decision.
 
 ## Context
 
@@ -69,6 +74,14 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   real API spend per request, and the budget/cost-governance mechanism
   below doesn't exist yet, so there's no safety net for that spend.
   See `docs/specs/cedar-brain-per-agent-output.md`.
+- **Update:** organization-level budget enforcement now exists —
+  `AiBudget`, `getAiBudgetStatus`, and a real 402 block in
+  `/api/cedar-brain/route.ts` before any live-mode spend once an
+  explicitly-configured monthly token limit is exceeded, plus a
+  deduplicated alert to `ai:supervise` holders (Section 33's
+  "cost-threshold alerting," previously flagged as missing in
+  `ai-supervisor.md`). See `docs/specs/ai-budget-governance.md`. Still
+  organization-level only, not per-user/workflow/provider — see below.
 
 ## What this ADR will need to decide when AI Foundation (Phase 3) is built
 
@@ -76,7 +89,9 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   model that meets quality requirements").
 - Prompt/model version registry so `AIRequest`/`AgentRun` records (Section
   3's domain model) can cite exactly what produced a given output.
-- Per-user/workflow/provider budget enforcement (Section 33).
+- Finer-grained budget enforcement (per-user/workflow/provider, not
+  just per-organization — the organization-level mechanism now exists,
+  see the update above).
 - Whether this stays a direct-to-Anthropic integration or gains a
   provider-abstraction layer for multi-provider routing.
 

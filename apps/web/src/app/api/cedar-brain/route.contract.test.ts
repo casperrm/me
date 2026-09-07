@@ -14,6 +14,8 @@ import { prisma } from "@cedar/db";
 import { POST } from "./route";
 
 async function wipeDatabase() {
+  await prisma.notification.deleteMany();
+  await prisma.aiBudget.deleteMany();
   await prisma.cedarBrainRequest.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.membership.deleteMany();
@@ -95,5 +97,47 @@ describe("POST /api/cedar-brain", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.contextSources).toContain("Client record");
+  });
+
+  it("returns 402 and never calls the model when the org is over its AI budget", async () => {
+    // The budget check only applies when a live call would cost real
+    // money — stub it on for this one test via vi.stubEnv, but since
+    // the route returns before calling callCedarBrain/fetch when over
+    // budget, no real network call happens.
+    vi.stubEnv("ANTHROPIC_API_KEY", "fake-key-for-this-test-only");
+    try {
+      await prisma.aiBudget.create({ data: { organizationId: orgId, monthlyTokenLimit: 100 } });
+      await prisma.cedarBrainRequest.create({
+        data: {
+          organizationId: orgId,
+          prompt: "prior usage",
+          routedAgents: "[]",
+          mode: "live",
+          modelName: "claude-sonnet-5",
+          promptVersion: "v3",
+          latencyMs: 50,
+          success: true,
+          inputTokens: 100,
+          outputTokens: 50,
+        },
+      });
+
+      getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+      const beforeCount = await prisma.cedarBrainRequest.count({ where: { organizationId: orgId } });
+      const res = await POST(request({ prompt: "Anything at all" }));
+      expect(res.status).toBe(402);
+      const body = await res.json();
+      expect(body.error).toMatch(/budget/i);
+
+      // No new CedarBrainRequest row — the request was blocked before
+      // any real work (or even a stub response) happened.
+      const afterCount = await prisma.cedarBrainRequest.count({ where: { organizationId: orgId } });
+      expect(afterCount).toBe(beforeCount);
+    } finally {
+      vi.unstubAllEnvs();
+      await prisma.notification.deleteMany({ where: { organizationId: orgId } });
+      await prisma.aiBudget.deleteMany({ where: { organizationId: orgId } });
+      await prisma.cedarBrainRequest.deleteMany({ where: { organizationId: orgId } });
+    }
   });
 });

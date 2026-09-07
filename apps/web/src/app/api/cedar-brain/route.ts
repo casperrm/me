@@ -3,6 +3,7 @@ import { prisma } from "@cedar/db";
 import { getCurrentActor } from "@/lib/current-actor";
 import { routeToAgents, callCedarBrain, CEDAR_BRAIN_PROMPT_VERSION } from "@/lib/cedar-brain";
 import { buildGovernedContext } from "@/lib/services/context-retrieval-service";
+import { alertIfOverBudget, getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { AuthError } from "@/lib/services/auth-service";
 
 export async function POST(req: Request) {
@@ -26,6 +27,24 @@ export async function POST(req: Request) {
     } catch (err) {
       if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: 403 });
       throw err;
+    }
+  }
+
+  // Section 33 budget enforcement: only relevant when a live call would
+  // actually cost real money (ANTHROPIC_API_KEY set) and the org has
+  // opted into a limit — no default budget is ever fabricated, and stub
+  // mode is never blocked since it has zero real cost either way. See
+  // docs/specs/ai-budget-governance.md.
+  if (process.env.ANTHROPIC_API_KEY) {
+    const budgetStatus = await getAiBudgetStatus(actor.organizationId);
+    if (budgetStatus.overBudget) {
+      await alertIfOverBudget(actor.organizationId);
+      return NextResponse.json(
+        {
+          error: `AI budget exceeded for this month (${budgetStatus.usedTokensThisMonth.toLocaleString()} / ${budgetStatus.monthlyTokenLimit!.toLocaleString()} tokens used). Ask an admin to raise the budget, or wait until next month.`,
+        },
+        { status: 402 },
+      );
     }
   }
 

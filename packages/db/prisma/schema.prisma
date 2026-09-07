@@ -59,6 +59,7 @@ model Organization {
   assets        Asset[]
   notifications Notification[]
   connections   Connection[]
+  aiBudget      AiBudget?
 
   @@map("organizations")
 }
@@ -808,6 +809,24 @@ model AiEvalResult {
   passed    Boolean
 
   @@map("ai_eval_results")
+}
+
+// ---------------------------------------------------------------------------
+// AI Budget Governance (Section 33: "route tasks to the least expensive
+// model... budget enforcement"). One row per organization, created only
+// when an owner/admin explicitly sets a limit — no default limit is ever
+// fabricated, so an organization that never configures one has
+// unrestricted live Cedar Brain usage, exactly as before this existed.
+// See docs/specs/ai-budget-governance.md.
+model AiBudget {
+  id                String       @id @default(uuid())
+  organizationId    String       @unique
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  monthlyTokenLimit Int // total input+output tokens allowed per calendar month
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("ai_budgets")
 }
 
 // ---------------------------------------------------------------------------
