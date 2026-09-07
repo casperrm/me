@@ -11,6 +11,7 @@ const { getCurrentActor } = vi.hoisted(() => ({ getCurrentActor: vi.fn() }));
 vi.mock("@/lib/current-actor", () => ({ getCurrentActor }));
 
 import { prisma } from "@cedar/db";
+import { CEDAR_BRAIN_PROMPT_VERSION, SYSTEM_PROMPT_TEMPLATE } from "@/lib/cedar-brain";
 import { POST } from "./route";
 
 async function wipeDatabase() {
@@ -77,8 +78,17 @@ describe("POST /api/cedar-brain", () => {
     expect(body).toMatchObject({ mode: "stub", contextSources: [], cedarBrainRequestId: expect.any(String) });
 
     const stored = await prisma.cedarBrainRequest.findUnique({ where: { id: body.cedarBrainRequestId } });
-    expect(stored).toMatchObject({ organizationId: orgId, mode: "stub", success: true, promptVersion: "v3" });
+    expect(stored).toMatchObject({ organizationId: orgId, mode: "stub", success: true, promptVersion: "v4" });
     expect(stored!.latencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("captures a real prompt version snapshot with the actual template text (Section 33 registry)", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    await POST(request({ prompt: "Anything, just to make sure the route ran" }));
+
+    const snapshot = await prisma.cedarPromptSnapshot.findUnique({ where: { promptVersion: CEDAR_BRAIN_PROMPT_VERSION } });
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.template).toBe(SYSTEM_PROMPT_TEMPLATE);
   });
 
   it("returns 403 when scoped to a client the actor cannot read", async () => {

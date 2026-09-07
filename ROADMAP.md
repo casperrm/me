@@ -239,14 +239,35 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       the *blocker* the per-agent-fan-out decision cited, without
       itself reopening that decision — true per-agent specialization
       remains its own separate, not-yet-started slice.
-- [ ] AI Gateway, full prompt/model version registry, semantic/vector
-      retrieval, live-response evaluation scoring, true per-agent
-      specialization (a separate Anthropic call per routed agent, each
-      with its own specialist prompt) — not started. What *is* built:
-      real per-agent output structure within the existing single call
-      (`docs/specs/cedar-brain-per-agent-output.md`), and the budget
-      mechanism above that a future per-agent-fan-out slice would rely
-      on.
+- [x] Cedar Prompt Version Registry (Section 33) — the other item
+      ADR-007's "what this ADR will need to decide" list had named.
+      Rejected the obvious reading (an admin-editable live prompt) as a
+      real multi-tenancy bug: any org's admin editing a system-wide
+      shared prompt would silently change Cedar Brain's behavior for
+      every other organization on the deployment. Built instead: an
+      auto-captured, read-only `CedarPromptSnapshot` audit trail. The
+      static instructional text was extracted from `callCedarBrain`
+      into its own named `SYSTEM_PROMPT_TEMPLATE` export (a real prompt
+      content change, so `CEDAR_BRAIN_PROMPT_VERSION` bumped v3 → v4
+      per the file's own convention); `ensurePromptSnapshotRecorded`
+      captures the real text the first time each version is used
+      (idempotent — one DB round-trip per version per server process).
+      A new "Prompt version history" card on `/command/supervisor`
+      shows every captured version with its real text on expand.
+      Verified live against the seeded dev database with a direct-SQL
+      cross-check: sent a real request, confirmed a `v4` row existed
+      with the real template text, confirmed the page rendered it. See
+      `docs/specs/cedar-prompt-registry.md`.
+- [ ] AI Gateway, semantic/vector retrieval, live-response evaluation
+      scoring, true per-agent specialization (a separate Anthropic call
+      per routed agent, each with its own specialist prompt), a real
+      model catalog (Section 33's "route to the least expensive model")
+      — not started. What *is* built: real per-agent output structure
+      within the existing single call
+      (`docs/specs/cedar-brain-per-agent-output.md`), the budget
+      mechanism a future per-agent-fan-out slice would rely on
+      (`docs/specs/ai-budget-governance.md`), and the prompt version
+      registry above.
 
 ## Phase 4 — Integrations and Publishing: **starter slice exists**
 

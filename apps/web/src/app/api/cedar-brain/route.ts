@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@cedar/db";
 import { getCurrentActor } from "@/lib/current-actor";
-import { routeToAgents, callCedarBrain, CEDAR_BRAIN_PROMPT_VERSION } from "@/lib/cedar-brain";
+import { routeToAgents, callCedarBrain, CEDAR_BRAIN_PROMPT_VERSION, SYSTEM_PROMPT_TEMPLATE } from "@/lib/cedar-brain";
 import { buildGovernedContext } from "@/lib/services/context-retrieval-service";
 import { alertIfOverBudget, getAiBudgetStatus } from "@/lib/services/ai-budget-service";
+import { ensurePromptSnapshotRecorded } from "@/lib/services/prompt-registry-service";
 import { AuthError } from "@/lib/services/auth-service";
 
 export async function POST(req: Request) {
@@ -46,6 +47,15 @@ export async function POST(req: Request) {
         { status: 402 },
       );
     }
+  }
+
+  // Best-effort audit capture (Section 33 prompt registry) — never lets
+  // an auditing write break the actual Cedar Brain request. See
+  // docs/specs/cedar-prompt-registry.md.
+  try {
+    await ensurePromptSnapshotRecorded(CEDAR_BRAIN_PROMPT_VERSION, SYSTEM_PROMPT_TEMPLATE);
+  } catch {
+    // Non-critical — the request proceeds either way.
   }
 
   const agents = routeToAgents(prompt);

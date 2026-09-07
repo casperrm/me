@@ -830,6 +830,26 @@ model AiBudget {
 }
 
 // ---------------------------------------------------------------------------
+// Cedar Prompt Version Registry (Section 33) — an append-only, auto-
+// captured audit trail of what each CEDAR_BRAIN_PROMPT_VERSION label
+// actually said, not just the label itself. System-wide (no
+// organizationId): the prompt template is shared code, identical for
+// every organization, so this is a build-artifact-style audit log, not
+// tenant data — and deliberately read-only from the app (no API route
+// or UI writes it), since a mutable prompt editor any org's admin could
+// reach would let one organization silently change Cedar Brain's
+// behavior for every other organization. See
+// docs/specs/cedar-prompt-registry.md.
+model CedarPromptSnapshot {
+  id            String   @id @default(uuid())
+  promptVersion String   @unique
+  template      String
+  recordedAt    DateTime @default(now())
+
+  @@map("cedar_prompt_snapshots")
+}
+
+// ---------------------------------------------------------------------------
 // Notifications and Alerts (Section 30): "In-app notification center with
 // severity, category, client/resource, action, read/acknowledged state."
 // Written by packages/events' notifications.ts — the same append-then-read

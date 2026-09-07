@@ -17,6 +17,11 @@
   `docs/specs/ai-budget-governance.md`. This is the specific mechanism
   the per-agent-output update above cited as missing — it closes that
   blocker without itself reopening the per-agent-fan-out decision.
+- **Updated:** 2026-09-07 — added a real, auto-captured, read-only
+  prompt version registry (Section 33); see
+  `docs/specs/cedar-prompt-registry.md`. Deliberately NOT a
+  live-editable admin UI — see that doc for the multi-tenancy risk that
+  ruled it out.
 
 ## Context
 
@@ -34,11 +39,12 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   (`claude-sonnet-5`) with those agent names in the system prompt, or
   returns a deterministic stub if `ANTHROPIC_API_KEY` is unset. Every
   request is logged to `CedarBrainRequest` regardless of mode.
-- No prompt/model version registry, no *true* per-agent specialization
-  (separate calls with separate specialist prompts — see the per-agent
-  update below for what *is* built instead), no evaluation of the live
-  model call's actual output, no cost tracking beyond what's implicit
-  in the Anthropic API response.
+- No prompt/model version registry (see the registry update below for
+  what *is* built), no *true* per-agent specialization (separate calls
+  with separate specialist prompts — see the per-agent update below
+  for what *is* built instead), no evaluation of the live model call's
+  actual output, no cost tracking beyond what's implicit in the
+  Anthropic API response.
 - **Update:** every request (success or failure) now writes a
   `CedarBrainRequest` row with its real mode, model name, a manually-
   bumped prompt version constant, measured latency, success/error
@@ -82,13 +88,26 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   "cost-threshold alerting," previously flagged as missing in
   `ai-supervisor.md`). See `docs/specs/ai-budget-governance.md`. Still
   organization-level only, not per-user/workflow/provider — see below.
+- **Update:** `SYSTEM_PROMPT_TEMPLATE` (the static instructional part
+  of the system prompt) is now a real, named export, and
+  `ensurePromptSnapshotRecorded` auto-captures the actual text under
+  each `CEDAR_BRAIN_PROMPT_VERSION` label the first time it's used —
+  "trace a quality regression to a specific prompt revision" now means
+  reading the real historical text, on `/command/supervisor`, not just
+  a version string. Deliberately read-only: no route or UI lets any
+  organization's admin edit the live prompt, since that prompt is
+  shared across every organization on the deployment and a mutable
+  editor would let one org silently change behavior for all of them.
+  See `docs/specs/cedar-prompt-registry.md`. This is the other item the
+  section below had named as still needed — a *model* catalog/routing
+  policy is not part of it and remains open.
 
 ## What this ADR will need to decide when AI Foundation (Phase 3) is built
 
-- Model routing policy (Section 33: "route tasks to the least expensive
-  model that meets quality requirements").
-- Prompt/model version registry so `AIRequest`/`AgentRun` records (Section
-  3's domain model) can cite exactly what produced a given output.
+- Model routing policy and a real model catalog (Section 33: "route
+  tasks to the least expensive model that meets quality requirements")
+  — the prompt-version half of "prompt/model version registry" now
+  exists (see the update above); the model-catalog half does not.
 - Finer-grained budget enforcement (per-user/workflow/provider, not
   just per-organization — the organization-level mechanism now exists,
   see the update above).

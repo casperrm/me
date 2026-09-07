@@ -6,11 +6,14 @@
 // Command Center has a real, working end-to-end path to build on rather
 // than a mock.
 
-// Bumped manually whenever the system prompt below changes — the closest
-// thing to a real prompt version registry until Section 33's full one
-// exists (see ADR-007). Recorded on every CedarBrainRequest row so a
-// quality/cost regression can be traced to a specific prompt revision.
-export const CEDAR_BRAIN_PROMPT_VERSION = "v3";
+// Bumped manually whenever SYSTEM_PROMPT_TEMPLATE below changes. Recorded
+// on every CedarBrainRequest row, and — since this slice —
+// ensurePromptSnapshotRecorded() captures the actual template text under
+// this label the first time each version is used, so "trace a quality
+// regression to a specific prompt revision" (ADR-007) means reading the
+// real text, not just a version string (see
+// docs/specs/cedar-prompt-registry.md).
+export const CEDAR_BRAIN_PROMPT_VERSION = "v4";
 
 export type CedarAgent =
   | "marketing"
@@ -93,6 +96,38 @@ export function parsePerAgentSections(text: string, agents: CedarAgent[]): { age
   return results;
 }
 
+// The static instructional portion of the system prompt — everything
+// that does NOT vary per request (the routed agent list, the governed
+// context, and the per-agent section headers are interpolated in
+// buildSystemPrompt below). This is the actual text a prompt-version
+// registry snapshot records (see docs/specs/cedar-prompt-registry.md):
+// CEDAR_BRAIN_PROMPT_VERSION is only a label; this constant is what
+// that label actually refers to, captured verbatim so "trace a
+// quality regression to a specific prompt revision" (ADR-007) means
+// reading the real text that was used, not just a version string.
+export const SYSTEM_PROMPT_TEMPLATE = `You are Cedar Brain, the orchestration layer of Cedar Point OS, an AI-native
+operating system for a marketing agency. A request has already been routed to
+the specialist agents listed below.
+
+Respond with exactly one section per agent, in this format — a line starting
+with "### " followed by the agent's exact name from the list below, then that
+agent's concrete, specific contribution to the request (2-5 sentences, no
+generic filler, nothing outside these sections).
+
+If real governed-context data was retrieved for this request (Section 6.1),
+use it, don't contradict it, and don't invent facts beyond it.`;
+
+function buildSystemPrompt(agents: CedarAgent[], governedContext?: string): string {
+  const sectionTemplate = agents.map((a) => `### ${a}\n<${a}'s concrete contribution, 2-5 sentences>`).join("\n\n");
+  return `${SYSTEM_PROMPT_TEMPLATE}
+
+Agents routed for this request: ${agents.join(", ")}
+
+${sectionTemplate}${
+    governedContext ? `\n\nReal data retrieved for this request:\n${governedContext}` : ""
+  }`;
+}
+
 export async function callCedarBrain(prompt: string, agents: CedarAgent[], governedContext?: string) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -108,21 +143,7 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[], gover
     };
   }
 
-  const sectionTemplate = agents.map((a) => `### ${a}\n<${a}'s concrete contribution, 2-5 sentences>`).join("\n\n");
-  const systemPrompt = `You are Cedar Brain, the orchestration layer of Cedar Point OS, an AI-native
-operating system for a marketing agency. A request has already been routed to
-these specialist agents: ${agents.join(", ")}.
-
-Respond with exactly one section per agent, in this format — a line starting
-with "### " followed by the agent's exact name from the list above, then that
-agent's concrete, specific contribution to the request below (2-5 sentences,
-no generic filler, nothing outside these sections):
-
-${sectionTemplate}${
-    governedContext
-      ? `\n\nReal data retrieved for this request (Section 6.1 governed context — use it, don't contradict it, and don't invent facts beyond it):\n${governedContext}`
-      : ""
-  }`;
+  const systemPrompt = buildSystemPrompt(agents, governedContext);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

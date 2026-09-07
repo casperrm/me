@@ -5,6 +5,7 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { getAiSupervisorSummary } from "@/lib/services/ai-supervisor-service";
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
 import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
+import { getPromptSnapshots } from "@/lib/services/prompt-registry-service";
 import { RunEvalButton } from "./RunEvalButton";
 import { SetAiBudgetForm } from "./SetAiBudgetForm";
 
@@ -18,11 +19,12 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns, budgetStatus, canManageBudget] = await Promise.all([
+  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots] = await Promise.all([
     getAiSupervisorSummary(actor.organizationId),
     getRecentEvalRuns(),
     getAiBudgetStatus(actor.organizationId),
     isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
+    getPromptSnapshots(),
   ]);
   const latestEvalRun = evalRuns[0];
 
@@ -166,6 +168,30 @@ export default async function AiSupervisorPage() {
           <p className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-400">
             Only an owner or admin (organization:manage) can change this.
           </p>
+        )}
+      </Card>
+
+      <Card title="Prompt version history">
+        <p className="mb-3 text-xs text-neutral-500">
+          The real system prompt text behind each `promptVersion` label recorded on Cedar Brain requests — read-only,
+          auto-captured the first time each version is used (Section 33; see docs/specs/cedar-prompt-registry.md).
+        </p>
+        {promptSnapshots.length === 0 ? (
+          <p className="text-sm text-neutral-400">No prompt version has been used yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {promptSnapshots.map((snapshot) => (
+              <li key={snapshot.id}>
+                <details className="group rounded-lg border border-neutral-100 p-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between text-sm">
+                    <span className="font-medium">{snapshot.promptVersion}</span>
+                    <span className="text-xs text-neutral-400">{snapshot.recordedAt.toLocaleString()}</span>
+                  </summary>
+                  <pre className="mt-2 whitespace-pre-wrap text-xs text-neutral-600">{snapshot.template}</pre>
+                </details>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
     </div>
