@@ -49,7 +49,7 @@ the service that owns that rule. Confirmed against a real running
 server: `amountCents: 0` on both routes now correctly returns "Amount
 must be a positive number."
 
-## Routes covered — and why these four
+## Routes covered — and why these six
 
 - **`/api/expenses`** — the simplest representative case: session
   auth → 401, route-level input validation → 400, `AuthorizationError`
@@ -74,19 +74,32 @@ must be a positive number."
   governed-context `sources` list for a readable one — proving the
   AI Supervisor and governed-context-retrieval wiring both work at the
   actual HTTP layer, not just inside their own service-level tests.
+- **`/api/team/invite`** — the identity-lifecycle write that starts
+  every `invite-and-accept` E2E flow: 401/400/403 cases plus a real
+  `CLIENT_PORTAL`-with-no-client validation case (400, from the
+  service's own rule) and a real persisted `Invitation` row.
+- **`/api/creative-versions/[versionId]/request-approval` and
+  `.../decide`** — the two halves of Section 15.1's approval workflow
+  the `approval-workflow` E2E test drives through the UI; this is the
+  same lifecycle proven directly at the HTTP layer, including an
+  invalid-decision-value case rejected by the real service (not just a
+  route-level guess at valid values) and confirming the creative's
+  `status` column actually transitions (`PENDING_APPROVAL`, then
+  `APPROVED`) in the database, not just that the response was `200`.
 
 ## Scope boundary — stated explicitly
 
-**Not exhaustive.** There are roughly 35 API routes in this app; four
+**Not exhaustive.** There are roughly 35 API routes in this app; six
 were chosen to establish and prove the reusable pattern across the
 distinct contract shapes that actually exist (session-gated write,
 non-session HMAC-gated write, a route with real cross-cutting
-side-effects like AI telemetry and context retrieval). Extending
-coverage to the remaining routes is real, valuable, follow-up work —
-not claimed as done here. Idempotency is proven for the one route that
-actually has an idempotency mechanism (`/api/integrations/webhooks/[id]`);
-routes with no such mechanism aren't tested for it, since there's
-nothing there to test.
+side-effects like AI telemetry and context retrieval, and a
+multi-step real-world workflow). Extending coverage to the remaining
+routes is real, valuable, follow-up work — not claimed as done here.
+Idempotency is proven for the one route that actually has an
+idempotency mechanism (`/api/integrations/webhooks/[id]`); routes with
+no such mechanism aren't tested for it, since there's nothing there to
+test.
 
 ## Acceptance tests
 
@@ -94,6 +107,8 @@ nothing there to test.
 - `apps/web/src/app/api/invoices/route.contract.test.ts` — 4 tests.
 - `apps/web/src/app/api/integrations/webhooks/[id]/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/cedar-brain/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/team/invite/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/creative-versions/[versionId]/approval.route.contract.test.ts` — 7 tests.
 - Manual smoke test performed for this slice against the real running
   server: confirmed `amountCents: 0` on both `/api/expenses` and
   `/api/invoices` now correctly returns "Amount must be a positive

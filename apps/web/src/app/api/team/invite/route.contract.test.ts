@@ -1,0 +1,95 @@
+// API-contract test for POST /api/team/invite. See
+// apps/web/src/app/api/expenses/route.contract.test.ts for the pattern
+// this follows.
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+const { getCurrentActor } = vi.hoisted(() => ({ getCurrentActor: vi.fn() }));
+vi.mock("@/lib/current-actor", () => ({ getCurrentActor }));
+
+import { prisma } from "@cedar/db";
+import { POST } from "./route";
+
+async function wipeDatabase() {
+  await prisma.auditEvent.deleteMany();
+  await prisma.invitation.deleteMany();
+  await prisma.membership.deleteMany();
+  await prisma.client.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.organization.deleteMany();
+}
+
+let orgId: string;
+let ownerUserId: string;
+let designerUserId: string;
+
+beforeAll(async () => {
+  await wipeDatabase();
+  const org = await prisma.organization.create({ data: { name: "Invite Route Test Agency" } });
+  orgId = org.id;
+  const owner = await prisma.user.create({
+    data: { email: "invite-route-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
+  });
+  ownerUserId = owner.id;
+  await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });
+
+  const designer = await prisma.user.create({
+    data: { email: "invite-route-designer@test.example", name: "Designer", passwordHash: "irrelevant" },
+  });
+  designerUserId = designer.id;
+  await prisma.membership.create({ data: { organizationId: org.id, userId: designer.id, role: "DESIGNER", status: "ACTIVE" } });
+});
+
+afterAll(async () => {
+  await wipeDatabase();
+  await prisma.$disconnect();
+});
+
+function request(body: unknown) {
+  return new Request("http://localhost/api/team/invite", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /api/team/invite", () => {
+  it("returns 401 when no one is signed in", async () => {
+    getCurrentActor.mockResolvedValueOnce(null);
+    const res = await POST(request({ email: "new@test.example", role: "DESIGNER" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when email or role is missing", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ email: "new@test.example" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 403 for a member without members:invite", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: designerUserId }, organizationId: orgId });
+    const res = await POST(request({ email: "new@test.example", role: "DESIGNER" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body).toEqual({ error: expect.any(String) });
+  });
+
+  it("returns 400 with the real service's validation for a CLIENT_PORTAL invite with no client", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ email: "portal-contact@test.example", role: "CLIENT_PORTAL" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/client/i);
+  });
+
+  it("returns 200 with a real invite link and persists an Invitation row", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ email: "new-real@test.example", role: "DESIGNER" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.inviteLink).toMatch(/^\/invite\//);
+
+    const invitation = await prisma.invitation.findFirst({ where: { email: "new-real@test.example" } });
+    expect(invitation).toMatchObject({ organizationId: orgId, role: "DESIGNER" });
+  });
+});
