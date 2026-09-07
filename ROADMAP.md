@@ -574,9 +574,9 @@ SLOs.
   this work surfaced (fixed by building/starting, not `next dev`) —
   every flow originally named as a gap here now has coverage; what's
   left is depth (more permutations), not breadth.
-- **API-contract tests now exist for a representative set of route
-  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 93
-  tests across 21 routes, up from an initial 6) — the HTTP layer
+- **API-contract tests now exist for the large majority of route
+  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 147
+  tests across 36 of 40 routes, up from an initial 6) — the HTTP layer
   itself (auth gate, status codes, JSON envelope), not just the
   service functions underneath, which were already integration-tested.
   See `docs/specs/api-route-contracts.md` for exactly which routes and
@@ -594,10 +594,27 @@ SLOs.
   (the other no-session route, verified with a live end-to-end
   invite→accept smoke test), and `/api/search` (proving
   `getReadableClientIds` actually filters results for a scoped
-  collaborator, not just gates access). Not exhaustive — ~38 routes
-  exist, 21 are covered to prove the pattern across every distinct
-  contract shape found so far; extending it further is real follow-up
-  work, not claimed done.
+  collaborator, not just gates access). A fourth slice added the nine
+  `clients:write`-gated CRUD create routes (campaign, creative,
+  creative version, video brief, project, task, shoot, content item,
+  brand version) — surfacing a real pattern worth documenting: every
+  one of these services checks `requirePermission` *before* verifying
+  the parent id belongs to the caller's org, so a cross-org id from an
+  `OWNER` (whose role check never touches the database) is caught by
+  the second check and returns 400, not 403 — plus the three routes
+  that write to real file storage (`/api/clients/[id]/assets`,
+  `/api/assets/[id]` delete, `/api/assets/[id]/download`, reusing the
+  `process.cwd()`-monkeypatch trick from
+  `asset-service.integration.test.ts` to stay hermetic) and the one
+  `organization:manage`-gated pair
+  (`/api/integrations/connections`/`/revoke`, distinct from
+  `clients:write` everywhere else). Verified live end-to-end: created a
+  real project→campaign→creative→version chain, uploaded and confirmed
+  a real file on disk, created and revoked a real connection, all
+  cross-checked via SQL and fully cleaned up afterward. Four routes
+  remain genuinely uncovered — `/api/auth/bootstrap`,
+  `/api/cedar-brain/[id]/flag`, `/api/invoices/[id]/mark-paid`,
+  `/api/invoices/[id]/send` — real follow-up work, not claimed done.
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in

@@ -1,6 +1,7 @@
 # Module: API Route-Contract Tests
 
-Status: **Implemented (representative slice, extended twice)**. Closes
+Status: **Implemented (representative slice, extended three times)**.
+Closes
 the gap `ROADMAP.md`'s cross-cutting section had tracked: "API-contract
 tests for the route handlers themselves (auth headers, error
 envelopes, idempotency)."
@@ -166,17 +167,74 @@ rather than a flat allow/deny.
   query — the un-scoped client is confirmed absent from their results,
   not merely present in the org-wide reader's.
 
+## Extension slice 3: CRUD writes, file storage, connections
+
+The fourth slice covers the largest remaining single category:
+straightforward `clients:write`-gated create routes (campaign,
+creative, creative version, video brief, project, task, shoot, content
+item, brand version), plus the two contract shapes that hadn't been
+touched yet — a route that writes to real file storage, not just
+Postgres, and the `organization:manage`-gated pair (distinct from
+`clients:write` everywhere else in this app).
+
+- **Campaign/creative/task/project/shoot/content/brand create routes**
+  (9 routes) — all share one shape: 401 unauthenticated, 400 missing
+  required field, 403 for a `DESIGNER` without `clients:write`, 200
+  with a real persisted row, and a cross-tenant case. That cross-tenant
+  case surfaced a real pattern worth documenting: every one of these
+  services calls `requirePermission` *before* verifying the given
+  parent (client/project/campaign/creative) actually belongs to the
+  caller's organization — an `OWNER`'s role check short-circuits to
+  "can do anything" without touching the database, so it's the
+  *second* check (`assertClientInOrg`/`assertProjectInOrg`/
+  `assertCampaignInOrg`/`assertCreativeInOrg`) that actually catches a
+  cross-org id, and it throws `AuthError` → **400**, not
+  `AuthorizationError` → 403. Getting this wrong in a test (assuming
+  403) fails immediately against the real route, which is exactly what
+  this layer of test exists to catch.
+- **`POST /api/clients/[id]/assets`, `DELETE /api/assets/[id]`,
+  `GET /api/assets/[id]/download`** — the one contract shape where
+  correctness isn't just a database row: `uploadAsset`/`deleteAsset`
+  write to and delete from the real local filesystem storage adapter
+  (`lib/storage/local-adapter.ts`), not a mock. These three tests reuse
+  the `process.cwd()` monkeypatch + dynamic-`import("./route")` trick
+  `asset-service.integration.test.ts` established (the adapter computes
+  its root from `process.cwd()` at module-load time, so cwd has to be
+  patched *before* the route module — and everything it transitively
+  imports — is first loaded) to redirect all three routes at a
+  throwaway temp directory, so this test suite never touches the real
+  app's `.storage/`. The upload test confirms the uploaded bytes are
+  actually readable back off disk through the same adapter the
+  download route uses; the delete test confirms the file is actually
+  gone from disk, not just the database row; the download test drives
+  `verifyAssetToken`/`buildSignedDownloadPath` for real (missing token,
+  tampered token, a valid token signed for a *different* asset id,
+  a valid token that works, and a valid token for a since-deleted
+  asset) since this route is deliberately the one asset route with no
+  session check at all — its whole contract is the signed token.
+- **`POST /api/integrations/connections`,
+  `POST /api/integrations/connections/[id]/revoke`** — the one pair
+  gated on `organization:manage` rather than `clients:write` (every
+  other write route in this app is `clients:write`-gated), confirming
+  a `DESIGNER` who'd pass a `clients:write` check elsewhere is still
+  correctly rejected here. The create test confirms a real signing
+  secret and a real `Connection` row (`status: "CONNECTED"`, matching
+  the schema default — not "ACTIVE"); the revoke test confirms the row
+  actually flips to `"DISCONNECTED"` and rejects a connection from a
+  different organization.
+
 ## Scope boundary — stated explicitly
 
-**Still not exhaustive.** There are roughly 38 API routes in this app;
-21 now have contract tests (proving the pattern across session-gated
+**Still not exhaustive.** There are 40 API route handlers in this app;
+36 now have contract tests (proving the pattern across session-gated
 writes, non-session HMAC-gated writes, membership-owned-not-role-gated
 writes, state-machine transitions, the login route that creates the
 session itself, an in-session-but-self-referential MFA enrollment
-flow, and a filtering-not-gating read route). Extending coverage to
-the remaining ~17 routes (asset upload/download, campaign/creative/
-task/project CRUD, integrations/connections list and revoke) is real,
-valuable, follow-up work — not claimed as done here. Idempotency is
+flow, a filtering-not-gating read route, real file-storage writes, and
+the one `organization:manage`-gated pair). Four remain genuinely
+uncovered — `/api/auth/bootstrap`, `/api/cedar-brain/[id]/flag`,
+`/api/invoices/[id]/mark-paid`, `/api/invoices/[id]/send` — real,
+valuable, follow-up work, not claimed as done here. Idempotency is
 proven for the one route that actually has an idempotency mechanism
 (`/api/integrations/webhooks/[id]`); routes with no such mechanism
 aren't tested for it, since there's nothing there to test.
@@ -189,6 +247,7 @@ aren't tested for it, since there's nothing there to test.
 - `apps/web/src/app/api/cedar-brain/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/team/invite/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/creative-versions/[versionId]/approval.route.contract.test.ts` — 7 tests.
+- `apps/web/src/app/api/clients/[id]/assets/search/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/auth/login/route.contract.test.ts` — 4 tests.
 - `apps/web/src/app/api/notifications/[id]/read/route.contract.test.ts` — 3 tests.
 - `apps/web/src/app/api/notifications/[id]/acknowledge/route.contract.test.ts` — 3 tests.
@@ -201,6 +260,20 @@ aren't tested for it, since there's nothing there to test.
 - `apps/web/src/app/api/auth/mfa/disable/route.contract.test.ts` — 4 tests.
 - `apps/web/src/app/api/invite/[token]/accept/route.contract.test.ts` — 4 tests.
 - `apps/web/src/app/api/search/route.contract.test.ts` — 3 tests.
+- `apps/web/src/app/api/campaigns/[campaignId]/creatives/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/creatives/[creativeId]/versions/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/creatives/[creativeId]/video-brief/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/projects/[projectId]/campaigns/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/projects/[projectId]/tasks/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/clients/[id]/projects/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/clients/[id]/shoots/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/clients/[id]/content/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/clients/[id]/brand/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/clients/[id]/assets/route.contract.test.ts` — 6 tests.
+- `apps/web/src/app/api/assets/[id]/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/assets/[id]/download/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/integrations/connections/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/integrations/connections/[id]/revoke/route.contract.test.ts` — 4 tests.
 - Manual smoke test performed for the first slice against the real
   running server: confirmed `amountCents: 0` on both `/api/expenses`
   and `/api/invoices` now correctly returns "Amount must be a positive
@@ -227,3 +300,17 @@ aren't tested for it, since there's nothing there to test.
   deleted all of it (session, audit event, membership, invitation,
   user) and confirmed the dev database's user/membership counts were
   back at their pre-test values.
+- Manual smoke test performed for the fourth slice against a real
+  running production server: logged in as the seeded owner and drove a
+  full real chain through the live API — created a project on the
+  seeded client, a campaign on that project, a creative on that
+  campaign, and a second version on that creative; uploaded a real
+  file through `/api/clients/[id]/assets` (confirmed the bytes exist
+  on disk at the real `storageKey` afterward); created a real
+  connection through `/api/integrations/connections` and revoked it.
+  Cross-checked every row directly via `psql`, then deleted the file
+  from disk and every row from Postgres (including cascaded
+  `creative_versions`/`connection_events`/`audit_events`/
+  `client_timeline_events`) and confirmed the dev database's
+  project/campaign/creative/asset/connection counts were back at their
+  pre-test (seeded) values.
