@@ -778,6 +778,39 @@ model CedarBrainRequest {
 }
 
 // ---------------------------------------------------------------------------
+// AI Evaluation Harness (Section 6.3/33): a real, deterministic regression
+// suite for Cedar Brain's routing logic (routeToAgents in cedar-brain.ts).
+// Not organization-scoped — the routing logic is shared code, identical for
+// every organization, so a run's pass/fail is a system-level engineering
+// signal (like a build status), not tenant data. See
+// docs/specs/ai-eval-harness.md for what this does and does not cover.
+model AiEvalRun {
+  id          String         @id @default(uuid())
+  suite       String // e.g. "cedar-brain-routing"
+  totalCases  Int
+  passedCases Int
+  createdAt   DateTime       @default(now())
+
+  results AiEvalResult[]
+
+  @@index([suite, createdAt])
+  @@map("ai_eval_runs")
+}
+
+model AiEvalResult {
+  id        String    @id @default(uuid())
+  evalRunId String
+  evalRun   AiEvalRun @relation(fields: [evalRunId], references: [id])
+  caseName  String
+  input     String
+  expected  String // JSON
+  actual    String // JSON
+  passed    Boolean
+
+  @@map("ai_eval_results")
+}
+
+// ---------------------------------------------------------------------------
 // Notifications and Alerts (Section 30): "In-app notification center with
 // severity, category, client/resource, action, read/acknowledged state."
 // Written by packages/events' notifications.ts — the same append-then-read

@@ -4,6 +4,10 @@
 - **Date:** 2026-09-06
 - **Updated:** 2026-09-06 — added real AI Supervisor telemetry (Section
   6.3); see `docs/specs/ai-supervisor.md`.
+- **Updated:** 2026-09-07 — added a real evaluation harness for
+  `routeToAgents()` (Section 6.3/33); see
+  `docs/specs/ai-eval-harness.md`. Still no evaluation of the live
+  model call's actual output — see that doc for why.
 
 ## Context
 
@@ -22,8 +26,8 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   returns a deterministic stub if `ANTHROPIC_API_KEY` is unset. Every
   request is logged to `CedarBrainRequest` regardless of mode.
 - No prompt/model version registry, no per-agent specialization, no
-  evaluation harness, no cost tracking beyond what's implicit in the
-  Anthropic API response.
+  evaluation of the live model call's actual output, no cost tracking
+  beyond what's implicit in the Anthropic API response.
 - **Update:** every request (success or failure) now writes a
   `CedarBrainRequest` row with its real mode, model name, a manually-
   bumped prompt version constant, measured latency, success/error
@@ -34,8 +38,20 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   totals, recent failures, and responses a user has flagged incorrect
   (Section 6.3's "user corrections" signal). See
   `docs/specs/ai-supervisor.md` for the exact scope boundary — this is
-  real telemetry over real calls, not the evaluation harness, prompt
-  registry, or cost-threshold alerting Section 33 still asks for.
+  real telemetry over real calls, not the prompt registry or
+  cost-threshold alerting Section 33 still asks for.
+- **Update:** `routeToAgents()` — the one fully deterministic part of
+  Cedar Brain — now has a real evaluation harness: a 10-case golden
+  set, run on demand from `/command/supervisor`, persisted as
+  `AiEvalRun`/`AiEvalResult` rows. Verifying the golden set against
+  real output (rather than hand-deriving expectations from the same
+  code being tested) found and fixed a real bug: `routeToAgents` used
+  substring matching, so `"ad"` matched inside `"already"`/
+  `"administrator"` and `"script"` matched inside `"description"` —
+  fixed with word-boundary regex matching. See
+  `docs/specs/ai-eval-harness.md`. The live model call's actual output
+  is still not evaluated — that needs a rubric-based LLM-judge harness,
+  a materially bigger and separately-scoped undertaking.
 
 ## What this ADR will need to decide when AI Foundation (Phase 3) is built
 

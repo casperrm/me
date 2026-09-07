@@ -177,14 +177,34 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       user-flagged-incorrect responses (a real "Flag as incorrect"
       button on the Command Center, satisfying Section 6.3's "user
       corrections" signal). Explicit scope boundary in
-      `docs/specs/ai-supervisor.md`: no evaluation score (no eval
-      harness exists), no retry/tool-failure counts (no retry logic or
-      tool-calling exists to count), no cost-threshold alerting yet —
-      token counts stand in for "cost" rather than a computed dollar
-      figure that would need a hardcoded, staleness-prone price.
+      `docs/specs/ai-supervisor.md`: no retry/tool-failure counts (no
+      retry logic or tool-calling exists to count), no cost-threshold
+      alerting yet — token counts stand in for "cost" rather than a
+      computed dollar figure that would need a hardcoded,
+      staleness-prone price.
+- [x] AI Evaluation Harness (Section 6.3/33) — a real, deterministic
+      regression suite for Cedar Brain's routing logic
+      (`routeToAgents`), the one fully-deterministic, non-flaky part of
+      Cedar Brain's orchestration (evaluating the live model call's
+      actual output would need a rubric-based LLM-judge harness — a
+      materially bigger, separately-scoped undertaking, explicitly
+      deferred, not silently skipped). A 10-case golden set, run on
+      demand from `/command/supervisor` ("Run eval now"), persisted as
+      `AiEvalRun`/`AiEvalResult` rows. Building the golden set —
+      verifying every case against real output before trusting it,
+      rather than hand-deriving expectations from the same code being
+      tested — found and fixed a real bug: `routeToAgents` used plain
+      substring matching, so `"script"` matched inside
+      `"de-SCRIPT-ion"` and `"ad"` matched inside `"already"`/
+      `"administrator"`, both common words in real agency request text.
+      Fixed with word-boundary regex matching. See
+      `docs/specs/ai-eval-harness.md` for the full "why routing, not
+      live-response quality" reasoning and what's explicitly deferred
+      (a live-response LLM-judge harness; scheduled/CI-triggered runs —
+      today it's on-demand only).
 - [ ] AI Gateway, full prompt/model version registry, semantic/vector
-      retrieval, per-agent specialization, evaluation harness — not
-      started.
+      retrieval, per-agent specialization, live-response evaluation
+      scoring — not started.
 
 ## Phase 4 — Integrations and Publishing: **starter slice exists**
 

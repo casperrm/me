@@ -29,10 +29,28 @@ const AGENT_KEYWORDS: Record<CedarAgent, string[]> = {
   quality_control: ["review", "check", "qc", "quality", "proofread"],
 };
 
+// "localiz" is a deliberate stem (matches localize/localization/localizing)
+// — every other keyword is a complete word or phrase and gets matched on a
+// word boundary at both ends, so it can't fire as a mid-word substring (a
+// real bug the AI Evaluation Harness caught: plain .includes() matching
+// meant "script" matched inside "de-SCRIPT-ion" and "ad" matched inside
+// "already"/"administrator" — see docs/specs/ai-eval-harness.md).
+const PREFIX_KEYWORDS = new Set(["localiz"]);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesKeyword(lowerPrompt: string, keyword: string): boolean {
+  const trailingBoundary = PREFIX_KEYWORDS.has(keyword) ? "" : "\\b";
+  const pattern = new RegExp(`\\b${escapeRegExp(keyword)}${trailingBoundary}`);
+  return pattern.test(lowerPrompt);
+}
+
 export function routeToAgents(prompt: string): CedarAgent[] {
   const lower = prompt.toLowerCase();
   const matched = (Object.keys(AGENT_KEYWORDS) as CedarAgent[]).filter((agent) =>
-    AGENT_KEYWORDS[agent].some((kw) => lower.includes(kw)),
+    AGENT_KEYWORDS[agent].some((kw) => matchesKeyword(lower, kw)),
   );
   // Every request that reaches Cedar Brain should at least touch marketing
   // strategy and get a QC pass before it's considered "done" (Section 23).
