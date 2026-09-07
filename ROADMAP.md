@@ -152,8 +152,23 @@ Deliverable: brief-to-client-approval lifecycle is operational.
 - [x] Cedar Command Center UI + a naive keyword-based agent router +
       direct Anthropic API call (or deterministic stub) — see ADR-007 for
       exactly how far this is from the Bible's full orchestration
-      lifecycle (no evaluation, no cost governance beyond what AI
-      Supervisor now tracks, no per-agent specialization).
+      lifecycle (no evaluation of the live model call's actual output,
+      no cost governance beyond what AI Supervisor now tracks).
+- [x] Cedar Brain per-agent output breakdown (Section 4/6.1) — the
+      Command Center's response always carried a `plan[]` array (one
+      entry per routed agent), but live mode set every entry's output
+      to `null` and the UI never rendered `plan[]` at all. Fixed with
+      one Anthropic call per request (unchanged — see below for why not
+      one call per agent) whose system prompt now asks for labeled
+      per-agent sections, parsed into real `plan[]` entries; the
+      Command Center UI now renders that breakdown. A real
+      per-agent-specialization design (separate API calls per agent,
+      each with a specialist prompt) was considered and explicitly
+      rejected for now: Section 33's budget/cost-governance mechanism
+      doesn't exist yet, so multiplying real API spend per request with
+      no safety net would be introducing financial risk the Bible says
+      needs governance first, not silently accepted. See
+      `docs/specs/cedar-brain-per-agent-output.md`.
 - [x] Governed context retrieval (Section 6.1) — Command Center's client
       picker (scoped to what the actor can read) triggers a real
       structured-query retrieval (`buildGovernedContext`) of that
@@ -203,8 +218,14 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       (a live-response LLM-judge harness; scheduled/CI-triggered runs —
       today it's on-demand only).
 - [ ] AI Gateway, full prompt/model version registry, semantic/vector
-      retrieval, per-agent specialization, live-response evaluation
-      scoring — not started.
+      retrieval, live-response evaluation scoring — not started. True
+      per-agent specialization (a separate Anthropic call per routed
+      agent, each with its own specialist prompt) is also not started —
+      deliberately gated on Section 33's budget/cost-governance
+      mechanism existing first, since it would multiply real API spend
+      per request with no safety net (see
+      `docs/specs/cedar-brain-per-agent-output.md`). What *is* built:
+      real per-agent output structure within the existing single call.
 
 ## Phase 4 — Integrations and Publishing: **starter slice exists**
 

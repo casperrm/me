@@ -5,7 +5,7 @@
 // substring matching meant "script" matched inside "description" and
 // "ad" matched inside "already"/"administrator".
 import { describe, expect, it } from "vitest";
-import { routeToAgents } from "./cedar-brain";
+import { parsePerAgentSections, routeToAgents } from "./cedar-brain";
 
 describe("routeToAgents — word-boundary matching (regression for the substring bug)", () => {
   it("does not match 'script' inside 'description'", () => {
@@ -52,5 +52,41 @@ describe("routeToAgents — word-boundary matching (regression for the substring
   it("matches multiple agents for a genuinely multi-domain prompt", () => {
     const agents = routeToAgents("We need a storyboard for the video and a matching banner design.");
     expect(agents).toEqual(expect.arrayContaining(["video", "design", "quality_control"]));
+  });
+});
+
+describe("parsePerAgentSections — real per-agent output breakdown (no extra API calls)", () => {
+  it("splits a well-formed response into one entry per agent", () => {
+    const text = "### marketing\nUse a bold hook.\n\n### quality_control\nCheck brand voice compliance.";
+    const result = parsePerAgentSections(text, ["marketing", "quality_control"]);
+    expect(result).toEqual([
+      { agent: "marketing", output: "Use a bold hook." },
+      { agent: "quality_control", output: "Check brand voice compliance." },
+    ]);
+  });
+
+  it("returns null when the model didn't follow the section format at all", () => {
+    const text = "Here's a plan: do the marketing thing and then the QC thing.";
+    expect(parsePerAgentSections(text, ["marketing", "quality_control"])).toBeNull();
+  });
+
+  it("returns null when a routed agent is missing its section (partial parse is untrustworthy)", () => {
+    const text = "### marketing\nUse a bold hook.";
+    expect(parsePerAgentSections(text, ["marketing", "quality_control"])).toBeNull();
+  });
+
+  it("ignores a section for an agent that wasn't actually routed", () => {
+    const text = "### marketing\nUse a bold hook.\n\n### video\nShould not appear — video wasn't routed.";
+    const result = parsePerAgentSections(text, ["marketing"]);
+    expect(result).toEqual([{ agent: "marketing", output: "Use a bold hook." }]);
+  });
+
+  it("handles sections in any order", () => {
+    const text = "### quality_control\nLooks fine.\n\n### marketing\nUse a bold hook.";
+    const result = parsePerAgentSections(text, ["marketing", "quality_control"]);
+    expect(result).toEqual([
+      { agent: "quality_control", output: "Looks fine." },
+      { agent: "marketing", output: "Use a bold hook." },
+    ]);
   });
 });

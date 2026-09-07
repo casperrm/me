@@ -8,6 +8,10 @@
   `routeToAgents()` (Section 6.3/33); see
   `docs/specs/ai-eval-harness.md`. Still no evaluation of the live
   model call's actual output — see that doc for why.
+- **Updated:** 2026-09-07 — added real per-agent output structure
+  within the existing single API call (Section 4/6.1); see
+  `docs/specs/cedar-brain-per-agent-output.md`. Deliberately did NOT
+  move to one API call per agent — see that doc for why.
 
 ## Context
 
@@ -25,9 +29,11 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   (`claude-sonnet-5`) with those agent names in the system prompt, or
   returns a deterministic stub if `ANTHROPIC_API_KEY` is unset. Every
   request is logged to `CedarBrainRequest` regardless of mode.
-- No prompt/model version registry, no per-agent specialization, no
-  evaluation of the live model call's actual output, no cost tracking
-  beyond what's implicit in the Anthropic API response.
+- No prompt/model version registry, no *true* per-agent specialization
+  (separate calls with separate specialist prompts — see the per-agent
+  update below for what *is* built instead), no evaluation of the live
+  model call's actual output, no cost tracking beyond what's implicit
+  in the Anthropic API response.
 - **Update:** every request (success or failure) now writes a
   `CedarBrainRequest` row with its real mode, model name, a manually-
   bumped prompt version constant, measured latency, success/error
@@ -52,6 +58,17 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   `docs/specs/ai-eval-harness.md`. The live model call's actual output
   is still not evaluated — that needs a rubric-based LLM-judge harness,
   a materially bigger and separately-scoped undertaking.
+- **Update:** `callCedarBrain()`'s single API call now asks the model
+  to structure its own response into labeled per-agent sections, parsed
+  into real `plan[]` entries the Command Center UI renders (previously
+  `plan[].output` was always `null` in live mode, and the UI never
+  rendered `plan[]` at all — real structure that existed in the data
+  model was silently thrown away at both ends). A true per-agent
+  fan-out (one API call per routed agent, each with a specialist
+  prompt) was considered and explicitly rejected: it would multiply
+  real API spend per request, and the budget/cost-governance mechanism
+  below doesn't exist yet, so there's no safety net for that spend.
+  See `docs/specs/cedar-brain-per-agent-output.md`.
 
 ## What this ADR will need to decide when AI Foundation (Phase 3) is built
 

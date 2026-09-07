@@ -10,7 +10,7 @@
 // thing to a real prompt version registry until Section 33's full one
 // exists (see ADR-007). Recorded on every CedarBrainRequest row so a
 // quality/cost regression can be traced to a specific prompt revision.
-export const CEDAR_BRAIN_PROMPT_VERSION = "v2";
+export const CEDAR_BRAIN_PROMPT_VERSION = "v3";
 
 export type CedarAgent =
   | "marketing"
@@ -59,6 +59,40 @@ export function routeToAgents(prompt: string): CedarAgent[] {
   return matched;
 }
 
+// Live mode makes exactly ONE Anthropic call per request (not one per
+// routed agent) — Section 33's budget/cost-governance mechanism doesn't
+// exist yet (see ADR-007's "what this ADR will need to decide"), so
+// multiplying real API spend per request with no cost safety net would
+// introduce financial risk the Bible itself says needs governance first.
+// Instead the single call is asked to structure its own response into
+// per-agent sections, which parsePerAgentSections then splits into a
+// real plan[] entry per agent — genuine per-agent output, zero
+// additional API cost. See docs/specs/cedar-brain-per-agent-output.md.
+export function parsePerAgentSections(text: string, agents: CedarAgent[]): { agent: CedarAgent; output: string }[] | null {
+  const headerPattern = /^###\s*(\S+)\s*$/gm;
+  const headers = [...text.matchAll(headerPattern)];
+  if (headers.length === 0) return null;
+
+  const results: { agent: CedarAgent; output: string }[] = [];
+  for (let i = 0; i < headers.length; i++) {
+    const match = headers[i];
+    const agentName = match[1];
+    const sectionStart = match.index! + match[0].length;
+    const sectionEnd = i + 1 < headers.length ? headers[i + 1].index! : text.length;
+    const output = text.slice(sectionStart, sectionEnd).trim();
+    if ((agents as string[]).includes(agentName) && output) {
+      results.push({ agent: agentName as CedarAgent, output });
+    }
+  }
+
+  // Only trust the structured parse if every routed agent got a real
+  // section — a partial parse would silently drop real model output
+  // rather than falling back to showing it as the raw summary.
+  const foundAgents = new Set(results.map((r) => r.agent));
+  if (!agents.every((a) => foundAgents.has(a))) return null;
+  return results;
+}
+
 export async function callCedarBrain(prompt: string, agents: CedarAgent[], governedContext?: string) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -74,12 +108,17 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[], gover
     };
   }
 
+  const sectionTemplate = agents.map((a) => `### ${a}\n<${a}'s concrete contribution, 2-5 sentences>`).join("\n\n");
   const systemPrompt = `You are Cedar Brain, the orchestration layer of Cedar Point OS, an AI-native
 operating system for a marketing agency. A request has already been routed to
-these specialist agents: ${agents.join(", ")}. Respond with what each of those
-agents would produce for the request below, combined into one clear,
-actionable plan a human can approve or edit. Be concrete and specific to the
-request, not generic marketing filler.${
+these specialist agents: ${agents.join(", ")}.
+
+Respond with exactly one section per agent, in this format — a line starting
+with "### " followed by the agent's exact name from the list above, then that
+agent's concrete, specific contribution to the request below (2-5 sentences,
+no generic filler, nothing outside these sections):
+
+${sectionTemplate}${
     governedContext
       ? `\n\nReal data retrieved for this request (Section 6.1 governed context — use it, don't contradict it, and don't invent facts beyond it):\n${governedContext}`
       : ""
@@ -107,11 +146,12 @@ request, not generic marketing filler.${
 
   const data = await res.json();
   const text = data.content?.map((block: { text?: string }) => block.text ?? "").join("\n") ?? "";
+  const parsedPlan = parsePerAgentSections(text, agents);
 
   return {
     mode: "live" as const,
     summary: text,
-    plan: agents.map((agent) => ({ agent, output: null })),
+    plan: parsedPlan ?? agents.map((agent) => ({ agent, output: null })),
     usage: data.usage
       ? { inputTokens: data.usage.input_tokens as number, outputTokens: data.usage.output_tokens as number }
       : null,

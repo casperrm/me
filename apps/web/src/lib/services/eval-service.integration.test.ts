@@ -42,7 +42,7 @@ describe("runRoutingEval", () => {
     // is computed correctly and not just always true.
     const { routeToAgents } = await import("../cedar-brain");
     const actual = routeToAgents("Can you review this caption for typos?");
-    const wrongExpectation = ["video"]; // this prompt should NOT route to video
+    const wrongExpectation: (typeof actual)[number][] = ["video"]; // this prompt should NOT route to video
     const passed = actual.length === wrongExpectation.length && wrongExpectation.every((a) => actual.includes(a));
     expect(passed).toBe(false);
   });

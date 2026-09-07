@@ -116,7 +116,22 @@ export function CommandCenterForm({ clients }: { clients: { id: string; name: st
               Governed context retrieved (Section 6.1): {result.contextSources.join("; ")}.
             </p>
           )}
-          <p className="whitespace-pre-wrap text-sm">{result.summary}</p>
+          {result.plan.some((p) => p.output) ? (
+            <div className="space-y-3">
+              {result.plan
+                .filter((p) => p.output)
+                .map((p) => (
+                  <div key={p.agent}>
+                    <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                      {p.agent.replace("_", " ")}
+                    </h4>
+                    <p className="whitespace-pre-wrap text-sm">{p.output}</p>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap text-sm">{result.summary}</p>
+          )}
           <div className="mt-3 border-t border-neutral-100 pt-3">
             {flagged ? (
               <span className="text-xs text-neutral-500">Flagged as incorrect — thanks for the correction.</span>
