@@ -157,6 +157,20 @@ export async function setTaskStatus(params: {
     clientId: task.project.clientId,
   });
 
+  // A task can't be marked done while it still has an incomplete blocker
+  // — see the `TaskDependency` schema comment for the scope boundary
+  // (no cycle detection, no critical-path engine, just this one rule).
+  if (params.status === "done") {
+    const openBlockers = await prisma.taskDependency.findMany({
+      where: { taskId: task.id, blockedByTask: { status: { not: "done" } } },
+      include: { blockedByTask: true },
+    });
+    if (openBlockers.length > 0) {
+      const names = openBlockers.map((dep) => dep.blockedByTask.title).join(", ");
+      throw new AuthError(`Cannot complete this task while blocked by an incomplete task: ${names}`);
+    }
+  }
+
   const updated = await prisma.task.update({ where: { id: task.id }, data: { status: params.status } });
 
   await emitAuditEvent({
@@ -508,6 +522,107 @@ export async function toggleMilestone(params: { actorUserId: string; organizatio
   });
 
   return updated;
+}
+
+/**
+ * Section 12's "task dependencies" — the smallest real cut: a task can
+ * declare it is blocked by another task in the same project. See the
+ * `TaskDependency` schema comment for the scope boundary (no dependency
+ * graph/critical-path engine, no cycle detection beyond the checks below).
+ */
+export async function addTaskDependency(params: {
+  actorUserId: string;
+  organizationId: string;
+  taskId: string;
+  blockedByTaskId: string;
+}) {
+  const task = await assertTaskInOrg(params.taskId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: task.project.clientId,
+  });
+
+  if (params.taskId === params.blockedByTaskId) {
+    throw new AuthError("A task cannot be blocked by itself.");
+  }
+
+  const blocker = await assertTaskInOrg(params.blockedByTaskId, params.organizationId);
+  if (blocker.projectId !== task.projectId) {
+    throw new AuthError("A task can only be blocked by another task in the same project.");
+  }
+
+  const existing = await prisma.taskDependency.findUnique({
+    where: { taskId_blockedByTaskId: { taskId: task.id, blockedByTaskId: blocker.id } },
+  });
+  if (existing) throw new AuthError("This dependency already exists.");
+
+  // Reject the direct reverse pair too (A blocked by B, B blocked by A) —
+  // a cheap guard against the most obviously broken case without doing
+  // full graph cycle detection for longer chains.
+  const reverse = await prisma.taskDependency.findUnique({
+    where: { taskId_blockedByTaskId: { taskId: blocker.id, blockedByTaskId: task.id } },
+  });
+  if (reverse) throw new AuthError("These two tasks already block each other in the opposite direction.");
+
+  const dependency = await prisma.taskDependency.create({
+    data: { taskId: task.id, blockedByTaskId: blocker.id },
+    include: { blockedByTask: true },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task_dependency.created",
+    resourceType: "TaskDependency",
+    resourceId: dependency.id,
+    clientId: task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { taskId: task.id, blockedByTaskId: blocker.id },
+  });
+
+  return dependency;
+}
+
+async function assertTaskDependencyInOrg(dependencyId: string, organizationId: string) {
+  const dependency = await prisma.taskDependency.findUnique({
+    where: { id: dependencyId },
+    include: { task: { include: { project: { include: { client: true } } } }, blockedByTask: true },
+  });
+  if (!dependency || dependency.task.project.client.organizationId !== organizationId) {
+    throw new AuthError("Task dependency not found.");
+  }
+  return dependency;
+}
+
+export async function removeTaskDependency(params: {
+  actorUserId: string;
+  organizationId: string;
+  dependencyId: string;
+}) {
+  const dependency = await assertTaskDependencyInOrg(params.dependencyId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: dependency.task.project.clientId,
+  });
+
+  await prisma.taskDependency.delete({ where: { id: dependency.id } });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task_dependency.deleted",
+    resourceType: "TaskDependency",
+    resourceId: dependency.id,
+    clientId: dependency.task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { taskId: dependency.taskId, blockedByTaskId: dependency.blockedByTaskId },
+  });
 }
 
 export async function deleteMilestone(params: { actorUserId: string; organizationId: string; milestoneId: string }) {

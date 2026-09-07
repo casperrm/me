@@ -421,8 +421,8 @@ model Project {
 // markable done, with "overdue" computed as `!done && dueDate < now`
 // rather than stored (a stored status would drift the moment "now"
 // moves past `dueDate` without a write happening). No dependency graph
-// between milestones — see docs/specs/projects-and-calendar.md for the
-// scope boundary (task_dependencies is a separate, still-open gap).
+// between milestones — only tasks can declare a `TaskDependency` — see
+// docs/specs/projects-and-calendar.md for the scope boundary.
 model Milestone {
   id        String   @id @default(uuid())
   projectId String
@@ -452,8 +452,32 @@ model Task {
   checklistItems TaskChecklistItem[]
   comments       TaskComment[]
   attachments    Asset[]
+  blockedBy      TaskDependency[] @relation("TaskBlockedBy")
+  blocking       TaskDependency[] @relation("TaskBlocks")
 
   @@map("tasks")
+}
+
+// Section 12's "task dependencies" — the smallest real cut: a task can
+// declare it is blocked by another task in the same project. Surfaced as
+// a "Blocked by: X" indicator, and enforced as a hard rule (not just a
+// warning) in `setTaskStatus`: a task cannot transition to "done" while
+// any of its blockers is not yet "done". No dependency graph/critical-path
+// engine, no cycle detection beyond rejecting a direct self-reference or
+// duplicate pair — see docs/specs/projects-and-calendar.md for the scope
+// boundary.
+model TaskDependency {
+  id              String   @id @default(uuid())
+  taskId          String
+  task            Task     @relation("TaskBlockedBy", fields: [taskId], references: [id])
+  blockedByTaskId String
+  blockedByTask   Task     @relation("TaskBlocks", fields: [blockedByTaskId], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@unique([taskId, blockedByTaskId])
+  @@index([taskId])
+  @@index([blockedByTaskId])
+  @@map("task_dependencies")
 }
 
 // Section 12's "task... checklist" — the smallest real cut of that gap:

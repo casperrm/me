@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended six times)**.
+Status: **Partially implemented (Phase 1 slice, extended seven times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -11,16 +11,19 @@ across modules, so nothing is tracked in a separate spreadsheet.
 
 ## What's not built yet
 
-Section 12 also calls for **task dependencies** and **reusable project
-templates** — neither exists. `Task` checklist, priority, estimate,
-comments, and attachments are now real, and `Project` now has
-`Milestone`s with an overdue signal (see below). There is still no
-dependency graph between tasks or milestones — a milestone can't declare
-"blocked by" another milestone or task, so nothing here computes project
-*risk* beyond a simple overdue flag per milestone. This is a deliberate
-scope cut, not an oversight — add a `TaskDependency`/blocking-edge model
-when a real need for dependency tracking or templates shows up, rather
-than modeling it speculatively now.
+Section 12 also calls for **reusable project templates** — that still
+doesn't exist. `Task` checklist, priority, estimate, comments, and
+attachments are now real; `Project` has `Milestone`s with an overdue
+signal; and a `Task` can now declare it's `TaskDependency`-blocked by
+another task in the same project (see below). This is the smallest real
+cut of "dependencies," not the full thing: there is no dependency graph
+between milestones, no multi-hop cycle detection (only a direct
+self-reference or direct reverse pair is rejected — see Failure modes),
+and no critical-path/project-risk computation beyond the one hard rule
+(a task can't complete while blocked) plus the existing per-milestone
+overdue flag. This is a deliberate scope cut, not an oversight — build a
+real graph-traversal layer (and a project-level risk score) when a real
+need shows up, rather than modeling it speculatively now.
 
 ## Entities
 
@@ -31,6 +34,7 @@ than modeling it speculatively now.
 | `TaskChecklistItem` | `@cedar/db` | Belongs to a `Task`. Flat, ordered (`position`, append-only — no reordering support), independently checkable (`done`). No nesting, no per-item assignee/due date. |
 | `TaskComment` | `@cedar/db` | Belongs to a `Task`, attributed to the `Membership` that wrote it. Flat, append-only — no edit, no delete, no threading. |
 | `Milestone` | `@cedar/db` | Belongs to a `Project`. A required `dueDate`, independently markable `done`. No dependency graph between milestones or tasks. |
+| `TaskDependency` | `@cedar/db` | A directed edge: `taskId` is blocked by `blockedByTaskId`, both `Task`s in the same project. `@@unique([taskId, blockedByTaskId])` prevents a duplicate edge; the direct reverse pair is rejected in the service layer (see Failure modes), not the schema. |
 
 A milestone's "overdue" state is **computed**, not stored:
 `!done && dueDate < now`. A stored status would drift the instant "now"
@@ -58,12 +62,12 @@ rather than a calendar being its own data store.
 - Read: `clients:read` on the project's/task's owning client.
 - Write (create project, create task, change task status/priority/
   estimate, add/toggle/delete a checklist item, add a comment, upload/
-  delete an attachment, create/toggle/delete a milestone):
-  `clients:write` on the owning client. There is no separate "task-level"
-  or "project-level" permission — anyone who can write to the client can
-  manage all of its projects/tasks/checklist items/comments/attachments/
-  milestones. Revisit if a role ever needs write access to tasks but
-  not, say, Brand DNA.
+  delete an attachment, create/toggle/delete a milestone, add/remove a
+  task dependency): `clients:write` on the owning client. There is no
+  separate "task-level" or "project-level" permission — anyone who can
+  write to the client can manage all of its projects/tasks/checklist
+  items/comments/attachments/milestones/dependencies. Revisit if a role
+  ever needs write access to tasks but not, say, Brand DNA.
 
 ## Events
 
@@ -73,11 +77,12 @@ rather than a calendar being its own data store.
 `task_checklist_item.deleted`, `task_comment.created`,
 `task_attachment.uploaded`, plus the existing `asset.deleted` for a
 removed attachment, `milestone.created`, `milestone.toggled`,
-`milestone.deleted` (audit), plus a `project_created`
+`milestone.deleted`, `task_dependency.created`,
+`task_dependency.deleted` (audit), plus a `project_created`
 `ClientTimelineEvent` (checklist items, priority/estimate changes,
-comments, attachments, and milestone changes are routine project
-bookkeeping, not client-facing activity, so they don't get a timeline
-event the way task completion does).
+comments, attachments, milestone changes, and dependency changes are
+routine project bookkeeping, not client-facing activity, so they don't
+get a timeline event the way task completion does).
 
 ## APIs / entry points
 
@@ -115,6 +120,17 @@ event the way task completion does).
   the current value is read and inverted server-side (same pattern as
   the checklist-item toggle route).
 - `DELETE /api/milestones/[id]` — remove a milestone.
+- `POST /api/tasks/[taskId]/dependencies` — declare that this task is
+  blocked by another task (`blockedByTaskId`), both required to be in
+  the same project.
+- `DELETE /api/task-dependencies/[id]` — remove a dependency edge,
+  unblocking the dependent task immediately.
+- `setTaskStatus` (the same function backing `setTaskStatusAction`) now
+  enforces one hard rule: a task cannot transition to `"done"` while
+  any of its `TaskDependency` blockers is not itself `"done"` — this is
+  not a separate endpoint, it's a new check inside the existing status
+  change path, so every status-change caller (UI dropdown, any future
+  API caller) gets it automatically.
 
 ## UI
 
@@ -146,7 +162,20 @@ event the way task completion does).
   collapsed pattern, each line a download link (a signed, time-limited
   URL, same mechanism as the client Files page) plus size, uploader
   name, and (for writers) a "Remove" button, with a compact file-picker
-  and "Attach" button beneath.
+  and "Attach" button beneath. Below the header row, dependencies:
+  "Blocked by: X" pills (amber while the blocker is incomplete, grey
+  once it's done) with a "✕" to remove one for writers, plus a compact
+  "+ Blocked by…" `<select>` of the project's other tasks (already
+  excluding itself and tasks it's already blocked by) to add one. The
+  status `<select>` itself disables its "Done" option (labeled "Done
+  (blocked)", with a title tooltip listing the incomplete blocker
+  names) whenever the task has an open blocker — a client-side guard on
+  top of the server-side enforcement, added specifically so selecting
+  "Done" on a blocked task can't reach the unhandled-exception path a
+  thrown `AuthError` would otherwise hit inside a plain `<form action>`
+  server action (there's no `error.tsx` boundary in this app to catch
+  it gracefully). The server-side check in `setTaskStatus` remains the
+  actual authority; the disabled option is UX, not the enforcement.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates, and now
@@ -201,11 +230,35 @@ feeding the future Client Health Score (Section 4.2).
 - **Cross-organization milestone `id`:** rejected by walking
   milestone → project → client → `organizationId`, same pattern as
   checklist items/comments.
+- **A task blocked by itself:** rejected before any database write —
+  `taskId === blockedByTaskId` is checked directly, no query needed.
+- **A blocker task in a different project:** rejected — a dependency
+  only makes sense within one project's own task list, so
+  `blocker.projectId !== task.projectId` is rejected even when both
+  tasks are in the same organization/client (a client can have several
+  projects).
+- **A duplicate dependency edge, or the direct reverse pair:** rejected
+  in the service layer. The schema's `@@unique([taskId,
+  blockedByTaskId])` alone would let A be blocked by B *and* B be
+  blocked by A at the same time (two distinct rows, no constraint
+  violation) — a two-task deadlock where neither can ever complete — so
+  `addTaskDependency` explicitly checks for and rejects that reverse
+  pair too. Longer cycles (A→B→C→A) are not detected; see the scope
+  note above.
+- **Completing a task with an incomplete blocker:** rejected inside
+  `setTaskStatus` itself (not a separate check callers must remember to
+  run) with a message naming the incomplete blocker(s) by title.
+  Removing the dependency (or completing the blocker) unblocks it
+  immediately — the block is re-evaluated fresh on every status-change
+  attempt, never cached.
+- **Cross-organization dependency `id`:** rejected by walking
+  dependency → task → project → client → `organizationId`, same pattern
+  as checklist items/comments/milestones.
 
 ## Acceptance tests
 
 - `apps/web/src/lib/services/project-and-calendar.integration.test.ts` —
-  23 tests against real Postgres: project creation + timeline event,
+  29 tests against real Postgres: project creation + timeline event,
   cross-organization project rejection, task creation/assignment/status
   transition (asserting the `medium` default priority), invalid-assignee
   rejection, permission rejection for a role without `clients:write`,
@@ -230,7 +283,15 @@ feeding the future Client Health Score (Section 4.2).
   project or milestone is rejected for both create and toggle, and a
   dedicated overdue-signal test: three real milestones (one past-due and
   not done, one past-due and done, one future) confirm `getUpcomingEvents`
-  flags `overdue: true` on exactly the first.
+  flags `overdue: true` on exactly the first, and a dependencies block:
+  the full round trip (add a dependency, confirm completing the blocked
+  task is rejected while the blocker is open, complete the blocker,
+  confirm completion now succeeds; separately confirm removing the
+  dependency unblocks completion even while the blocker is still open),
+  self-blocking rejection, duplicate-and-reverse-pair rejection, a
+  blocker from a different project rejected, a `clients:write`-less
+  write rejected, and a cross-organization task or dependency rejected
+  for both add and remove.
 - `apps/web/src/app/api/tasks/[taskId]/checklist/route.contract.test.ts`
   — 5 tests (401/400 missing text/403/200 with a real persisted row at
   `position: 0`/400 cross-organization).
@@ -269,6 +330,12 @@ feeding the future Client Health Score (Section 4.2).
   — 4 tests (401/403/200 flips then flips back, cross-checked against
   the real row/400 cross-organization).
 - `apps/web/src/app/api/milestones/[id]/route.contract.test.ts`
+  (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
+  cross-organization).
+- `apps/web/src/app/api/tasks/[taskId]/dependencies/route.contract.test.ts`
+  — 5 tests (401/400 missing `blockedByTaskId`/403/200 with a real
+  persisted edge/400 cross-organization).
+- `apps/web/src/app/api/task-dependencies/[id]/route.contract.test.ts`
   (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
   cross-organization).
 - Manual smoke test performed for the Phase 1 slice: created a project
@@ -347,3 +414,34 @@ feeding the future Client Health Score (Section 4.2).
   window, which is correct behavior, not a bug). Deleted both
   smoke-test milestones afterward via `psql` to leave the dev database
   clean.
+- Manual smoke test performed for the task-dependencies slice against a
+  real running production server: created two real tasks and a real
+  dependency between them through the real API, confirmed the edge via
+  `psql`. Through a real headless browser on the project detail page:
+  confirmed the "Blocked by:" pill rendered and the blocked task's
+  status `<select>` showed its "Done" option disabled and labeled "Done
+  (blocked)"; selected "Done" on the *blocker* task instead, reloaded,
+  and confirmed the "Done" option on the blocked task was now enabled;
+  selected "Done" on the blocked task and confirmed it succeeded with no
+  error (this caught a real bug during development — see note below);
+  clicked the dependency's "✕" button and confirmed the "Blocked by"
+  pill disappeared after a reload. Deleted both smoke-test tasks
+  afterward via `psql` to leave the dev database clean.
+
+  **Bug caught by this smoke test, fixed before commit:** the first
+  version wired `setTaskStatus`'s new blocking rule straight into the
+  existing `TaskStatusForm` `<select>` with no client-side guard.
+  Selecting "Done" on a blocked task threw an uncaught `AuthError` from
+  inside the server action; this app has no `error.tsx` boundary
+  anywhere, so production showed a generic "Application error: a
+  server-side exception has occurred" page in place of the whole
+  project detail page — reachable by any writer clicking the obvious
+  dropdown option. Fixed by disabling the "Done" `<option>` client-side
+  whenever the task has an open blocker (see UI section above) so the
+  crashing path is simply not reachable from the UI; the server-side
+  check in `setTaskStatus` is unchanged and remains the real
+  enforcement. Integration/route-contract tests alone did not catch
+  this — they call the service/route functions directly and correctly
+  observed the rejection as a thrown error, which is exactly what a
+  service layer should do. Only driving the actual `<select>` in a real
+  browser surfaced that the *form* had no handler for that error.

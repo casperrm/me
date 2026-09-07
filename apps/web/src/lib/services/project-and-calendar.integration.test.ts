@@ -15,11 +15,13 @@ import { AuthError } from "./auth-service";
 import {
   addTaskChecklistItem,
   addTaskComment,
+  addTaskDependency,
   createMilestone,
   createProject,
   createTask,
   deleteMilestone,
   deleteTaskChecklistItem,
+  removeTaskDependency,
   setTaskEstimate,
   setTaskPriority,
   setTaskStatus,
@@ -35,6 +37,7 @@ async function wipeDatabase() {
   await prisma.contentCalendarItem.deleteMany();
   await prisma.taskComment.deleteMany();
   await prisma.taskChecklistItem.deleteMany();
+  await prisma.taskDependency.deleteMany();
   await prisma.task.deleteMany();
   await prisma.milestone.deleteMany();
   await prisma.project.deleteMany();
@@ -381,6 +384,111 @@ describe("createMilestone / toggleMilestone / deleteMilestone", () => {
     ).rejects.toThrow(AuthError);
     await expect(
       toggleMilestone({ actorUserId: ownerUserId, organizationId: orgId, milestoneId: otherMilestone.id }),
+    ).rejects.toThrow(AuthError);
+  });
+});
+
+describe("addTaskDependency / removeTaskDependency / blocked completion", () => {
+  it("adds a dependency, blocks completion of the blocked task until the blocker is done, then removing the dependency unblocks it", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const blocker = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Design assets" });
+    const blocked = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Publish campaign" });
+
+    const dependency = await addTaskDependency({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      taskId: blocked.id,
+      blockedByTaskId: blocker.id,
+    });
+    expect(dependency.taskId).toBe(blocked.id);
+    expect(dependency.blockedByTaskId).toBe(blocker.id);
+
+    // Non-"done" transitions are unaffected by the block.
+    await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "in_progress" });
+
+    await expect(
+      setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "done" }),
+    ).rejects.toThrow(AuthError);
+
+    await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocker.id, status: "done" });
+    const nowDone = await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "done" });
+    expect(nowDone.status).toBe("done");
+
+    // Removing a dependency unblocks even an incomplete blocker.
+    await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocker.id, status: "todo" });
+    await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "todo" });
+    await expect(
+      setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "done" }),
+    ).rejects.toThrow(AuthError);
+
+    await removeTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, dependencyId: dependency.id });
+    const unblocked = await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: blocked.id, status: "done" });
+    expect(unblocked.status).toBe("done");
+  });
+
+  it("rejects a task being blocked by itself", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Self-blocked task" });
+    await expect(
+      addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, blockedByTaskId: task.id }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a duplicate dependency and the direct reverse pair", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const a = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Dup A" });
+    const b = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Dup B" });
+
+    await addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: a.id, blockedByTaskId: b.id });
+    await expect(
+      addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: a.id, blockedByTaskId: b.id }),
+    ).rejects.toThrow(AuthError);
+    await expect(
+      addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: b.id, blockedByTaskId: a.id }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a blocker task from a different project", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const otherProject = await createProject({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientBId, name: "Cross-project" });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Same-project task" });
+    const otherTask = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: otherProject.id, title: "Different-project task" });
+
+    await expect(
+      addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, blockedByTaskId: otherTask.id }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a write from a member with no clients:write on the task's client", async () => {
+    const designer = await prisma.user.findFirstOrThrow({ where: { email: "proj-designer@test.example" } });
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const a = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Perm A" });
+    const b = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Perm B" });
+
+    await expect(
+      addTaskDependency({ actorUserId: designer.id, organizationId: orgId, taskId: a.id, blockedByTaskId: b.id }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a task or dependency from a different organization", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Dependency Other Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "dependency-other-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await createProject({ actorUserId: otherOwner.id, organizationId: otherOrg.id, clientId: otherClient.id, name: "Other Project" });
+    const otherA = await createTask({ actorUserId: otherOwner.id, organizationId: otherOrg.id, projectId: otherProject.id, title: "Other A" });
+    const otherB = await createTask({ actorUserId: otherOwner.id, organizationId: otherOrg.id, projectId: otherProject.id, title: "Other B" });
+    const otherDependency = await addTaskDependency({ actorUserId: otherOwner.id, organizationId: otherOrg.id, taskId: otherA.id, blockedByTaskId: otherB.id });
+
+    await expect(
+      addTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, taskId: otherA.id, blockedByTaskId: otherB.id }),
+    ).rejects.toThrow(AuthError);
+    await expect(
+      removeTaskDependency({ actorUserId: ownerUserId, organizationId: orgId, dependencyId: otherDependency.id }),
     ).rejects.toThrow(AuthError);
   });
 });

@@ -9,12 +9,16 @@ export function TaskStatusForm({
   clientId,
   projectId,
   status,
+  openBlockerTitles = [],
 }: {
   taskId: string;
   clientId: string;
   projectId: string;
   status: string;
+  openBlockerTitles?: string[];
 }) {
+  const blocked = openBlockerTitles.length > 0;
+
   return (
     <form action={setTaskStatusAction} className="flex items-center gap-1">
       <input type="hidden" name="taskId" value={taskId} />
@@ -24,11 +28,12 @@ export function TaskStatusForm({
         name="status"
         defaultValue={status}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
+        title={blocked ? `Blocked by incomplete task(s): ${openBlockerTitles.join(", ")}` : undefined}
         className="rounded border border-neutral-200 px-1 py-0.5 text-xs"
       >
         {Object.entries(STATUS_LABEL).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
+          <option key={value} value={value} disabled={value === "done" && blocked}>
+            {value === "done" && blocked ? `${label} (blocked)` : label}
           </option>
         ))}
       </select>

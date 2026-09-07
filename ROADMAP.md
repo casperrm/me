@@ -47,7 +47,7 @@ canonical system.
 - [x] Clients/contacts, Brand DNA (versioned, with a real edit UI at
       `/clients/[id]/brand/edit` — see `docs/specs/brand-dna.md`),
       projects/tasks (creation, assignment, status transitions, and —
-      added in six follow-up slices — per-task checklists: add/toggle/
+      added in seven follow-up slices — per-task checklists: add/toggle/
       delete a flat ordered list of sub-items; task priority
       (low/medium/high, defaulting to medium, changeable inline via its
       own `<select>` next to status); task estimate (a nullable hours
@@ -57,34 +57,48 @@ canonical system.
       task attachments (reusing the existing Files module's `Asset`
       model and storage adapter rather than a parallel upload path — an
       attachment is just an `Asset` row with `taskId` set alongside
-      `clientId`/`projectId`); and project milestones (a named deadline
+      `clientId`/`projectId`); project milestones (a named deadline
       with a computed, not stored, overdue signal — `!done && dueDate <
       now` — now unified into `/calendar` alongside task/project/invoice
-      due dates), all `clients:write`-gated the same way task writes
+      due dates); and task dependencies (a task can declare it's
+      blocked by another task in the same project — a "Blocked by: X"
+      pill, and a hard rule inside `setTaskStatus` itself that a task
+      can't be marked done while an open blocker remains, so every
+      caller of status changes gets the rule automatically, not just
+      the UI), all `clients:write`-gated the same way task writes
       already were — see `docs/specs/projects-and-calendar.md`) with
       client isolation enforced server-side, not just in the UI. Those
       follow-ups closed the checklist, priority, estimate, comments,
-      attachments, and milestones items from Section 12's own
-      explicitly-named "not built yet" list; only task dependencies and
-      project templates remain that list's real, still-open remainder.
-      Each slice was verified live against a real running server:
-      checklist via a full real add/toggle/delete round trip driven
-      through a headless browser against a real seeded task; priority
-      via a real API-created task whose priority was then changed
-      through the real UI dropdown and confirmed with `psql` after a
-      page reload; estimate the same way, changing a real task's hours
-      through the real input and "Set" button; comments by posting one
-      through the real API, confirming its author attribution with
-      `psql`, then posting a second through the real UI form and
-      confirming both rendered with the right author names after a
-      reload; attachments by uploading a real file through the real
-      API, confirming the persisted row and the on-disk file, then
-      removing it through the real UI and confirming both the row and
-      the file were gone afterward; milestones by creating a real
-      past-due milestone, confirming the real "Overdue" badge rendered
-      on the project page and disappeared once marked done, then
-      separately confirming a near-future milestone appeared on the
-      real `/calendar` page with the correct badge.
+      attachments, milestones, and (the smallest real cut of) task
+      dependencies items from Section 12's own explicitly-named "not
+      built yet" list; only project templates remains that list's real,
+      still-open remainder. Each slice was verified live against a real
+      running server: checklist via a full real add/toggle/delete round
+      trip driven through a headless browser against a real seeded
+      task; priority via a real API-created task whose priority was
+      then changed through the real UI dropdown and confirmed with
+      `psql` after a page reload; estimate the same way, changing a
+      real task's hours through the real input and "Set" button;
+      comments by posting one through the real API, confirming its
+      author attribution with `psql`, then posting a second through the
+      real UI form and confirming both rendered with the right author
+      names after a reload; attachments by uploading a real file
+      through the real API, confirming the persisted row and the
+      on-disk file, then removing it through the real UI and confirming
+      both the row and the file were gone afterward; milestones by
+      creating a real past-due milestone, confirming the real "Overdue"
+      badge rendered on the project page and disappeared once marked
+      done, then separately confirming a near-future milestone appeared
+      on the real `/calendar` page with the correct badge; dependencies
+      by creating a real blocking edge through the real API, then in a
+      real browser confirming the blocked task's "Done" option was
+      disabled, unblocking it by completing the blocker, completing the
+      blocked task successfully, and removing the dependency via its
+      "✕" button — this live pass caught a real bug (an uncaught
+      `AuthError` from the new status-change rule crashing the whole
+      page with no error boundary to catch it) that the integration and
+      route-contract tests alone had not, fixed by disabling the "Done"
+      option client-side whenever a task has an open blocker.
 - [x] Calendar — `/calendar` unifies task/project/invoice/milestone due
       dates, scoped to what the actor can read. Meetings/shoots/campaign
       launches will join the same query once those modules exist

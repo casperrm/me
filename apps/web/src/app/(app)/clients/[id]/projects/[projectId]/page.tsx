@@ -14,6 +14,7 @@ import { TaskEstimateForm } from "./TaskEstimateForm";
 import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
+import { TaskDependencies } from "./TaskDependencies";
 import { Milestones } from "./Milestones";
 import { NewCampaignForm } from "./NewCampaignForm";
 
@@ -40,6 +41,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           checklistItems: { orderBy: { position: "asc" } },
           comments: { include: { author: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
           attachments: { include: { uploadedBy: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
+          blockedBy: { include: { blockedByTask: true }, orderBy: { createdAt: "asc" } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -162,7 +164,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       <>
                         <TaskEstimateForm taskId={task.id} clientId={project.clientId} projectId={project.id} estimateHours={task.estimateHours} />
                         <TaskPriorityForm taskId={task.id} clientId={project.clientId} projectId={project.id} priority={task.priority} />
-                        <TaskStatusForm taskId={task.id} clientId={project.clientId} projectId={project.id} status={task.status} />
+                        <TaskStatusForm
+                          taskId={task.id}
+                          clientId={project.clientId}
+                          projectId={project.id}
+                          status={task.status}
+                          openBlockerTitles={task.blockedBy.filter((dep) => dep.blockedByTask.status !== "done").map((dep) => dep.blockedByTask.title)}
+                        />
                       </>
                     ) : (
                       <>
@@ -173,6 +181,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                     )}
                   </div>
                 </div>
+                <TaskDependencies
+                  taskId={task.id}
+                  dependencies={task.blockedBy.map((dep) => ({
+                    id: dep.id,
+                    blockedByTaskId: dep.blockedByTaskId,
+                    blockedByTaskTitle: dep.blockedByTask.title,
+                    blockedByTaskDone: dep.blockedByTask.status === "done",
+                  }))}
+                  taskOptions={project.tasks
+                    .filter((t) => t.id !== task.id && !task.blockedBy.some((dep) => dep.blockedByTaskId === t.id))
+                    .map((t) => ({ id: t.id, title: t.title }))}
+                  canWrite={canWrite}
+                />
                 <TaskChecklist taskId={task.id} items={task.checklistItems} canWrite={canWrite} />
                 <TaskComments taskId={task.id} comments={task.comments} canWrite={canWrite} />
                 <TaskAttachments
