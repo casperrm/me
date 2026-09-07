@@ -13,6 +13,7 @@ import { AddInvoiceForm } from "./AddInvoiceForm";
 import { InvoiceActions } from "./InvoiceActions";
 import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
+import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-retrieval-service";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   const health = client.healthScores[0];
   const healthFactors = parseJSON<{ signal: string; value: string; penalty: number; explanation: string }[]>(health?.factors, []);
   const opportunities = await getOpportunitiesForClient(client.id, actor.organizationId);
+  const cedarBrainActivity = await getRecentCedarBrainActivityForClient(client.id, actor.organizationId);
 
   return (
     <div className="space-y-8">
@@ -351,6 +353,26 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
             </ul>
           )}
         </Card>
+
+        {cedarBrainActivity.length > 0 && (
+          <Card
+            title="Cedar Brain Activity"
+            action={<span className="text-xs text-neutral-400">Client Memory (Section 6.6)</span>}
+          >
+            <ul className="space-y-3 text-sm">
+              {cedarBrainActivity.map((a) => (
+                <li key={a.id}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-neutral-400">{a.createdAt.toLocaleDateString()}</span>
+                    {!a.success && <span className="text-xs text-red-600">failed</span>}
+                  </div>
+                  <div className="font-medium">{a.prompt}</div>
+                  {a.summaryExcerpt && <div className="text-neutral-500">{a.summaryExcerpt}</div>}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </div>
 
       <Card title="Files" action={canWrite && <AssetUploadForm clientId={client.id} />}>

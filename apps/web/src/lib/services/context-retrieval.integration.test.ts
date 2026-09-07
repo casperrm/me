@@ -11,9 +11,10 @@ vi.mock("next/headers", () => ({
 
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
-import { buildGovernedContext } from "./context-retrieval-service";
+import { buildGovernedContext, getRecentCedarBrainActivityForClient } from "./context-retrieval-service";
 
 async function wipeDatabase() {
+  await prisma.cedarBrainRequest.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.clientHealthScore.deleteMany();
   await prisma.brandProfileVersion.deleteMany();
@@ -70,6 +71,39 @@ beforeAll(async () => {
     data: { clientId: clientAId, type: "project_created", summary: "Kicked off Q1 campaign." },
   });
 
+  // A prior successful Cedar Brain request for Client A — real material
+  // for the "prior answers" context section.
+  await prisma.cedarBrainRequest.create({
+    data: {
+      organizationId: org.id,
+      clientId: clientAId,
+      prompt: "Draft a launch hook for FastCharge Pro",
+      routedAgents: "[]",
+      response: JSON.stringify({ summary: "Try: 'Charge in the time it takes to check your notifications.'" }),
+      mode: "live",
+      modelName: "claude-sonnet-5",
+      promptVersion: "v2",
+      latencyMs: 500,
+      success: true,
+    },
+  });
+  // A failed request — must never be fed back into the model's context.
+  await prisma.cedarBrainRequest.create({
+    data: {
+      organizationId: org.id,
+      clientId: clientAId,
+      prompt: "This one failed",
+      routedAgents: "[]",
+      response: null,
+      mode: "live",
+      modelName: "claude-sonnet-5",
+      promptVersion: "v2",
+      latencyMs: 300,
+      success: false,
+      errorMessage: "Anthropic API error (500)",
+    },
+  });
+
   // A scoped member with access ONLY to Client B, not Client A.
   const scoped = await prisma.user.create({
     data: { email: "ctx-scoped@test.example", name: "Scoped Person", passwordHash: "irrelevant" },
@@ -97,11 +131,20 @@ describe("buildGovernedContext", () => {
     expect(context.text).toContain("Gen Z EV owners");
     expect(context.text).toContain("82/100");
     expect(context.text).toContain("Kicked off Q1 campaign.");
+    expect(context.text).toContain("Charge in the time it takes to check your notifications.");
 
     expect(context.sources).toContain("Client record");
     expect(context.sources.some((s) => s.startsWith("Brand DNA"))).toBe(true);
     expect(context.sources.some((s) => s.includes("82/100"))).toBe(true);
     expect(context.sources.some((s) => s.includes("timeline event"))).toBe(true);
+    expect(context.sources.some((s) => s.includes("prior Cedar Brain answer"))).toBe(true);
+  });
+
+  it("never feeds a failed prior request's (non-existent) content back into the model's context", async () => {
+    const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientAId });
+    expect(context.text).not.toContain("This one failed");
+    // Only the one successful prior request counts as a source, not both.
+    expect(context.sources.find((s) => s.includes("prior Cedar Brain answer"))).toBe("1 prior Cedar Brain answer(s)");
   });
 
   it("omits sections with no real data instead of fabricating placeholders", async () => {
@@ -130,5 +173,20 @@ describe("buildGovernedContext", () => {
     await expect(
       buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: otherClient.id }),
     ).rejects.toThrow(AuthError);
+  });
+});
+
+describe("getRecentCedarBrainActivityForClient", () => {
+  it("returns both successful and failed requests, most recent first, with a real summary excerpt", async () => {
+    const activity = await getRecentCedarBrainActivityForClient(clientAId, orgId);
+    expect(activity).toHaveLength(2);
+    expect(activity[0]).toMatchObject({ prompt: "This one failed", success: false, summaryExcerpt: null });
+    expect(activity[1]).toMatchObject({ prompt: "Draft a launch hook for FastCharge Pro", success: true });
+    expect(activity[1].summaryExcerpt).toContain("Charge in the time it takes");
+  });
+
+  it("returns nothing for a client with no Cedar Brain history", async () => {
+    const activity = await getRecentCedarBrainActivityForClient(clientBId, orgId);
+    expect(activity).toEqual([]);
   });
 });

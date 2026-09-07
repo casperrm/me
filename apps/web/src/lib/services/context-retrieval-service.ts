@@ -3,6 +3,8 @@ import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
 
 const RECENT_TIMELINE_LIMIT = 3;
+const RECENT_CEDAR_BRAIN_LIMIT = 3;
+const SUMMARY_EXCERPT_LENGTH = 150;
 const MAX_CONTEXT_CHARS = 2000; // bounded, per Section 34's "bounded metadata" principle
 
 function parseJSON<T>(value: string | null | undefined, fallback: T): T {
@@ -17,6 +19,55 @@ function parseJSON<T>(value: string | null | undefined, fallback: T): T {
 export interface GovernedContext {
   text: string;
   sources: string[];
+}
+
+export interface CedarBrainActivityItem {
+  id: string;
+  prompt: string;
+  summaryExcerpt: string | null;
+  mode: string;
+  success: boolean;
+  createdAt: Date;
+}
+
+/**
+ * Section 6.6's Client Memory ("decisions... client-specific lessons.
+ * Explicit or approved workflow writes; versioned") in its simplest
+ * honest form: every Cedar Brain request already gets written with a
+ * `clientId` when one was selected (see /api/cedar-brain/route.ts) —
+ * this is the first place anything reads that history back, closing
+ * the gap ADR-007 and ROADMAP.md both flagged ("nothing reads it back
+ * yet"). No curation, no outcome measurement, no "lesson learned"
+ * judgment — just the real, literal record of what was asked and
+ * answered for this client before.
+ */
+export async function getRecentCedarBrainActivityForClient(
+  clientId: string,
+  organizationId: string,
+  limit: number = RECENT_CEDAR_BRAIN_LIMIT,
+): Promise<CedarBrainActivityItem[]> {
+  const requests = await prisma.cedarBrainRequest.findMany({
+    where: { clientId, organizationId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: { id: true, prompt: true, response: true, mode: true, success: true, createdAt: true },
+  });
+
+  return requests.map((r) => {
+    let summaryExcerpt: string | null = null;
+    if (r.response) {
+      try {
+        const parsed = JSON.parse(r.response) as { summary?: string };
+        if (parsed.summary) {
+          summaryExcerpt =
+            parsed.summary.length > SUMMARY_EXCERPT_LENGTH ? `${parsed.summary.slice(0, SUMMARY_EXCERPT_LENGTH)}…` : parsed.summary;
+        }
+      } catch {
+        // Malformed/legacy response JSON — omit rather than guess at content.
+      }
+    }
+    return { id: r.id, prompt: r.prompt, summaryExcerpt, mode: r.mode, success: r.success, createdAt: r.createdAt };
+  });
 }
 
 /**
@@ -86,6 +137,18 @@ export async function buildGovernedContext(params: {
     const timelineLines = client.timelineEvents.map((e) => `- ${e.occurredAt.toISOString().slice(0, 10)}: ${e.summary}`);
     sections.push(`Recent activity:\n${timelineLines.join("\n")}`);
     sources.push(`${client.timelineEvents.length} recent timeline event(s)`);
+  }
+
+  // Only successful prior answers are worth feeding back as context — a
+  // failed request has no real content to reference (it's still shown
+  // to a human on the client profile page, just not injected here).
+  const priorActivity = (await getRecentCedarBrainActivityForClient(params.clientId, params.organizationId)).filter(
+    (a) => a.success && a.summaryExcerpt,
+  );
+  if (priorActivity.length > 0) {
+    const priorLines = priorActivity.map((a) => `- Asked: "${a.prompt}" → ${a.summaryExcerpt}`);
+    sections.push(`Prior Cedar Brain answers for this client:\n${priorLines.join("\n")}`);
+    sources.push(`${priorActivity.length} prior Cedar Brain answer(s)`);
   }
 
   let text = sections.join("\n\n");

@@ -288,13 +288,25 @@ them.
 
 Phase 5's concretely buildable scope is now complete.
 
-## Phase 6 — Advanced Intelligence: not started
+## Phase 6 — Advanced Intelligence: **starter slice exists**
 
-Agency Memory, Success Library, Knowledge Graph query layer, Cedar
-Decision Engine, Cedar Intelligence, Living/Market Intelligence, Digital
-Twin, Innovation Lab, Experience Engine. `CedarBrainRequest` logs every
-Command Center call today, which is the raw material Agency Memory will
-eventually read from — nothing reads it back yet.
+- [x] Client Memory (Section 6.6) — `getRecentCedarBrainActivityForClient`
+      is the first thing that reads `CedarBrainRequest` history back
+      (previously "nothing reads it back yet," per this file's own
+      prior wording and ADR-007). A client's past successful Cedar
+      Brain answers now feed into governed context retrieval for that
+      client's next request, and a new "Cedar Brain Activity" card on
+      the client profile page shows the real history (including
+      failures, for human visibility). See `docs/specs/client-memory.md`
+      for exactly why this is real Client Memory and explicitly not yet
+      Agency Memory: no curation, no cross-client pattern extraction,
+      no outcome measurement — one client's own history, read back
+      verbatim.
+- [ ] Agency Memory, Success Library, Knowledge Graph query layer, Cedar
+      Decision Engine, Cedar Intelligence, Living/Market Intelligence,
+      Digital Twin, Innovation Lab, Experience Engine — not started;
+      each needs curation/outcome-measurement/cross-client
+      infrastructure this slice deliberately didn't invent.
 
 ## Phase 7 — Scale Hardening: not started
 
