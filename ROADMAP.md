@@ -326,15 +326,19 @@ SLOs.
   RBAC-scoped session flow; Section 15.1's approval workflow (create a
   creative → request approval → record a real decision, asserting the
   status badge itself transitions DRAFT → PENDING_APPROVAL → APPROVED);
-  and Section 15.2's Client Portal (an invited external contact's
-  session is redirected away from the internal app on *every* direct
-  navigation attempt, not just at first login). All navigate by real
-  link text so they survive a fresh `db:reset` generating new ids every
-  run. Run via `npm run test:e2e` against a production build with the
-  dev database reset to a known seeded state first. See
-  `tests/e2e/README.md` for a real dev-server-only flakiness finding
-  this work surfaced (fixed by building/starting, not `next dev`) and
-  what's still not covered (Content Calendar transitions, MFA).
+  Section 15.2's Client Portal (an invited external contact's session
+  is redirected away from the internal app on *every* direct navigation
+  attempt, not just at first login); and Section 23.1's MFA (enrolls a
+  real TOTP secret via `/security`, computes a valid code with `otplib`
+  against the secret the page displays, then proves via a real logout/
+  login that the account is actually challenged on its next login, not
+  just that enrollment succeeded). All navigate by real link text so
+  they survive a fresh `db:reset` generating new ids every run. Run via
+  `npm run test:e2e` against a production build with the dev database
+  reset to a known seeded state first. See `tests/e2e/README.md` for a
+  real dev-server-only flakiness finding this work surfaced (fixed by
+  building/starting, not `next dev`) and what's still not covered
+  (Content Calendar transitions).
 - **API-contract tests now exist for a representative set of route
   handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 18
   tests) — the HTTP layer itself (auth gate, status codes, JSON

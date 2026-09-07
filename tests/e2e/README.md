@@ -36,6 +36,14 @@ browser (Playwright/Chromium) — not curl, not a mock DOM.
   is a different guarantee than `auth.spec.ts`'s unauthenticated
   redirect: it's an authenticated session whose *role* restricts it,
   checked repeatedly rather than only at first login (Section 38).
+- **`mfa.spec.ts`** — Bible Section 23.1: enrolls TOTP on the seeded
+  owner through the real `/security` UI, computing a valid code with
+  `otplib` against the secret the page itself displays (the same
+  technique `mfa.integration.test.ts` uses at the service layer), then
+  logs out and back in to prove the account is actually challenged for
+  a code on its *next real login* — not just that the enrollment API
+  call returned 200. Password alone is confirmed insufficient (still on
+  `/login`) before the real second-factor code is submitted.
 
 ## Running it
 
@@ -65,11 +73,10 @@ in case a future dev-mode-driven test setup hits it again.
 
 ## What's still not covered
 
-- Content Calendar status transitions and MFA enrollment/challenge —
-  both have integration-test coverage
-  (`apps/web/src/lib/services/*.integration.test.ts`) but no
-  browser-driven E2E yet. Add here as the highest-value flows are
-  identified, not as a blanket "cover everything" pass.
+- Content Calendar status transitions — has integration-test coverage
+  (`apps/web/src/lib/services/content-calendar.integration.test.ts`)
+  but no browser-driven E2E yet. Add here as the highest-value flows
+  are identified, not as a blanket "cover everything" pass.
 - API-contract tests exist for a representative set of route handlers
   (`apps/web/src/app/api/**/*.route.contract.test.ts`, see
   `docs/specs/api-route-contracts.md`) but not all ~35 routes —
