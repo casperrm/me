@@ -308,12 +308,40 @@ Phase 5's concretely buildable scope is now complete.
       each needs curation/outcome-measurement/cross-client
       infrastructure this slice deliberately didn't invent.
 
-## Phase 7 — Scale Hardening: not started
+## Phase 7 — Scale Hardening: started
 
 Load/performance testing toward 100 employees/500 clients, data
 lifecycle, advanced recovery, connector scaling, media pipeline
 optimization, security review, disaster recovery exercises, operational
 SLOs.
+
+- [x] **CEO Dashboard aggregate queries.** The dashboard's four
+      organization-wide numbers (revenue, outstanding, expenses, active
+      vs. total clients) were computed by fetching *every* client,
+      invoice, and expense row the organization has ever created into
+      Node and reducing over them in JavaScript — a full-table scan on
+      every single dashboard load, growing without bound as the
+      organization accumulates history. Replaced with `prisma.count()`
+      and `prisma.aggregate({ _sum })` calls, which push the same
+      computation into Postgres and return only the four numbers
+      needed. Verified byte-identical output against the pre-existing
+      seed data via direct SQL cross-check (see
+      `docs/specs/dashboard-aggregates.md`). Also found and fixed a
+      real pre-existing cross-tenant bug while touching this code: the
+      "Pending approvals" stat's `prisma.creative.count()` had no
+      organization scoping at all, so it counted `PENDING_APPROVAL`
+      creatives across *every organization in the database*, not just
+      the current one — confirmed as a real leak (not just theoretical)
+      because the dev database has two organizations. Now scoped
+      through `campaign.project.client.organizationId`. See
+      `docs/specs/dashboard-aggregates.md` for full detail, including
+      what this slice explicitly did *not* fix (deferred, not
+      forgotten): the client-detail page's six unbounded nested lists,
+      the Opportunity Engine's full-organization creative scan, the
+      clients list page, the content calendar, the Client Portal, the
+      shoots page, and several asset-picker dropdowns — each a real,
+      separately-scoped follow-up, ranked in that doc by the audit that
+      found them.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 

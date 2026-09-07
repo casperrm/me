@@ -28,40 +28,56 @@ export default async function DashboardPage() {
 
   const organizationId = actor.organizationId;
 
-  const [clients, invoices, expenses, pendingApprovals, delayedProjects, recentTimeline, profitability] =
-    await Promise.all([
-      prisma.client.findMany({ where: { organizationId } }),
-      prisma.invoice.findMany({ where: { client: { organizationId } } }),
-      prisma.expense.findMany({ where: { organizationId } }),
-      prisma.creative.count({ where: { status: "PENDING_APPROVAL" } }),
-      prisma.project.findMany({
-        where: {
-          client: { organizationId },
-          status: { in: ["PLANNING", "IN_PROGRESS", "IN_REVIEW"] },
-          dueDate: { lt: new Date() },
-        },
-        include: { client: true },
-      }),
-      prisma.clientTimelineEvent.findMany({
-        where: { client: { organizationId } },
-        orderBy: { occurredAt: "desc" },
-        take: 6,
-        include: { client: true },
-      }),
-      getClientProfitability(organizationId),
-    ]);
+  // Real aggregates computed in Postgres, not by fetching every
+  // invoice/expense/client row into Node and summing in JS — the same
+  // totals, but O(1) data transfer instead of O(every row ever) as the
+  // organization grows (Phase 7 scale hardening; see
+  // docs/specs/dashboard-aggregates.md).
+  const [
+    totalClientCount,
+    activeClientCount,
+    revenueAgg,
+    outstandingAgg,
+    expensesAgg,
+    pendingApprovals,
+    delayedProjects,
+    recentTimeline,
+    profitability,
+  ] = await Promise.all([
+    prisma.client.count({ where: { organizationId } }),
+    prisma.client.count({ where: { organizationId, lifecycleStage: "ACTIVE" } }),
+    prisma.invoice.aggregate({ where: { client: { organizationId }, status: "PAID" }, _sum: { amountCents: true } }),
+    prisma.invoice.aggregate({
+      where: { client: { organizationId }, status: { in: ["SENT", "OVERDUE"] } },
+      _sum: { amountCents: true },
+    }),
+    prisma.expense.aggregate({ where: { organizationId }, _sum: { amountCents: true } }),
+    prisma.creative.count({
+      where: { status: "PENDING_APPROVAL", campaign: { project: { client: { organizationId } } } },
+    }),
+    prisma.project.findMany({
+      where: {
+        client: { organizationId },
+        status: { in: ["PLANNING", "IN_PROGRESS", "IN_REVIEW"] },
+        dueDate: { lt: new Date() },
+      },
+      include: { client: true },
+    }),
+    prisma.clientTimelineEvent.findMany({
+      where: { client: { organizationId } },
+      orderBy: { occurredAt: "desc" },
+      take: 6,
+      include: { client: true },
+    }),
+    getClientProfitability(organizationId),
+  ]);
 
   const advisorBriefing = await getBusinessAdvisorBriefing(organizationId);
   const advisorNarrative = await generateBusinessAdvisorNarrative(advisorBriefing);
 
-  const revenueCents = invoices
-    .filter((i) => i.status === "PAID")
-    .reduce((sum, i) => sum + i.amountCents, 0);
-  const outstandingCents = invoices
-    .filter((i) => i.status === "SENT" || i.status === "OVERDUE")
-    .reduce((sum, i) => sum + i.amountCents, 0);
-  const expensesCents = expenses.reduce((sum, e) => sum + e.amountCents, 0);
-  const activeClients = clients.filter((c) => c.lifecycleStage === "ACTIVE").length;
+  const revenueCents = revenueAgg._sum.amountCents ?? 0;
+  const outstandingCents = outstandingAgg._sum.amountCents ?? 0;
+  const expensesCents = expensesAgg._sum.amountCents ?? 0;
 
   return (
     <div className="space-y-8">
@@ -77,7 +93,7 @@ export default async function DashboardPage() {
         <StatCard label="Outstanding" value={money(outstandingCents)} hint="Sent + overdue invoices" />
         <StatCard label="Expenses" value={money(expensesCents)} />
         <StatCard label="Net" value={money(revenueCents - expensesCents)} />
-        <StatCard label="Active clients" value={String(activeClients)} hint={`${clients.length} total`} />
+        <StatCard label="Active clients" value={String(activeClientCount)} hint={`${totalClientCount} total`} />
         <StatCard label="Pending approvals" value={String(pendingApprovals)} />
         <StatCard label="Delayed projects" value={String(delayedProjects.length)} />
         <StatCard label="Cedar Intelligence alerts" value="0" hint="No alert feed wired up yet" />
