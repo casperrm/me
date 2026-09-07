@@ -575,8 +575,8 @@ SLOs.
   every flow originally named as a gap here now has coverage; what's
   left is depth (more permutations), not breadth.
 - **API-contract tests now exist for a representative set of route
-  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 72
-  tests across 15 routes, up from an initial 6) — the HTTP layer
+  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 93
+  tests across 21 routes, up from an initial 6) — the HTTP layer
   itself (auth gate, status codes, JSON envelope), not just the
   service functions underneath, which were already integration-tested.
   See `docs/specs/api-route-contracts.md` for exactly which routes and
@@ -584,14 +584,20 @@ SLOs.
   and `/api/invoices` both misreported `amountCents: 0` as "missing"
   instead of reaching the real "must be a positive number" validation,
   because their pre-checks used a truthy check instead of a type
-  check. A later extension slice added `/api/auth/login` (the one
-  route that creates the session itself, so it mocks `next/headers`
-  rather than `getCurrentActor`), the three notification routes
-  (ownership gated per-membership rather than by role permission), and
-  the content-calendar/shoot status-transition routes. Not
-  exhaustive — ~38 routes exist, 15 are covered to prove the pattern
-  across every distinct contract shape found so far; extending it
-  further is real follow-up work, not claimed done.
+  check. A second slice added `/api/auth/login` (the one route that
+  creates the session itself, so it mocks `next/headers` rather than
+  `getCurrentActor`), the three notification routes (ownership gated
+  per-membership rather than by role permission), and the
+  content-calendar/shoot status-transition routes. A third slice
+  added the four MFA routes (real `otplib`-generated TOTP codes
+  against a real encrypted secret, not a stub), `/api/invite/[token]/accept`
+  (the other no-session route, verified with a live end-to-end
+  invite→accept smoke test), and `/api/search` (proving
+  `getReadableClientIds` actually filters results for a scoped
+  collaborator, not just gates access). Not exhaustive — ~38 routes
+  exist, 21 are covered to prove the pattern across every distinct
+  contract shape found so far; extending it further is real follow-up
+  work, not claimed done.
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in

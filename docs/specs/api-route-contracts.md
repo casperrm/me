@@ -1,6 +1,6 @@
 # Module: API Route-Contract Tests
 
-Status: **Implemented (representative slice, extended once)**. Closes
+Status: **Implemented (representative slice, extended twice)**. Closes
 the gap `ROADMAP.md`'s cross-cutting section had tracked: "API-contract
 tests for the route handlers themselves (auth headers, error
 envelopes, idempotency)."
@@ -122,20 +122,64 @@ gates on notification ownership rather than a role.
   status" for shoots, and a cross-organization item/shoot id is
   rejected exactly like every other module's cross-tenant check.
 
+## Extension slice 2: MFA, invite-accept, search
+
+A third slice covers the remaining distinct contract shapes still
+missing: two more routes with no session to mock (one because it's
+mid-enrollment for an already-signed-in user calling itself, two
+because there's no session at all yet), and the one route whose
+correctness depends on *filtering* results by what the caller can see
+rather than a flat allow/deny.
+
+- **`POST /api/auth/mfa/setup`, `/confirm`, `/disable`** — session-gated
+  (unlike challenge/login), but the interesting case is calling the
+  real `mfa-service.ts` functions with real `otplib`-generated TOTP
+  codes against a real encrypted secret round-tripped through Postgres,
+  not a stubbed "valid code" check: `setup` returns a real `otpauth://`
+  URI and a real QR code data URL and rejects re-enrollment once
+  already enabled; `confirm` rejects a wrong code with the service's
+  real message and, for a real valid code, persists both `mfaEnabled`
+  and a set of real hashed recovery codes matching the response's
+  count; `disable` requires re-proving the account password (rejecting
+  the wrong one without disabling anything) and, on success, actually
+  clears both `mfaEnabled` and every recovery code.
+- **`POST /api/auth/mfa/challenge`** — the one MFA route with no
+  session at all (it's the second half of *creating* one): gated by a
+  `pendingToken` from a real `login()` call instead of
+  `getCurrentActor`, confirms a wrong code is rejected without
+  consuming the pending login, and that a real valid TOTP code succeeds
+  once and then correctly fails on reuse (the row is deleted, not just
+  marked used).
+- **`POST /api/invite/[token]/accept`** — the other no-session route:
+  400 for a missing name/password, 400 with the real "invalid or has
+  expired" message for an unknown token, 200 that actually creates the
+  `User` row and an `ACTIVE` membership with the invited role (created
+  via a real `createInvitation()` call, not a hand-inserted token), and
+  confirms the same token can't be used a second time. Needs the same
+  `next/headers` mock as the login route, since accepting an invite
+  signs the new user in immediately.
+- **`GET /api/search`** — the route's whole point is filtering, so the
+  meaningful test isn't 401/200, it's proving `getReadableClientIds`
+  is actually wired through: an org-wide reader sees both of two
+  same-named-pattern clients, while a `DESIGNER` scoped via
+  `ScopedGrant` to only one of them sees just that one in the same
+  query — the un-scoped client is confirmed absent from their results,
+  not merely present in the org-wide reader's.
+
 ## Scope boundary — stated explicitly
 
 **Still not exhaustive.** There are roughly 38 API routes in this app;
-15 now have contract tests (proving the pattern across session-gated
+21 now have contract tests (proving the pattern across session-gated
 writes, non-session HMAC-gated writes, membership-owned-not-role-gated
-writes, state-machine transitions, and the login route that creates
-the session itself). Extending coverage to the remaining ~23 routes
-(asset up/download, campaign/creative/task/project CRUD, MFA
-challenge/confirm/disable/setup, invite-accept, integrations/
-connections, search) is real, valuable, follow-up work — not claimed
-as done here. Idempotency is proven for the one route that actually
-has an idempotency mechanism (`/api/integrations/webhooks/[id]`);
-routes with no such mechanism aren't tested for it, since there's
-nothing there to test.
+writes, state-machine transitions, the login route that creates the
+session itself, an in-session-but-self-referential MFA enrollment
+flow, and a filtering-not-gating read route). Extending coverage to
+the remaining ~17 routes (asset upload/download, campaign/creative/
+task/project CRUD, integrations/connections list and revoke) is real,
+valuable, follow-up work — not claimed as done here. Idempotency is
+proven for the one route that actually has an idempotency mechanism
+(`/api/integrations/webhooks/[id]`); routes with no such mechanism
+aren't tested for it, since there's nothing there to test.
 
 ## Acceptance tests
 
@@ -151,12 +195,18 @@ nothing there to test.
 - `apps/web/src/app/api/notifications/mark-all-read/route.contract.test.ts` — 2 tests.
 - `apps/web/src/app/api/content/[itemId]/status/route.contract.test.ts` — 6 tests.
 - `apps/web/src/app/api/shoots/[shootId]/status/route.contract.test.ts` — 6 tests.
+- `apps/web/src/app/api/auth/mfa/setup/route.contract.test.ts` — 3 tests.
+- `apps/web/src/app/api/auth/mfa/confirm/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/auth/mfa/challenge/route.contract.test.ts` — 3 tests.
+- `apps/web/src/app/api/auth/mfa/disable/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/invite/[token]/accept/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/search/route.contract.test.ts` — 3 tests.
 - Manual smoke test performed for the first slice against the real
   running server: confirmed `amountCents: 0` on both `/api/expenses`
   and `/api/invoices` now correctly returns "Amount must be a positive
   number" instead of the misleading "required" message — no dev
   database mutation occurred (both requests were correctly rejected).
-- Manual smoke test performed for the extension slice against a real
+- Manual smoke test performed for the second slice against a real
   running production server (`npm run start`): logged in as the seeded
   owner through the real `/api/auth/login` route (not mocked), loaded
   `/dashboard` with the resulting session cookie, and called
@@ -164,3 +214,16 @@ nothing there to test.
   200 and, via a direct SQL check, that the dev database has no
   notification rows at all (so this was a genuine no-op against real
   data, not a state change requiring cleanup).
+- Manual smoke test performed for the third slice against a real
+  running production server: confirmed `/api/search?q=volt` returns
+  the real seeded client via the logged-in owner's session, confirmed
+  `/api/auth/mfa/setup` correctly 401s when unauthenticated (deliberately
+  not exercised further against the real seeded owner account, since
+  actually enabling MFA on it would break every future session's
+  login smoke test), and drove a complete real invite→accept round
+  trip through the live `/api/team/invite` and `/api/invite/[token]/accept`
+  routes — created a throwaway invitee, confirmed via direct SQL that
+  a real `User` and `ACTIVE` `DESIGNER` membership were persisted, then
+  deleted all of it (session, audit event, membership, invitation,
+  user) and confirmed the dev database's user/membership counts were
+  back at their pre-test values.
