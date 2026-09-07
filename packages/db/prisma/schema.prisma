@@ -51,15 +51,16 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships   Membership[]
-  invitations   Invitation[]
-  auditEvents   AuditEvent[]
-  clients       Client[]
-  expenses      Expense[]
-  assets        Asset[]
-  notifications Notification[]
-  connections   Connection[]
-  aiBudget      AiBudget?
+  memberships      Membership[]
+  invitations      Invitation[]
+  auditEvents      AuditEvent[]
+  clients          Client[]
+  expenses         Expense[]
+  assets           Asset[]
+  notifications    Notification[]
+  connections      Connection[]
+  aiBudget         AiBudget?
+  projectTemplates ProjectTemplate[]
 
   @@map("organizations")
 }
@@ -452,8 +453,8 @@ model Task {
   checklistItems TaskChecklistItem[]
   comments       TaskComment[]
   attachments    Asset[]
-  blockedBy      TaskDependency[] @relation("TaskBlockedBy")
-  blocking       TaskDependency[] @relation("TaskBlocks")
+  blockedBy      TaskDependency[]    @relation("TaskBlockedBy")
+  blocking       TaskDependency[]    @relation("TaskBlocks")
 
   @@map("tasks")
 }
@@ -480,12 +481,44 @@ model TaskDependency {
   @@map("task_dependencies")
 }
 
+// Section 12's "reusable project templates" — the smallest real cut:
+// a template is a saved snapshot of one project's task titles and
+// priorities, org-wide (not tied to the client it was captured from),
+// instantiated into a brand-new Project + Tasks. No milestones, no
+// checklist items, no dependencies, no due-date offsets captured — see
+// docs/specs/projects-and-calendar.md for the scope boundary.
+model ProjectTemplate {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  createdAt      DateTime     @default(now())
+
+  tasks ProjectTemplateTask[]
+
+  @@index([organizationId])
+  @@map("project_templates")
+}
+
+model ProjectTemplateTask {
+  id         String          @id @default(uuid())
+  templateId String
+  template   ProjectTemplate @relation(fields: [templateId], references: [id])
+  title      String
+  priority   String          @default("medium") // low | medium | high — same convention as Task.priority
+  position   Int
+  createdAt  DateTime        @default(now())
+
+  @@index([templateId])
+  @@map("project_template_tasks")
+}
+
 // Section 12's "task... checklist" — the smallest real cut of that gap:
 // a flat, ordered list of sub-items on a task, each independently
 // checkable. No nesting, no per-item assignee/due date — see
 // docs/specs/projects-and-calendar.md for what's still deliberately not
-// built (milestones/dependencies, priority/estimate, comments,
-// attachments, templates).
+// built (a real dependency graph/critical-path engine, template
+// editing).
 model TaskChecklistItem {
   id        String   @id @default(uuid())
   taskId    String

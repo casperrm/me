@@ -16,6 +16,7 @@ import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskDependencies } from "./TaskDependencies";
 import { Milestones } from "./Milestones";
+import { SaveAsTemplateForm } from "./SaveAsTemplateForm";
 import { NewCampaignForm } from "./NewCampaignForm";
 
 function money(cents: number) {
@@ -88,14 +89,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href={`/clients/${project.clientId}`} className="text-xs text-cedar-700 hover:underline">
-          ← {project.client.name}
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">{project.name}</h1>
-        <p className="text-sm text-neutral-500">
-          {project.status} {project.dueDate && `· due ${project.dueDate.toLocaleDateString()}`}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href={`/clients/${project.clientId}`} className="text-xs text-cedar-700 hover:underline">
+            ← {project.client.name}
+          </Link>
+          <h1 className="mt-1 text-2xl font-semibold">{project.name}</h1>
+          <p className="text-sm text-neutral-500">
+            {project.status} {project.dueDate && `· due ${project.dueDate.toLocaleDateString()}`}
+          </p>
+        </div>
+        {canWrite && <SaveAsTemplateForm projectId={project.id} defaultName={project.name} />}
       </div>
 
       {canReadFinance && (

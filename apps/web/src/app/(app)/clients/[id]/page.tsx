@@ -6,6 +6,7 @@ import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { NewProjectForm } from "./NewProjectForm";
+import { NewProjectFromTemplateForm } from "./NewProjectFromTemplateForm";
 import { AssetUploadForm } from "./AssetUploadForm";
 import { AssetsList } from "./AssetsList";
 import { AddExpenseForm } from "./AddExpenseForm";
@@ -14,6 +15,7 @@ import { InvoiceActions } from "./InvoiceActions";
 import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-retrieval-service";
+import { listProjectTemplates } from "@/lib/services/project-template-service";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +83,10 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     organizationId: actor.organizationId,
     permission: "finance:write",
   });
+
+  const projectTemplates = canWrite
+    ? await listProjectTemplates({ actorUserId: actor.user.id, organizationId: actor.organizationId, clientId: client.id })
+    : [];
 
   const brandVersion = client.brandProfile?.versions[0];
   const services = parseJSON<string[]>(client.services, []);
@@ -297,9 +303,9 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           }
         >
           {client.projects.length === 0 ? (
-            <p className="text-sm text-neutral-400">No projects yet.</p>
+            <p className="mb-3 text-sm text-neutral-400">No projects yet.</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="mb-3 space-y-3">
               {client.projects.map((p) => (
                 <li key={p.id} className="text-sm">
                   <Link href={`/clients/${client.id}/projects/${p.id}`} className="block hover:text-cedar-700">
@@ -314,6 +320,12 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                 </li>
               ))}
             </ul>
+          )}
+          {canWrite && (
+            <NewProjectFromTemplateForm
+              clientId={client.id}
+              templates={projectTemplates.map((t) => ({ id: t.id, name: t.name, taskCount: t.tasks.length }))}
+            />
           )}
         </Card>
 

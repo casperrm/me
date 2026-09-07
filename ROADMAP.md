@@ -47,7 +47,7 @@ canonical system.
 - [x] Clients/contacts, Brand DNA (versioned, with a real edit UI at
       `/clients/[id]/brand/edit` — see `docs/specs/brand-dna.md`),
       projects/tasks (creation, assignment, status transitions, and —
-      added in seven follow-up slices — per-task checklists: add/toggle/
+      added in eight follow-up slices — per-task checklists: add/toggle/
       delete a flat ordered list of sub-items; task priority
       (low/medium/high, defaulting to medium, changeable inline via its
       own `<select>` next to status); task estimate (a nullable hours
@@ -60,19 +60,25 @@ canonical system.
       `clientId`/`projectId`); project milestones (a named deadline
       with a computed, not stored, overdue signal — `!done && dueDate <
       now` — now unified into `/calendar` alongside task/project/invoice
-      due dates); and task dependencies (a task can declare it's
-      blocked by another task in the same project — a "Blocked by: X"
-      pill, and a hard rule inside `setTaskStatus` itself that a task
-      can't be marked done while an open blocker remains, so every
-      caller of status changes gets the rule automatically, not just
-      the UI), all `clients:write`-gated the same way task writes
-      already were — see `docs/specs/projects-and-calendar.md`) with
-      client isolation enforced server-side, not just in the UI. Those
-      follow-ups closed the checklist, priority, estimate, comments,
-      attachments, milestones, and (the smallest real cut of) task
-      dependencies items from Section 12's own explicitly-named "not
-      built yet" list; only project templates remains that list's real,
-      still-open remainder. Each slice was verified live against a real
+      due dates); task dependencies (a task can declare it's blocked by
+      another task in the same project — a "Blocked by: X" pill, and a
+      hard rule inside `setTaskStatus` itself that a task can't be
+      marked done while an open blocker remains, so every caller of
+      status changes gets the rule automatically, not just the UI); and
+      reusable project templates (save any project's current tasks —
+      title + priority — as an org-wide `ProjectTemplate`, then
+      instantiate a new project from one for any client, with a "+ From
+      template" picker on the client page), all `clients:write`-gated
+      the same way task writes already were — see
+      `docs/specs/projects-and-calendar.md`) with client isolation
+      enforced server-side, not just in the UI. Those follow-ups closed
+      every item Section 12 explicitly named as "not built yet" —
+      checklist, priority, estimate, comments, attachments, milestones,
+      (the smallest real cut of) task dependencies, and (a similarly
+      scoped cut of) project templates — leaving only a real
+      dependency-graph/critical-path engine and template *editing* as
+      still-deliberately-unbuilt refinements within those cut features,
+      not open list items. Each slice was verified live against a real
       running server: checklist via a full real add/toggle/delete round
       trip driven through a headless browser against a real seeded
       task; priority via a real API-created task whose priority was
@@ -98,7 +104,14 @@ canonical system.
       `AuthError` from the new status-change rule crashing the whole
       page with no error boundary to catch it) that the integration and
       route-contract tests alone had not, fixed by disabling the "Done"
-      option client-side whenever a task has an open blocker.
+      option client-side whenever a task has an open blocker; templates
+      by saving a real project as a template and instantiating a new
+      project from it through the real API, confirming both the task
+      snapshot and the copied tasks via `psql`, then repeating the full
+      save/instantiate round trip through the real UI — which caught a
+      second real bug, a header-row layout overflow that made the
+      instantiate form's own "Create" button unclickable, fixed by
+      moving the form into the card body and adding `flex-wrap`.
 - [x] Calendar — `/calendar` unifies task/project/invoice/milestone due
       dates, scoped to what the actor can read. Meetings/shoots/campaign
       launches will join the same query once those modules exist

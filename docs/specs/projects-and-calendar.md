@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended seven times)**.
+Status: **Partially implemented (Phase 1 slice, extended eight times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -11,19 +11,31 @@ across modules, so nothing is tracked in a separate spreadsheet.
 
 ## What's not built yet
 
-Section 12 also calls for **reusable project templates** — that still
-doesn't exist. `Task` checklist, priority, estimate, comments, and
-attachments are now real; `Project` has `Milestone`s with an overdue
-signal; and a `Task` can now declare it's `TaskDependency`-blocked by
-another task in the same project (see below). This is the smallest real
-cut of "dependencies," not the full thing: there is no dependency graph
-between milestones, no multi-hop cycle detection (only a direct
-self-reference or direct reverse pair is rejected — see Failure modes),
-and no critical-path/project-risk computation beyond the one hard rule
-(a task can't complete while blocked) plus the existing per-milestone
-overdue flag. This is a deliberate scope cut, not an oversight — build a
-real graph-traversal layer (and a project-level risk score) when a real
-need shows up, rather than modeling it speculatively now.
+Every item Section 12 explicitly names is now real in some cut: `Task`
+checklist, priority, estimate, comments, and attachments; `Project`
+`Milestone`s with an overdue signal; `Task`-level `TaskDependency`
+blocking; and now `ProjectTemplate`s a project's task structure can be
+saved to and instantiated from (see below). None of these are the full
+version of what Section 12 gestures at, and the gaps are deliberate, not
+oversights:
+
+- **Dependencies:** no dependency graph between milestones, no
+  multi-hop cycle detection (only a direct self-reference or direct
+  reverse pair is rejected — see Failure modes), and no
+  critical-path/project-risk computation beyond the one hard rule (a
+  task can't complete while blocked) plus the per-milestone overdue
+  flag.
+- **Templates:** a template snapshots task titles and priorities only —
+  no milestones, no checklist items, no dependencies, no due-date
+  offsets (a template task instantiates with no due date; the operator
+  sets real dates per run). No template *editing* either — saving a
+  project as a template again under the same name just creates a
+  second, independent template row; there's no versioning or
+  "update this template" concept.
+
+Build a real graph-traversal layer (and a project-level risk score), a
+richer template shape, or template editing when a real need for any of
+those shows up, rather than modeling it speculatively now.
 
 ## Entities
 
@@ -35,6 +47,7 @@ need shows up, rather than modeling it speculatively now.
 | `TaskComment` | `@cedar/db` | Belongs to a `Task`, attributed to the `Membership` that wrote it. Flat, append-only — no edit, no delete, no threading. |
 | `Milestone` | `@cedar/db` | Belongs to a `Project`. A required `dueDate`, independently markable `done`. No dependency graph between milestones or tasks. |
 | `TaskDependency` | `@cedar/db` | A directed edge: `taskId` is blocked by `blockedByTaskId`, both `Task`s in the same project. `@@unique([taskId, blockedByTaskId])` prevents a duplicate edge; the direct reverse pair is rejected in the service layer (see Failure modes), not the schema. |
+| `ProjectTemplate` | `@cedar/db` | Belongs to an `Organization`, **not** a `Client` — reusable across every client in the org, unlike everything else in this module. Owns `ProjectTemplateTask` rows (title, priority, `position`). |
 
 A milestone's "overdue" state is **computed**, not stored:
 `!done && dueDate < now`. A stored status would drift the instant "now"
@@ -68,6 +81,16 @@ rather than a calendar being its own data store.
   write to the client can manage all of its projects/tasks/checklist
   items/comments/attachments/milestones/dependencies. Revisit if a role
   ever needs write access to tasks but not, say, Brand DNA.
+- Templates: saving a project as a template requires `clients:write` on
+  that project's client (same gate as every other project write).
+  Instantiating a template into a new project requires `clients:write`
+  on the *target* client — same permission `createProject` already
+  requires, just reused. Listing templates for the "new project from
+  template" picker requires `clients:read` on the client whose page is
+  rendering it, even though a `ProjectTemplate` itself belongs to the
+  organization, not any one client — there is no separate
+  "templates:read" permission; the check simply mirrors "can this actor
+  see this client's page at all."
 
 ## Events
 
@@ -78,11 +101,14 @@ rather than a calendar being its own data store.
 `task_attachment.uploaded`, plus the existing `asset.deleted` for a
 removed attachment, `milestone.created`, `milestone.toggled`,
 `milestone.deleted`, `task_dependency.created`,
-`task_dependency.deleted` (audit), plus a `project_created`
-`ClientTimelineEvent` (checklist items, priority/estimate changes,
-comments, attachments, milestone changes, and dependency changes are
-routine project bookkeeping, not client-facing activity, so they don't
-get a timeline event the way task completion does).
+`task_dependency.deleted`, `project_template.created`,
+`project.created_from_template` (audit), plus a `project_created`
+`ClientTimelineEvent` for both a template-instantiated project (summary
+names the source template) and the routine `project.created` case
+(checklist items, priority/estimate changes, comments, attachments,
+milestone changes, and dependency changes are routine project
+bookkeeping, not client-facing activity, so they don't get a timeline
+event the way task completion does).
 
 ## APIs / entry points
 
@@ -131,12 +157,40 @@ get a timeline event the way task completion does).
   not a separate endpoint, it's a new check inside the existing status
   change path, so every status-change caller (UI dropdown, any future
   API caller) gets it automatically.
+- `POST /api/projects/[projectId]/templates` — snapshot this project's
+  current tasks (title + priority, in creation order) into a new
+  `ProjectTemplate` (`name`, required). Returns the new template's `id`
+  and `taskCount`.
+- `POST /api/clients/[id]/projects/from-template` — create a new
+  project for this client from a template (`templateId`, required;
+  `name`, optional — defaults to the template's own name). Bulk-inserts
+  the template's tasks (status always `"todo"`, no assignee/due date)
+  and writes one summarizing audit event and one `ClientTimelineEvent`
+  rather than one of each per copied task.
+- There is deliberately no `GET` route for listing templates — the
+  "new project from template" picker on `/clients/[id]` is populated by
+  the server component calling `listProjectTemplates` directly (the
+  same pattern nearly every other page-load read in this app already
+  uses), not a client-side fetch. Add one only if a future consumer
+  actually needs to read the list without a full page render.
 
 ## UI
 
 - `/clients/[id]` — "Projects" card lists projects (linking to their
-  detail page) with an inline "+ New project" quick-add
-  (`clients:write` only).
+  detail page) with an inline "+ New project" quick-add in the card
+  header (`clients:write` only), and — below the project list, in the
+  card body, not the header — a "+ From template" quick-add when the
+  org has at least one template: a `<select>` of templates (name +
+  task count) and an optional project-name override. Deliberately
+  placed in the body rather than the header: the header row already
+  carries "View all"/"Content Calendar"/"Shoots"/"+ New project", and a
+  multi-field form (select + text input + two buttons) squeezed into
+  that same narrow flex row overflowed the card and intercepted its own
+  buttons' clicks in manual browser testing — caught live, not by any
+  automated test, since jsdom/vitest never lays out real CSS. Fixed by
+  moving the expanded form to the card body (where `NewTaskForm` and
+  similar multi-field forms already live) and adding `flex-wrap` so it
+  degrades gracefully on an even narrower viewport instead of clipping.
 - `/clients/[id]/projects/[projectId]` — a "Milestones" card above
   Tasks: a checkbox-toggle list (name, due date, a red "Overdue" badge
   when `!done && dueDate < now`, and for writers a delete button), plus
@@ -175,7 +229,11 @@ get a timeline event the way task completion does).
   thrown `AuthError` would otherwise hit inside a plain `<form action>`
   server action (there's no `error.tsx` boundary in this app to catch
   it gracefully). The server-side check in `setTaskStatus` remains the
-  actual authority; the disabled option is UX, not the enforcement.
+  actual authority; the disabled option is UX, not the enforcement. In
+  the page header, a "Save as template" toggle (writers only) opens a
+  one-field form (template name, defaulting to the project's own name)
+  that snapshots the project's current tasks; on success it shows an
+  inline "Saved as a template (N tasks)." confirmation.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates, and now
@@ -254,6 +312,18 @@ feeding the future Client Health Score (Section 4.2).
 - **Cross-organization dependency `id`:** rejected by walking
   dependency → task → project → client → `organizationId`, same pattern
   as checklist items/comments/milestones.
+- **Empty template name:** rejected before any database write, same
+  pattern as an empty task title.
+- **Saving an empty project as a template:** allowed — an empty task
+  list is a legitimate (if minimal) template, so this only produces a
+  `ProjectTemplate` with zero `ProjectTemplateTask` rows rather than
+  being rejected.
+- **A cross-organization source project (saving a template) or target
+  client/template (instantiating one):** rejected by the same
+  walk-to-`organizationId` pattern used everywhere else in this module.
+  Instantiating from a template in a different organization is rejected
+  even though templates have no client to scope by — the check is
+  directly against `template.organizationId`.
 
 ## Acceptance tests
 
@@ -338,6 +408,25 @@ feeding the future Client Health Score (Section 4.2).
 - `apps/web/src/app/api/task-dependencies/[id]/route.contract.test.ts`
   (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
   cross-organization).
+- `apps/web/src/lib/services/project-template-service.integration.test.ts`
+  — 12 tests against real Postgres: `createProjectTemplateFromProject`
+  snapshots the real tasks (title/priority/position) in order and
+  records an audit event, allows an empty project to become a
+  task-less template, rejects an empty name, rejects a
+  `clients:write`-less write, and rejects a cross-organization project;
+  `listProjectTemplates` returns the org's real templates with their
+  tasks and rejects a read with no `clients:read` on the given client;
+  `createProjectFromTemplate` creates a real project with real tasks
+  copied from the template (verified via a real `ClientTimelineEvent`
+  too), falls back to the template's own name when none is given,
+  rejects a `clients:write`-less write, rejects a cross-organization
+  template, and rejects an unknown client.
+- `apps/web/src/app/api/projects/[projectId]/templates/route.contract.test.ts`
+  — 5 tests (401/400 missing name/403/200 with a real persisted
+  template and its real task snapshot/400 cross-organization).
+- `apps/web/src/app/api/clients/[id]/projects/from-template/route.contract.test.ts`
+  — 5 tests (401/400 missing `templateId`/403/200 with a real persisted
+  project and its real copied tasks/400 cross-organization template).
 - Manual smoke test performed for the Phase 1 slice: created a project
   and task via the real HTTP routes while logged in, confirmed both
   appeared on `/calendar` and the project detail page rendered
@@ -445,3 +534,40 @@ feeding the future Client Health Score (Section 4.2).
   observed the rejection as a thrown error, which is exactly what a
   service layer should do. Only driving the actual `<select>` in a real
   browser surfaced that the *form* had no handler for that error.
+- Manual smoke test performed for the project-templates slice against a
+  real running production server: saved a real project (with its real
+  seeded tasks) as a template through the real
+  `POST /api/projects/[projectId]/templates` route, confirmed via
+  `psql` that the template and its task snapshot (titles + priorities +
+  `position`) matched the source project exactly. Instantiated a new
+  project from that template through the real
+  `POST /api/clients/[id]/projects/from-template` route, confirmed via
+  `psql` that the new project and its copied tasks (same
+  titles/priorities, `status: "todo"`) existed. Then, through a real
+  headless browser: clicked "Save as template" on the project detail
+  page, submitted a name, and confirmed the real "Saved as a template
+  (N tasks)." success message rendered; on the client page, opened "+
+  From template", selected the just-created template, submitted an
+  optional project name, and confirmed the real project appeared in the
+  Projects list and the real Client Timeline after a reload. This live
+  pass caught a real layout bug — see note below — before commit.
+  Deleted every smoke-test project, template, and task afterward via
+  `psql` to leave the dev database clean.
+
+  **Bug caught by this smoke test, fixed before commit:** the first
+  version put the "+ From template" form in the Projects card's header
+  action row alongside "View all"/"Content Calendar"/"Shoots"/"+ New
+  project". That row was already near its width limit; the from-template
+  form (a `<select>` + text input + two buttons) pushed it over, and a
+  screenshot showed the expanded form's own "Create"/"Cancel" buttons
+  rendering underneath the project list below, so clicking "Create"
+  hit the wrong element and timed out in Playwright ("subtree
+  intercepts pointer events"). Fixed by moving the form out of the
+  crowded header into the card body (matching where `NewTaskForm` and
+  similar multi-field forms already live in this app) and adding
+  `flex-wrap` to the form itself so it degrades to multiple lines on a
+  narrow card instead of overflowing. No unit or integration test
+  could have caught this — jsdom/vitest never lays out real CSS, so a
+  route-contract or component test would have exercised the same form
+  logic without ever noticing the visual overlap; only a real browser
+  at a real viewport width surfaced it.
