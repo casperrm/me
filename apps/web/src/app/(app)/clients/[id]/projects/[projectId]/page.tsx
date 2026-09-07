@@ -8,6 +8,7 @@ import { requireActor } from "@/lib/guards";
 import { getProjectProfitability } from "@/lib/services/profitability-service";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskStatusForm } from "./TaskStatusForm";
+import { TaskChecklist } from "./TaskChecklist";
 import { NewCampaignForm } from "./NewCampaignForm";
 
 function money(cents: number) {
@@ -26,7 +27,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     where: { id: projectId, clientId: id, client: { organizationId: actor.organizationId } },
     include: {
       client: true,
-      tasks: { include: { assignee: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
+      tasks: {
+        include: { assignee: { include: { user: true } }, checklistItems: { orderBy: { position: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      },
       campaigns: true,
     },
   });
@@ -119,17 +123,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         ) : (
           <ul className="mb-4 space-y-2">
             {project.tasks.map((task) => (
-              <li key={task.id} className="flex items-center justify-between border-b border-neutral-50 pb-2 text-sm">
-                <div>
-                  <span className={task.status === "done" ? "text-neutral-400 line-through" : ""}>{task.title}</span>
-                  {task.assignee && <span className="ml-2 text-xs text-neutral-400">— {task.assignee.user.name}</span>}
-                  {task.dueDate && <span className="ml-2 text-xs text-neutral-400">due {task.dueDate.toLocaleDateString()}</span>}
+              <li key={task.id} className="border-b border-neutral-50 pb-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={task.status === "done" ? "text-neutral-400 line-through" : ""}>{task.title}</span>
+                    {task.assignee && <span className="ml-2 text-xs text-neutral-400">— {task.assignee.user.name}</span>}
+                    {task.dueDate && <span className="ml-2 text-xs text-neutral-400">due {task.dueDate.toLocaleDateString()}</span>}
+                  </div>
+                  {canWrite ? (
+                    <TaskStatusForm taskId={task.id} clientId={project.clientId} projectId={project.id} status={task.status} />
+                  ) : (
+                    <span className="text-xs text-neutral-500">{STATUS_LABEL[task.status] ?? task.status}</span>
+                  )}
                 </div>
-                {canWrite ? (
-                  <TaskStatusForm taskId={task.id} clientId={project.clientId} projectId={project.id} status={task.status} />
-                ) : (
-                  <span className="text-xs text-neutral-500">{STATUS_LABEL[task.status] ?? task.status}</span>
-                )}
+                <TaskChecklist taskId={task.id} items={task.checklistItems} canWrite={canWrite} />
               </li>
             ))}
           </ul>

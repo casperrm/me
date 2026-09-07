@@ -12,7 +12,14 @@ vi.mock("next/headers", () => ({
 
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
-import { createProject, createTask, setTaskStatus } from "./project-service";
+import {
+  addTaskChecklistItem,
+  createProject,
+  createTask,
+  deleteTaskChecklistItem,
+  setTaskStatus,
+  toggleTaskChecklistItem,
+} from "./project-service";
 import { createContentCalendarItem } from "./content-calendar-service";
 import { getUpcomingEvents } from "./calendar-service";
 
@@ -20,6 +27,7 @@ async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.contentCalendarItem.deleteMany();
+  await prisma.taskChecklistItem.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
   await prisma.invoice.deleteMany();
@@ -124,6 +132,68 @@ describe("createProject / createTask / setTaskStatus", () => {
     await expect(
       createTask({ actorUserId: designer.id, organizationId: orgId, projectId: project.id, title: "Should fail" }),
     ).rejects.toThrow();
+  });
+});
+
+describe("addTaskChecklistItem / toggleTaskChecklistItem / deleteTaskChecklistItem", () => {
+  it("adds items in order, toggles done, and deletes an item", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Checklist task" });
+
+    const first = await addTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "Draft v1" });
+    const second = await addTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "Get sign-off" });
+    expect(first.position).toBe(0);
+    expect(second.position).toBe(1);
+    expect(first.done).toBe(false);
+
+    const toggled = await toggleTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, itemId: first.id });
+    expect(toggled.done).toBe(true);
+    const toggledBack = await toggleTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, itemId: first.id });
+    expect(toggledBack.done).toBe(false);
+
+    await deleteTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, itemId: second.id });
+    const remaining = await prisma.taskChecklistItem.findMany({ where: { taskId: task.id } });
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe(first.id);
+  });
+
+  it("rejects an empty item text", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Empty text task" });
+    await expect(
+      addTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "   " }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a write from a member with no clients:write on the task's client", async () => {
+    const designer = await prisma.user.findFirstOrThrow({ where: { email: "proj-designer@test.example" } });
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Permission check task" });
+
+    await expect(
+      addTaskChecklistItem({ actorUserId: designer.id, organizationId: orgId, taskId: task.id, text: "Should fail" }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a task or item from a different organization", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Checklist Other Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "checklist-other-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await createProject({ actorUserId: otherOwner.id, organizationId: otherOrg.id, clientId: otherClient.id, name: "Other Project" });
+    const otherTask = await createTask({ actorUserId: otherOwner.id, organizationId: otherOrg.id, projectId: otherProject.id, title: "Other Task" });
+    const otherItem = await addTaskChecklistItem({ actorUserId: otherOwner.id, organizationId: otherOrg.id, taskId: otherTask.id, text: "Other item" });
+
+    await expect(
+      addTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, taskId: otherTask.id, text: "Nope" }),
+    ).rejects.toThrow(AuthError);
+    await expect(
+      toggleTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, itemId: otherItem.id }),
+    ).rejects.toThrow(AuthError);
   });
 });
 

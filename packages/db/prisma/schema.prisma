@@ -425,7 +425,28 @@ model Task {
   dueDate    DateTime?
   createdAt  DateTime    @default(now())
 
+  checklistItems TaskChecklistItem[]
+
   @@map("tasks")
+}
+
+// Section 12's "task... checklist" — the smallest real cut of that gap:
+// a flat, ordered list of sub-items on a task, each independently
+// checkable. No nesting, no per-item assignee/due date — see
+// docs/specs/projects-and-calendar.md for what's still deliberately not
+// built (milestones/dependencies, priority/estimate, comments,
+// attachments, templates).
+model TaskChecklistItem {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  text      String
+  done      Boolean  @default(false)
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@map("task_checklist_items")
 }
 
 model Campaign {
