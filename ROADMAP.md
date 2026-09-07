@@ -380,6 +380,20 @@ SLOs.
       see `docs/specs/opportunity-engine-scaling.md`, including why the
       service-gap signal (a JSON-string `services` column, not `jsonb`)
       was deliberately left as-is rather than force-fit into SQL.
+- [x] **Clients list page pagination.** The org-wide clients list
+      fetched every readable client on every load — unbounded against
+      the Bible's own 500-client scale target — plus fully included
+      `projects` and `brandProfile` just to display a count and a
+      truthiness check. Added the same `PAGE_SIZE=24` offset pagination
+      shape used by the client detail page slice (same shared
+      `Pagination` component), switched to `_count.select` for the
+      project count and a `select`-scoped `brandProfile: { id: true }`
+      instead of the full record. Section 38's scoped-collaborator
+      filter is unchanged and still applied inside the same `where`.
+      Verified live against the seeded dev database: inserted 30
+      temporary clients (31 total), confirmed page 1/page 2 split
+      exactly 24/7 with correct boundary links, cross-checked against
+      `select count(*)` — see `docs/specs/clients-list-pagination.md`.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 
