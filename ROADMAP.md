@@ -393,13 +393,23 @@ Phase 5's concretely buildable scope is now complete.
       (previously "nothing reads it back yet," per this file's own
       prior wording and ADR-007). A client's past successful Cedar
       Brain answers now feed into governed context retrieval for that
-      client's next request, and a new "Cedar Brain Activity" card on
+      client's next request, and a "Cedar Brain Activity" card on
       the client profile page shows the real history (including
-      failures, for human visibility). See `docs/specs/client-memory.md`
-      for exactly why this is real Client Memory and explicitly not yet
-      Agency Memory: no curation, no cross-client pattern extraction,
-      no outcome measurement — one client's own history, read back
-      verbatim.
+      failures, for human visibility). A follow-up slice closed this
+      module's own explicitly-named next increment: a prior answer a
+      human reviewer already flagged incorrect (Section 6.3's AI
+      Supervisor) is now excluded from the model-facing context too,
+      not just failed requests — respecting a human's explicit signal
+      without the system forming any judgment of its own. The client
+      profile card gained a matching "flagged incorrect" badge.
+      Verified live: flagged a real Cedar Brain request through the
+      running server, confirmed a subsequent request's `contextSources`
+      correctly omitted it even though it had succeeded and had real
+      content. See `docs/specs/client-memory.md` for exactly why this
+      is real Client Memory and explicitly not yet Agency Memory: no
+      curation, no cross-client pattern extraction, no outcome
+      measurement — one client's own history, read back verbatim,
+      filtered only by what a human already said about it.
 - [ ] Agency Memory, Success Library, Knowledge Graph query layer, Cedar
       Decision Engine, Cedar Intelligence, Living/Market Intelligence,
       Digital Twin, Innovation Lab, Experience Engine — not started;

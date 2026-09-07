@@ -103,6 +103,25 @@ beforeAll(async () => {
       errorMessage: "Anthropic API error (500)",
     },
   });
+  // A successful request a human reviewer already flagged as wrong
+  // (Section 6.3's AI Supervisor) — must never be fed back into the
+  // model's context either, even though it succeeded.
+  await prisma.cedarBrainRequest.create({
+    data: {
+      organizationId: org.id,
+      clientId: clientAId,
+      prompt: "This one was flagged incorrect",
+      routedAgents: "[]",
+      response: JSON.stringify({ summary: "A confidently wrong answer that a reviewer caught." }),
+      mode: "live",
+      modelName: "claude-sonnet-5",
+      promptVersion: "v2",
+      latencyMs: 400,
+      success: true,
+      flaggedIncorrect: true,
+      flaggedAt: new Date(),
+    },
+  });
 
   // A scoped member with access ONLY to Client B, not Client A.
   const scoped = await prisma.user.create({
@@ -143,8 +162,15 @@ describe("buildGovernedContext", () => {
   it("never feeds a failed prior request's (non-existent) content back into the model's context", async () => {
     const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientAId });
     expect(context.text).not.toContain("This one failed");
-    // Only the one successful prior request counts as a source, not both.
+    // Only the one successful, never-flagged prior request counts as a
+    // source, not the failed one or the flagged-incorrect one.
     expect(context.sources.find((s) => s.includes("prior Cedar Brain answer"))).toBe("1 prior Cedar Brain answer(s)");
+  });
+
+  it("never feeds a flagged-incorrect prior request's content back into the model's context, even though it succeeded", async () => {
+    const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientAId });
+    expect(context.text).not.toContain("A confidently wrong answer that a reviewer caught.");
+    expect(context.text).not.toContain("This one was flagged incorrect");
   });
 
   it("omits sections with no real data instead of fabricating placeholders", async () => {
@@ -177,12 +203,16 @@ describe("buildGovernedContext", () => {
 });
 
 describe("getRecentCedarBrainActivityForClient", () => {
-  it("returns both successful and failed requests, most recent first, with a real summary excerpt", async () => {
-    const activity = await getRecentCedarBrainActivityForClient(clientAId, orgId);
-    expect(activity).toHaveLength(2);
-    expect(activity[0]).toMatchObject({ prompt: "This one failed", success: false, summaryExcerpt: null });
-    expect(activity[1]).toMatchObject({ prompt: "Draft a launch hook for FastCharge Pro", success: true });
-    expect(activity[1].summaryExcerpt).toContain("Charge in the time it takes");
+  it("returns successful, failed, and flagged requests alike, most recent first, with a real summary excerpt", async () => {
+    // Limit raised to 3 for this test — the default RECENT_CEDAR_BRAIN_LIMIT
+    // of 3 already covers all three fixture rows, but stating it explicitly
+    // documents intent as the fixture grows.
+    const activity = await getRecentCedarBrainActivityForClient(clientAId, orgId, 3);
+    expect(activity).toHaveLength(3);
+    expect(activity[0]).toMatchObject({ prompt: "This one was flagged incorrect", success: true, flaggedIncorrect: true });
+    expect(activity[1]).toMatchObject({ prompt: "This one failed", success: false, summaryExcerpt: null, flaggedIncorrect: false });
+    expect(activity[2]).toMatchObject({ prompt: "Draft a launch hook for FastCharge Pro", success: true, flaggedIncorrect: false });
+    expect(activity[2].summaryExcerpt).toContain("Charge in the time it takes");
   });
 
   it("returns nothing for a client with no Cedar Brain history", async () => {

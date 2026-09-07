@@ -432,7 +432,10 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                 <li key={a.id}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-neutral-400">{a.createdAt.toLocaleDateString()}</span>
-                    {!a.success && <span className="text-xs text-red-600">failed</span>}
+                    <span className="flex gap-2">
+                      {!a.success && <span className="text-xs text-red-600">failed</span>}
+                      {a.flaggedIncorrect && <span className="text-xs text-amber-600">flagged incorrect</span>}
+                    </span>
                   </div>
                   <div className="font-medium">{a.prompt}</div>
                   {a.summaryExcerpt && <div className="text-neutral-500">{a.summaryExcerpt}</div>}

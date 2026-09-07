@@ -27,6 +27,7 @@ export interface CedarBrainActivityItem {
   summaryExcerpt: string | null;
   mode: string;
   success: boolean;
+  flaggedIncorrect: boolean;
   createdAt: Date;
 }
 
@@ -50,7 +51,7 @@ export async function getRecentCedarBrainActivityForClient(
     where: { clientId, organizationId },
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: { id: true, prompt: true, response: true, mode: true, success: true, createdAt: true },
+    select: { id: true, prompt: true, response: true, mode: true, success: true, flaggedIncorrect: true, createdAt: true },
   });
 
   return requests.map((r) => {
@@ -66,7 +67,15 @@ export async function getRecentCedarBrainActivityForClient(
         // Malformed/legacy response JSON — omit rather than guess at content.
       }
     }
-    return { id: r.id, prompt: r.prompt, summaryExcerpt, mode: r.mode, success: r.success, createdAt: r.createdAt };
+    return {
+      id: r.id,
+      prompt: r.prompt,
+      summaryExcerpt,
+      mode: r.mode,
+      success: r.success,
+      flaggedIncorrect: r.flaggedIncorrect,
+      createdAt: r.createdAt,
+    };
   });
 }
 
@@ -139,11 +148,14 @@ export async function buildGovernedContext(params: {
     sources.push(`${client.timelineEvents.length} recent timeline event(s)`);
   }
 
-  // Only successful prior answers are worth feeding back as context — a
-  // failed request has no real content to reference (it's still shown
-  // to a human on the client profile page, just not injected here).
+  // Only successful, never-flagged prior answers are worth feeding back
+  // as context — a failed request has no real content to reference, and
+  // an answer a real reviewer already flagged as wrong (Section 6.3's AI
+  // Supervisor) has no business being served back as a trusted precedent
+  // for the next request. Both are still shown to a human on the client
+  // profile page (including the "flagged" badge), just not injected here.
   const priorActivity = (await getRecentCedarBrainActivityForClient(params.clientId, params.organizationId)).filter(
-    (a) => a.success && a.summaryExcerpt,
+    (a) => a.success && a.summaryExcerpt && !a.flaggedIncorrect,
   );
   if (priorActivity.length > 0) {
     const priorLines = priorActivity.map((a) => `- Asked: "${a.prompt}" → ${a.summaryExcerpt}`);
