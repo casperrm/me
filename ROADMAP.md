@@ -422,6 +422,16 @@ SLOs.
       assets, confirmed correct "View all" counts, then pushed invoices
       to 22 total and confirmed the new invoices page split exactly
       20/2 — see `docs/specs/client-portal-pagination.md`.
+- [x] **Shoots page pagination.** The per-client production shoots list
+      fetched every shoot ever scheduled, unbounded — same shape as the
+      content calendar fix. Same `PAGE_SIZE=20` pattern. Verified live
+      against the seeded dev database: inserted 24 temporary shoots,
+      confirmed page 1/page 2 split exactly 20/4 — see
+      `docs/specs/shoots-pagination.md`. This closes every ranked item
+      from the Phase 7 audit except asset-picker dropdowns, which needs
+      a real search-as-you-type redesign rather than a pagination
+      change — tracked as its own follow-up, not silently folded into
+      any of these six slices.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 

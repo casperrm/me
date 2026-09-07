@@ -3,12 +3,20 @@ import { notFound } from "next/navigation";
 import { isAuthorized } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
+import { Pagination } from "@/components/Pagination";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { NewShootForm } from "./NewShootForm";
 import { ShootStatusForm } from "./ShootStatusForm";
 
 export const dynamic = "force-dynamic";
+
+// Bounds the shoots list regardless of how much production history a
+// client accumulates (Phase 7 scale hardening; see
+// docs/specs/dashboard-aggregates.md's audit trail). The New Shoot
+// form's project dropdown is left unbounded — bounded by project count
+// per client, not production history, so not the concern this bounds.
+const PAGE_SIZE = 20;
 
 const STATUS_STYLE: Record<string, string> = {
   PLANNED: "bg-neutral-100 text-neutral-600",
@@ -26,8 +34,15 @@ function parseJSON<T>(value: string | null | undefined, fallback: T): T {
   }
 }
 
-export default async function ShootsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ShootsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { id } = await params;
+  const { page: pageParam } = await searchParams;
   const actor = await requireActor();
 
   const client = await prisma.client.findFirst({ where: { id, organizationId: actor.organizationId } });
@@ -48,10 +63,20 @@ export default async function ShootsPage({ params }: { params: Promise<{ id: str
     clientId: client.id,
   });
 
-  const [shoots, projects] = await Promise.all([
-    prisma.shoot.findMany({ where: { clientId: client.id }, orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }] }),
+  const rawPage = Number(pageParam) || 1;
+  const page = rawPage >= 1 ? Math.floor(rawPage) : 1;
+
+  const [shoots, totalCount, projects] = await Promise.all([
+    prisma.shoot.findMany({
+      where: { clientId: client.id },
+      orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.shoot.count({ where: { clientId: client.id } }),
     prisma.project.findMany({ where: { clientId: client.id }, select: { id: true, name: true } }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -102,6 +127,7 @@ export default async function ShootsPage({ params }: { params: Promise<{ id: str
             })}
           </ul>
         )}
+        <Pagination basePath={`/clients/${client.id}/shoots`} page={page} totalPages={totalPages} totalCount={totalCount} />
       </Card>
     </div>
   );
