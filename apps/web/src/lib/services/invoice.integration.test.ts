@@ -17,6 +17,7 @@ async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
@@ -26,6 +27,7 @@ async function wipeDatabase() {
 let orgId: string;
 let ownerUserId: string;
 let clientId: string;
+let projectId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -43,6 +45,9 @@ beforeAll(async () => {
     data: { organizationId: org.id, name: "Invoice Client", companyName: "Inc", services: "[]" },
   });
   clientId = client.id;
+
+  const project = await prisma.project.create({ data: { clientId: client.id, name: "Invoice Project" } });
+  projectId = project.id;
 });
 
 afterAll(async () => {
@@ -73,6 +78,28 @@ describe("createInvoice", () => {
 
     const timeline = await prisma.clientTimelineEvent.findFirst({ where: { clientId, type: "invoice_created" } });
     expect(timeline).toBeTruthy();
+  });
+
+  it("accepts a projectId that belongs to the client", async () => {
+    const invoice = await createInvoice({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      clientId,
+      projectId,
+      amountCents: 15000,
+    });
+    expect(invoice.projectId).toBe(projectId);
+  });
+
+  it("rejects a projectId that belongs to a different client", async () => {
+    const otherClient = await prisma.client.create({
+      data: { organizationId: orgId, name: "Other Same-Org Client", companyName: "Z", services: "[]" },
+    });
+    const otherProject = await prisma.project.create({ data: { clientId: otherClient.id, name: "Other Project" } });
+
+    await expect(
+      createInvoice({ actorUserId: ownerUserId, organizationId: orgId, clientId, projectId: otherProject.id, amountCents: 5000 }),
+    ).rejects.toThrow(AuthError);
   });
 });
 

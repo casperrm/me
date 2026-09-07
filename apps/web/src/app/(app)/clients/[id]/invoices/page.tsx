@@ -41,6 +41,14 @@ export default async function ClientInvoicesPage({
   });
 
   const { items, page, totalPages, totalCount } = await getPaginatedInvoices(client.id, Number(pageParam) || 1);
+  // Bounded: a project picker with hundreds of options wouldn't be usable
+  // anyway, so this caps rather than paginating.
+  const projects = await prisma.project.findMany({
+    where: { clientId: client.id },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: 100,
+  });
 
   return (
     <div className="space-y-6">
@@ -52,7 +60,7 @@ export default async function ClientInvoicesPage({
         <p className="text-sm text-neutral-500">All invoices ever issued to {client.name} ({totalCount} total).</p>
       </div>
 
-      <Card action={canWriteFinance && <AddInvoiceForm clientId={client.id} />}>
+      <Card action={canWriteFinance && <AddInvoiceForm clientId={client.id} projects={projects} />}>
         {items.length === 0 ? (
           <p className="text-sm text-neutral-400">No invoices yet.</p>
         ) : (

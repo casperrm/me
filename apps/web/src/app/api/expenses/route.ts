@@ -25,6 +25,7 @@ export async function POST(req: Request) {
       amountCents: Number(body.amountCents),
       description: body.description || undefined,
       clientId: body.clientId || undefined,
+      projectId: body.projectId || undefined,
     });
     return NextResponse.json({ ok: true, expenseId: expense.id });
   } catch (err) {

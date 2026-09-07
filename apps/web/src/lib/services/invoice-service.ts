@@ -13,6 +13,15 @@ async function assertClientInOrg(clientId: string, organizationId: string) {
   return client;
 }
 
+// A project belongs to exactly one client — tagging an invoice to a
+// project that isn't actually this client's own would silently corrupt
+// project-level profitability (Section 4.2/16), so this is checked
+// against the client, not just the organization.
+async function assertProjectBelongsToClient(projectId: string, clientId: string) {
+  const project = await prisma.project.findFirst({ where: { id: projectId, clientId } });
+  if (!project) throw new AuthError("Project not found for this client.");
+}
+
 /**
  * Invoices previously only ever came from the seed script — this is the
  * first real write path (mirrors expense-service.ts's createExpense,
@@ -24,6 +33,7 @@ export async function createInvoice(params: {
   actorUserId: string;
   organizationId: string;
   clientId: string;
+  projectId?: string;
   amountCents: number;
   dueAt?: Date;
 }) {
@@ -33,13 +43,20 @@ export async function createInvoice(params: {
     permission: "finance:write",
   });
   await assertClientInOrg(params.clientId, params.organizationId);
+  if (params.projectId) await assertProjectBelongsToClient(params.projectId, params.clientId);
 
   if (!Number.isFinite(params.amountCents) || params.amountCents <= 0) {
     throw new AuthError("Amount must be a positive number.");
   }
 
   const invoice = await prisma.invoice.create({
-    data: { clientId: params.clientId, amountCents: params.amountCents, dueAt: params.dueAt, status: "DRAFT" },
+    data: {
+      clientId: params.clientId,
+      projectId: params.projectId,
+      amountCents: params.amountCents,
+      dueAt: params.dueAt,
+      status: "DRAFT",
+    },
   });
 
   await emitAuditEvent({

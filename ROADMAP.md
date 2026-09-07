@@ -316,12 +316,25 @@ them.
       attribution real, paired with `Invoice.clientId` (already
       existed) for revenue. CEO Dashboard gained a per-client
       revenue/cost/profit/margin table; client profile page gained an
-      Expenses card. Explicit scope boundary in
-      `docs/specs/profitability.md`: project/campaign/service-level
-      attribution (Phase 5's own wording) needs schema and UI this
-      slice doesn't build (`Invoice.projectId`/`Expense.projectId`, a
-      billable line-item model) — deferred with reasons given, not
-      faked.
+      Expenses card.
+- [x] Project-level profitability attribution (Section 4.2/16 Phase 5)
+      — new `Invoice.projectId`/`Expense.projectId` (both optional FKs
+      to `Project`), validated by both write paths against the given
+      `clientId` (not just the organization) so a project can't be
+      mis-tagged to another client's project. New
+      `getProjectProfitability(clientId)` breaks down revenue/cost/
+      profit/margin by project within a client, with an "unassigned"
+      bucket for untagged invoices/expenses — mirrors the client-level
+      unattributed-overhead pattern one level down. UI: the invoice/
+      expense forms gained an optional project picker (4 call sites);
+      the project detail page gained a real Profitability card. Also
+      fixed a real unbounded `expense.findMany` found while touching
+      `profitability-service.ts`, converted to `groupBy`/`aggregate`
+      matching the invoice side's existing pattern. Explicit scope
+      boundary in `docs/specs/profitability.md`: campaign/service-level
+      attribution (Phase 5's own wording) still needs a billable
+      line-item model and reconciled campaign spend, neither of which
+      exist — deferred with reasons given, not faked.
 - [x] Opportunity Engine (Section 4.2) — `getOpportunitiesForClient`
       surfaces evidence-backed service and creative-format gaps: a
       service or creative format used by 2+ other distinct clients in
@@ -364,9 +377,11 @@ them.
       capacity risk is a coarse task-count proxy (no time-tracking/
       effort model exists), cost leakage identifies the largest category
       but not root cause, and no signal here uses trend data.
-- [ ] Missing: project/campaign/service-level profitability (needs
-      `Invoice.projectId`/`Expense.projectId` and a billable line-item
-      model — no UI to populate that granularity exists yet; see
+- [ ] Missing: campaign/service-level profitability (project-level is
+      now built — see above; campaign-level needs reconciled actual
+      spend, not just `Campaign.budgetCents`'s manual estimate;
+      service-level needs a billable line-item model on invoices,
+      `Client.services` today is just a tag list; see
       `docs/specs/profitability.md`).
 
 Phase 5's concretely buildable scope is now complete.

@@ -12,12 +12,15 @@ vi.mock("next/headers", () => ({
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
 import { createExpense } from "./expense-service";
-import { getClientProfitability } from "./profitability-service";
+import { createInvoice } from "./invoice-service";
+import { getClientProfitability, getProjectProfitability } from "./profitability-service";
 
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
+  await prisma.clientTimelineEvent.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
@@ -124,5 +127,91 @@ describe("getClientProfitability", () => {
 
     expect(clientA.costCents).toBe(20000);
     expect(clientB.costCents).toBe(30000);
+  });
+});
+
+describe("createExpense project validation", () => {
+  it("rejects a projectId with no clientId", async () => {
+    const project = await prisma.project.create({ data: { clientId: clientAId, name: "Orphan-check Project" } });
+    await expect(
+      createExpense({ actorUserId: ownerUserId, organizationId: orgId, category: "Software", amountCents: 1000, projectId: project.id }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a projectId that belongs to a different client", async () => {
+    const projectOnB = await prisma.project.create({ data: { clientId: clientBId, name: "Client B Project" } });
+    await expect(
+      createExpense({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        category: "Software",
+        amountCents: 1000,
+        clientId: clientAId,
+        projectId: projectOnB.id,
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("accepts a projectId that belongs to the given client", async () => {
+    const project = await prisma.project.create({ data: { clientId: clientAId, name: "Valid Project" } });
+    const expense = await createExpense({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      category: "Software",
+      amountCents: 1000,
+      clientId: clientAId,
+      projectId: project.id,
+    });
+    expect(expense.projectId).toBe(project.id);
+  });
+});
+
+describe("getProjectProfitability", () => {
+  it("breaks down revenue/cost/profit by project within a client, with an unassigned bucket", async () => {
+    const client = await prisma.client.create({
+      data: { organizationId: orgId, name: "Project-Scoped Client", companyName: "P Inc", services: "[]" },
+    });
+    const projectOne = await prisma.project.create({ data: { clientId: client.id, name: "Project One" } });
+    const projectTwo = await prisma.project.create({ data: { clientId: client.id, name: "Project Two" } });
+
+    await createInvoice({ actorUserId: ownerUserId, organizationId: orgId, clientId: client.id, projectId: projectOne.id, amountCents: 100000 });
+    const paidOnOne = await prisma.invoice.findFirst({ where: { clientId: client.id, projectId: projectOne.id } });
+    await prisma.invoice.update({ where: { id: paidOnOne!.id }, data: { status: "PAID" } });
+
+    // Unpaid — must not count as revenue even though it's tagged to project two.
+    await createInvoice({ actorUserId: ownerUserId, organizationId: orgId, clientId: client.id, projectId: projectTwo.id, amountCents: 999999 });
+
+    // Invoice with no project — falls into the unassigned bucket.
+    await createInvoice({ actorUserId: ownerUserId, organizationId: orgId, clientId: client.id, amountCents: 50000 });
+    const unassignedInvoice = await prisma.invoice.findFirst({ where: { clientId: client.id, projectId: null } });
+    await prisma.invoice.update({ where: { id: unassignedInvoice!.id }, data: { status: "PAID" } });
+
+    await createExpense({ actorUserId: ownerUserId, organizationId: orgId, category: "Contractor", amountCents: 15000, clientId: client.id, projectId: projectOne.id });
+    await createExpense({ actorUserId: ownerUserId, organizationId: orgId, category: "Software", amountCents: 8000, clientId: client.id });
+
+    const { projects, unassignedRevenueCents, unassignedCostCents } = await getProjectProfitability(client.id);
+
+    const one = projects.find((p) => p.projectId === projectOne.id)!;
+    expect(one.revenueCents).toBe(100000);
+    expect(one.costCents).toBe(15000);
+    expect(one.profitCents).toBe(85000);
+
+    const two = projects.find((p) => p.projectId === projectTwo.id)!;
+    expect(two.revenueCents).toBe(0); // its only invoice is unpaid
+    expect(two.costCents).toBe(0);
+    expect(two.marginPct).toBeNull();
+
+    expect(unassignedRevenueCents).toBe(50000);
+    expect(unassignedCostCents).toBe(8000);
+  });
+
+  it("scopes strictly to the given client's own projects", async () => {
+    const { projects } = await getProjectProfitability(clientAId);
+    expect(projects.every((p) => p.projectId !== undefined)).toBe(true);
+    // clientA's own projects (created in earlier describe blocks) must not
+    // include projects created for the "Project-Scoped Client" above.
+    const foreignNames = projects.map((p) => p.projectName);
+    expect(foreignNames).not.toContain("Project One");
+    expect(foreignNames).not.toContain("Project Two");
   });
 });

@@ -408,6 +408,8 @@ model Project {
   campaigns Campaign[]
   assets    Asset[]
   shoots    Shoot[]
+  invoices  Invoice[]
+  expenses  Expense[]
 
   @@map("projects")
 }
@@ -683,6 +685,12 @@ model Invoice {
   id          String    @id @default(uuid())
   clientId    String
   client      Client    @relation(fields: [clientId], references: [id])
+  // Optional: attributes this invoice to a specific project for
+  // project-level profitability (Section 4.2/16). Null means the
+  // invoice isn't tagged to a project — reported as "unassigned"
+  // rather than guessed at (see docs/specs/profitability.md).
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id])
   amountCents Int
   currency    String    @default("USD")
   status      String    @default("DRAFT") // DRAFT | SENT | PAID | OVERDUE | FAILED
@@ -704,12 +712,20 @@ model Expense {
   // across clients.
   clientId       String?
   client         Client?      @relation(fields: [clientId], references: [id])
+  // Optional: attributes this cost to a specific project within the
+  // client for project-level profitability (Section 4.2/16). Only
+  // meaningful alongside a clientId — a project belongs to one client,
+  // so a project-tagged expense is implicitly client-tagged too (the
+  // service layer enforces this, not the schema).
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
   category       String
   amountCents    Int
   description    String?
   incurredAt     DateTime     @default(now())
 
   @@index([clientId])
+  @@index([projectId])
   @@map("expenses")
 }
 

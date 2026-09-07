@@ -18,6 +18,7 @@ export async function createExpense(params: {
   amountCents: number;
   description?: string;
   clientId?: string;
+  projectId?: string;
   incurredAt?: Date;
 }) {
   const membership = await requirePermission({
@@ -36,10 +37,21 @@ export async function createExpense(params: {
     if (!client) throw new AuthError("Client not found.");
   }
 
+  // A project-tagged expense with no client doesn't make sense (a
+  // project always belongs to exactly one client) — and the project
+  // must actually belong to the given client, not just exist somewhere
+  // in the organization.
+  if (params.projectId) {
+    if (!params.clientId) throw new AuthError("A project can only be set alongside its client.");
+    const project = await prisma.project.findFirst({ where: { id: params.projectId, clientId: params.clientId } });
+    if (!project) throw new AuthError("Project not found for this client.");
+  }
+
   const expense = await prisma.expense.create({
     data: {
       organizationId: params.organizationId,
       clientId: params.clientId,
+      projectId: params.projectId,
       category: params.category.trim(),
       amountCents: params.amountCents,
       description: params.description || undefined,

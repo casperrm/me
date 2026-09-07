@@ -17,13 +17,17 @@ import { POST } from "./route";
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.expense.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
+  await prisma.client.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
 }
 
 let orgId: string;
 let ownerUserId: string;
+let clientId: string;
+let projectId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -34,6 +38,13 @@ beforeAll(async () => {
   });
   ownerUserId = owner.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });
+
+  const client = await prisma.client.create({
+    data: { organizationId: org.id, name: "Expense Route Test Client", companyName: "Inc", services: "[]" },
+  });
+  clientId = client.id;
+  const project = await prisma.project.create({ data: { clientId: client.id, name: "Expense Route Test Project" } });
+  projectId = project.id;
 });
 
 afterAll(async () => {
@@ -83,5 +94,18 @@ describe("POST /api/expenses", () => {
 
     const stored = await prisma.expense.findUnique({ where: { id: body.expenseId } });
     expect(stored).toMatchObject({ category: "Software", amountCents: 5000, organizationId: orgId });
+  });
+
+  it("persists a projectId when given alongside its client, and rejects a project with no clientId", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ category: "Contractor", amountCents: 7500, clientId, projectId }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const stored = await prisma.expense.findUnique({ where: { id: body.expenseId } });
+    expect(stored?.projectId).toBe(projectId);
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const rejected = await POST(request({ category: "Contractor", amountCents: 7500, projectId }));
+    expect(rejected.status).toBe(400);
   });
 });

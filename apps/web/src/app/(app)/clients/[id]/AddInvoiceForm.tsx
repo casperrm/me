@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AddInvoiceForm({ clientId }: { clientId: string }) {
+export function AddInvoiceForm({
+  clientId,
+  projects,
+}: {
+  clientId: string;
+  projects?: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,6 +28,7 @@ export function AddInvoiceForm({ clientId }: { clientId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           clientId,
+          projectId: projectId || undefined,
           amountCents: Math.round(parseFloat(amount) * 100),
           dueAt: dueAt || undefined,
         }),
@@ -32,6 +40,7 @@ export function AddInvoiceForm({ clientId }: { clientId: string }) {
       }
       setAmount("");
       setDueAt("");
+      setProjectId("");
       setOpen(false);
       router.refresh();
     } finally {
@@ -67,6 +76,20 @@ export function AddInvoiceForm({ clientId }: { clientId: string }) {
           className="rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
         />
       </div>
+      {projects && projects.length > 0 && (
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className="w-full rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
+        >
+          <option value="">No project (unassigned)</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      )}
       <div className="flex items-center gap-2">
         <button
           type="submit"

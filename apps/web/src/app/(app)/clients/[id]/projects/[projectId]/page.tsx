@@ -5,9 +5,14 @@ import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
+import { getProjectProfitability } from "@/lib/services/profitability-service";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskStatusForm } from "./TaskStatusForm";
 import { NewCampaignForm } from "./NewCampaignForm";
+
+function money(cents: number) {
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +54,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       })
     : [];
 
+  const canReadFinance = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "finance:read",
+  });
+  // Computed from all of the client's invoices/expenses, then this one
+  // project's row is picked out — cheaper to call getProjectProfitability
+  // (which already scopes to the client) than to write a project-specific
+  // query, and it stays consistent with how the client-level table reads.
+  const projectProfitability = canReadFinance
+    ? (await getProjectProfitability(project.clientId)).projects.find((p) => p.projectId === project.id)
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -60,6 +78,40 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           {project.status} {project.dueDate && `· due ${project.dueDate.toLocaleDateString()}`}
         </p>
       </div>
+
+      {canReadFinance && (
+        <Card title="Profitability">
+          {projectProfitability ? (
+            <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-xs text-neutral-500">Revenue</dt>
+                <dd className="text-lg font-semibold">{money(projectProfitability.revenueCents)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Cost</dt>
+                <dd className="text-lg font-semibold">{money(projectProfitability.costCents)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Profit</dt>
+                <dd className={`text-lg font-semibold ${projectProfitability.profitCents < 0 ? "text-red-600" : ""}`}>
+                  {money(projectProfitability.profitCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Margin</dt>
+                <dd className="text-lg font-semibold">
+                  {projectProfitability.marginPct === null ? "—" : `${projectProfitability.marginPct.toFixed(0)}%`}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-neutral-400">
+              No revenue or cost has been tagged to this project yet — create an invoice or expense on the client
+              page and assign it to this project.
+            </p>
+          )}
+        </Card>
+      )}
 
       <Card title="Tasks">
         {project.tasks.length === 0 ? (

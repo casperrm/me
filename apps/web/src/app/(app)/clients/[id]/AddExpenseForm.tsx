@@ -3,12 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AddExpenseForm({ clientId }: { clientId: string }) {
+export function AddExpenseForm({
+  clientId,
+  projects,
+}: {
+  clientId: string;
+  projects?: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +32,7 @@ export function AddExpenseForm({ clientId }: { clientId: string }) {
           amountCents: Math.round(parseFloat(amount) * 100),
           description: description || undefined,
           clientId,
+          projectId: projectId || undefined,
         }),
       });
       const data = await res.json();
@@ -35,6 +43,7 @@ export function AddExpenseForm({ clientId }: { clientId: string }) {
       setCategory("");
       setAmount("");
       setDescription("");
+      setProjectId("");
       setOpen(false);
       router.refresh();
     } finally {
@@ -77,6 +86,20 @@ export function AddExpenseForm({ clientId }: { clientId: string }) {
         placeholder="Description (optional)"
         className="w-full rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
       />
+      {projects && projects.length > 0 && (
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className="w-full rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
+        >
+          <option value="">No project (unassigned)</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      )}
       <div className="flex items-center gap-2">
         <button
           type="submit"

@@ -93,6 +93,16 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   const healthFactors = parseJSON<{ signal: string; value: string; penalty: number; explanation: string }[]>(health?.factors, []);
   const opportunities = await getOpportunitiesForClient(client.id, actor.organizationId);
   const cedarBrainActivity = await getRecentCedarBrainActivityForClient(client.id, actor.organizationId);
+  // Separate from client.projects (which is capped to PREVIEW_LIMIT most
+  // recent) — the picker needs the full set of projects to tag against,
+  // bounded to a sane cap rather than paginated since a picker with
+  // hundreds of options wouldn't be usable anyway.
+  const allProjects = await prisma.project.findMany({
+    where: { clientId: client.id },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: 100,
+  });
 
   return (
     <div className="space-y-8">
@@ -342,7 +352,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                   View all ({client._count.invoices})
                 </Link>
               )}
-              {canWriteFinance && <AddInvoiceForm clientId={client.id} />}
+              {canWriteFinance && <AddInvoiceForm clientId={client.id} projects={allProjects} />}
             </div>
           }
         >
@@ -371,7 +381,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                   View all ({client._count.expenses})
                 </Link>
               )}
-              {canWriteFinance && <AddExpenseForm clientId={client.id} />}
+              {canWriteFinance && <AddExpenseForm clientId={client.id} projects={allProjects} />}
             </div>
           }
         >

@@ -22,6 +22,7 @@ export async function POST(req: Request) {
       actorUserId: actor.user.id,
       organizationId: actor.organizationId,
       clientId: body.clientId,
+      projectId: body.projectId || undefined,
       amountCents: Number(body.amountCents),
       dueAt: body.dueAt ? new Date(body.dueAt) : undefined,
     });
