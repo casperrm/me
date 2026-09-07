@@ -342,6 +342,26 @@ SLOs.
       shoots page, and several asset-picker dropdowns — each a real,
       separately-scoped follow-up, ranked in that doc by the audit that
       found them.
+- [x] **Client detail page pagination.** The highest-ranked item from
+      that same audit: the client detail page's single query nested six
+      unbounded relations (`projects`, `invoices`, `expenses`, `notes`,
+      `timelineEvents`, `assets`), plus fetched full `campaigns`/`tasks`
+      rows per project just to display their counts. Added a real
+      pagination service (`client-relations-service.ts`, offset
+      pagination, page size 20) backing six new "View all" pages
+      (`/clients/[id]/{invoices,expenses,notes,timeline,files,projects}`);
+      the overview page now bounds each relation to 10 most-recent rows
+      via `take` + `_count` and only shows a "View all" link when
+      there's actually more. Campaign/task counts switched to
+      `_count.select` instead of fetching full arrays. Verified against
+      real Postgres with 9 new integration tests plus a live smoke test
+      that inserted 27 real invoice rows for the seeded demo client and
+      confirmed page 1/page 2 split exactly 20/7 with zero overlap and
+      correctly-disabled boundary links — see
+      `docs/specs/client-relations-pagination.md`, including what's
+      still open (Opportunity Engine, clients list, content calendar,
+      Client Portal, shoots page, asset pickers — unchanged by this
+      slice).
 
 ## Cross-cutting gaps worth tracking regardless of phase
 

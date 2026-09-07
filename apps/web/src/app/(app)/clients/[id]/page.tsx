@@ -17,6 +17,12 @@ import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-ret
 
 export const dynamic = "force-dynamic";
 
+// How many of each relation to preview here — the rest lives behind a
+// "View all" link to a dedicated paginated page (see
+// docs/specs/client-relations-pagination.md). Keeps this overview page's
+// query bounded regardless of how much history a client accumulates.
+const PREVIEW_LIMIT = 10;
+
 function parseJSON<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -38,13 +44,18 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     where: { id, organizationId: actor.organizationId },
     include: {
       brandProfile: { include: { versions: { orderBy: { version: "desc" }, take: 1 } } },
-      projects: { include: { campaigns: true, tasks: true } },
-      invoices: { orderBy: { issuedAt: "desc" } },
-      expenses: { orderBy: { incurredAt: "desc" } },
-      notes: { orderBy: { createdAt: "desc" } },
-      timelineEvents: { orderBy: { occurredAt: "desc" } },
+      projects: {
+        orderBy: { createdAt: "desc" },
+        take: PREVIEW_LIMIT,
+        include: { _count: { select: { campaigns: true, tasks: true } } },
+      },
+      invoices: { orderBy: { issuedAt: "desc" }, take: PREVIEW_LIMIT },
+      expenses: { orderBy: { incurredAt: "desc" }, take: PREVIEW_LIMIT },
+      notes: { orderBy: { createdAt: "desc" }, take: PREVIEW_LIMIT },
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: PREVIEW_LIMIT },
       healthScores: { orderBy: { computedAt: "desc" }, take: 1 },
-      assets: { orderBy: { createdAt: "desc" }, include: { uploadedBy: { include: { user: true } } } },
+      assets: { orderBy: { createdAt: "desc" }, take: PREVIEW_LIMIT, include: { uploadedBy: { include: { user: true } } } },
+      _count: { select: { projects: true, invoices: true, expenses: true, notes: true, timelineEvents: true, assets: true } },
     },
   });
 
@@ -260,6 +271,11 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           title="Projects"
           action={
             <div className="flex items-center gap-3">
+              {client._count.projects > client.projects.length && (
+                <Link href={`/clients/${client.id}/projects`} className="text-xs text-cedar-700 hover:underline">
+                  View all ({client._count.projects})
+                </Link>
+              )}
               <Link href={`/clients/${client.id}/content`} className="text-xs text-cedar-700 hover:underline">
                 Content Calendar
               </Link>
@@ -282,7 +298,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                       <span className="text-xs text-neutral-500">{p.status}</span>
                     </div>
                     <div className="text-xs text-neutral-400">
-                      {p.campaigns.length} campaign(s) · {p.tasks.length} task(s)
+                      {p._count.campaigns} campaign(s) · {p._count.tasks} task(s)
                     </div>
                   </Link>
                 </li>
@@ -291,7 +307,16 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           )}
         </Card>
 
-        <Card title="Client timeline">
+        <Card
+          title="Client timeline"
+          action={
+            client._count.timelineEvents > client.timelineEvents.length && (
+              <Link href={`/clients/${client.id}/timeline`} className="text-xs text-cedar-700 hover:underline">
+                View all ({client._count.timelineEvents})
+              </Link>
+            )
+          }
+        >
           {client.timelineEvents.length === 0 ? (
             <p className="text-sm text-neutral-400">No history recorded yet.</p>
           ) : (
@@ -308,7 +333,19 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Invoices" action={canWriteFinance && <AddInvoiceForm clientId={client.id} />}>
+        <Card
+          title="Invoices"
+          action={
+            <div className="flex items-center gap-3">
+              {client._count.invoices > client.invoices.length && (
+                <Link href={`/clients/${client.id}/invoices`} className="text-xs text-cedar-700 hover:underline">
+                  View all ({client._count.invoices})
+                </Link>
+              )}
+              {canWriteFinance && <AddInvoiceForm clientId={client.id} />}
+            </div>
+          }
+        >
           {client.invoices.length === 0 ? (
             <p className="text-sm text-neutral-400">No invoices yet.</p>
           ) : (
@@ -325,7 +362,19 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           )}
         </Card>
 
-        <Card title="Expenses" action={canWriteFinance && <AddExpenseForm clientId={client.id} />}>
+        <Card
+          title="Expenses"
+          action={
+            <div className="flex items-center gap-3">
+              {client._count.expenses > client.expenses.length && (
+                <Link href={`/clients/${client.id}/expenses`} className="text-xs text-cedar-700 hover:underline">
+                  View all ({client._count.expenses})
+                </Link>
+              )}
+              {canWriteFinance && <AddExpenseForm clientId={client.id} />}
+            </div>
+          }
+        >
           {client.expenses.length === 0 ? (
             <p className="text-sm text-neutral-400">No expenses logged against this client yet.</p>
           ) : (
@@ -342,7 +391,16 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           )}
         </Card>
 
-        <Card title="Notes">
+        <Card
+          title="Notes"
+          action={
+            client._count.notes > client.notes.length && (
+              <Link href={`/clients/${client.id}/notes`} className="text-xs text-cedar-700 hover:underline">
+                View all ({client._count.notes})
+              </Link>
+            )
+          }
+        >
           {client.notes.length === 0 ? (
             <p className="text-sm text-neutral-400">No notes yet.</p>
           ) : (
@@ -375,7 +433,19 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <Card title="Files" action={canWrite && <AssetUploadForm clientId={client.id} />}>
+      <Card
+        title="Files"
+        action={
+          <div className="flex items-center gap-3">
+            {client._count.assets > client.assets.length && (
+              <Link href={`/clients/${client.id}/files`} className="text-xs text-cedar-700 hover:underline">
+                View all ({client._count.assets})
+              </Link>
+            )}
+            {canWrite && <AssetUploadForm clientId={client.id} />}
+          </div>
+        }
+      >
         {client.assets.length === 0 ? (
           <p className="text-sm text-neutral-400">No files uploaded yet.</p>
         ) : (
