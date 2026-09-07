@@ -574,9 +574,9 @@ SLOs.
   this work surfaced (fixed by building/starting, not `next dev`) —
   every flow originally named as a gap here now has coverage; what's
   left is depth (more permutations), not breadth.
-- **API-contract tests now exist for the large majority of route
-  handlers** (`apps/web/src/app/api/**/*.route.contract.test.ts`, 147
-  tests across 36 of 40 routes, up from an initial 6) — the HTTP layer
+- **API-contract tests now exist for every route handler in the app**
+  (`apps/web/src/app/api/**/*.route.contract.test.ts`, 165 tests
+  across all 40 routes, up from an initial 6) — the HTTP layer
   itself (auth gate, status codes, JSON envelope), not just the
   service functions underneath, which were already integration-tested.
   See `docs/specs/api-route-contracts.md` for exactly which routes and
@@ -611,10 +611,20 @@ SLOs.
   `clients:write` everywhere else). Verified live end-to-end: created a
   real project→campaign→creative→version chain, uploaded and confirmed
   a real file on disk, created and revoked a real connection, all
-  cross-checked via SQL and fully cleaned up afterward. Four routes
-  remain genuinely uncovered — `/api/auth/bootstrap`,
-  `/api/cedar-brain/[id]/flag`, `/api/invoices/[id]/mark-paid`,
-  `/api/invoices/[id]/send` — real follow-up work, not claimed done.
+  cross-checked via SQL and fully cleaned up afterward. A fifth and
+  final slice closed the last four routes: `/api/auth/bootstrap` (the
+  third no-session route, gated on an entirely-empty `organizations`
+  table rather than a token — its own test wipes to a genuinely empty
+  database rather than seeding one), `/api/cedar-brain/[id]/flag` (the
+  one write route gated by nothing more than active membership — no
+  `clients:write`, no `organization:manage`), and
+  `/api/invoices/[id]/send`/`/mark-paid` (the last two state-machine
+  transitions, `DRAFT → SENT → PAID`). Verified live: rejected a real
+  bootstrap attempt against the non-empty dev database with the
+  correct message, sent and marked a real invoice paid, triggered and
+  flagged a real (stub-mode) Cedar Brain request — cross-checked via
+  SQL and cleaned up. **API route-contract coverage is now complete:
+  40 of 40 routes.**
 - **Known residual dependency vulnerability:** Next.js's own bundled
   PostCSS carries a moderate/high-severity advisory range that only
   resolves by upgrading to Next 16, which currently fails to build in

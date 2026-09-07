@@ -1,10 +1,9 @@
 # Module: API Route-Contract Tests
 
-Status: **Implemented (representative slice, extended three times)**.
-Closes
-the gap `ROADMAP.md`'s cross-cutting section had tracked: "API-contract
-tests for the route handlers themselves (auth headers, error
-envelopes, idempotency)."
+Status: **Implemented — complete (100% of route handlers covered)**.
+Closes the gap `ROADMAP.md`'s cross-cutting section had tracked:
+"API-contract tests for the route handlers themselves (auth headers,
+error envelopes, idempotency)."
 
 ## Purpose
 
@@ -223,21 +222,60 @@ Postgres, and the `organization:manage`-gated pair (distinct from
   actually flips to `"DISCONNECTED"` and rejects a connection from a
   different organization.
 
+## Extension slice 5 (final): the last four routes
+
+A fifth slice closed the remaining gap this doc's own "not exhaustive"
+note tracked through four prior slices.
+
+- **`POST /api/auth/bootstrap`** — the third and last no-session route
+  in this app, and the one with the strangest precondition:
+  `bootstrapOrganization` only succeeds when the entire `organizations`
+  table is empty (Section 1's very-first-signup-on-a-fresh-deploy
+  flow). The test's `beforeAll` wipes to a truly empty database rather
+  than seeding one, confirms a first bootstrap creates a real org +
+  owner user + `ACTIVE` `OWNER` membership, and confirms a second
+  attempt is rejected with the real "already exists" message *and*
+  that no second organization was actually created. Needs the same
+  `next/headers` cookie mock as login/invite-accept, since a
+  successful bootstrap signs the new owner in immediately.
+- **`POST /api/cedar-brain/[id]/flag`** — the one write route in this
+  app gated by nothing more than active organization membership (no
+  `clients:write`, no `organization:manage` — any signed-in teammate
+  can flag any Cedar Brain response as wrong), so the meaningful
+  negative case is cross-organization, not cross-role. Confirms a real
+  flag actually sets `flaggedIncorrect`, `flaggedAt`, and
+  `flaggedByMembershipId` on the real row.
+- **`POST /api/invoices/[id]/send`, `POST /api/invoices/[id]/mark-paid`**
+  — the two remaining state-machine transitions on `Invoice`
+  (`DRAFT → SENT → PAID`), matching the shape `content`/`shoots`
+  status routes already established: 401/403 (`finance:write`, not
+  `clients:write`), the real service's own transition-guard message for
+  a wrong starting status, a real persisted status change (`send` also
+  confirmed against a real `ClientTimelineEvent`; `mark-paid` against a
+  real non-null `paidAt`), and the standard cross-organization 400.
+
+This closes API route-contract test coverage entirely: **40 of 40**
+route handlers now have a `route.contract.test.ts`.
+
 ## Scope boundary — stated explicitly
 
-**Still not exhaustive.** There are 40 API route handlers in this app;
-36 now have contract tests (proving the pattern across session-gated
-writes, non-session HMAC-gated writes, membership-owned-not-role-gated
-writes, state-machine transitions, the login route that creates the
-session itself, an in-session-but-self-referential MFA enrollment
-flow, a filtering-not-gating read route, real file-storage writes, and
-the one `organization:manage`-gated pair). Four remain genuinely
-uncovered — `/api/auth/bootstrap`, `/api/cedar-brain/[id]/flag`,
-`/api/invoices/[id]/mark-paid`, `/api/invoices/[id]/send` — real,
-valuable, follow-up work, not claimed as done here. Idempotency is
-proven for the one route that actually has an idempotency mechanism
+**Complete.** All 40 API route handlers in this app now have contract
+tests, proving the pattern across every distinct contract shape found:
+session-gated writes, non-session HMAC-gated writes,
+membership-owned-not-role-gated writes, state-machine transitions, the
+two routes that create a session themselves (login, bootstrap), an
+in-session-but-self-referential MFA enrollment flow, a
+filtering-not-gating read route, real file-storage writes, the one
+`organization:manage`-gated pair, and the one route gated only by
+active membership. Idempotency is proven for the one route that
+actually has an idempotency mechanism
 (`/api/integrations/webhooks/[id]`); routes with no such mechanism
-aren't tested for it, since there's nothing there to test.
+aren't tested for it, since there's nothing there to test. What
+remains open, honestly: this suite proves the *contract* (status
+codes, auth gates, real persistence) for each route, not every
+possible input permutation within it — deepening coverage inside an
+already-covered route is a different, smaller kind of follow-up work
+than what this module set out to close.
 
 ## Acceptance tests
 
@@ -274,6 +312,10 @@ aren't tested for it, since there's nothing there to test.
 - `apps/web/src/app/api/assets/[id]/download/route.contract.test.ts` — 5 tests.
 - `apps/web/src/app/api/integrations/connections/route.contract.test.ts` — 4 tests.
 - `apps/web/src/app/api/integrations/connections/[id]/revoke/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/auth/bootstrap/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/cedar-brain/[id]/flag/route.contract.test.ts` — 4 tests.
+- `apps/web/src/app/api/invoices/[id]/send/route.contract.test.ts` — 5 tests.
+- `apps/web/src/app/api/invoices/[id]/mark-paid/route.contract.test.ts` — 5 tests.
 - Manual smoke test performed for the first slice against the real
   running server: confirmed `amountCents: 0` on both `/api/expenses`
   and `/api/invoices` now correctly returns "Amount must be a positive
@@ -314,3 +356,17 @@ aren't tested for it, since there's nothing there to test.
   `client_timeline_events`) and confirmed the dev database's
   project/campaign/creative/asset/connection counts were back at their
   pre-test (seeded) values.
+- Manual smoke test performed for the fifth (final) slice against a
+  real running production server: confirmed `/api/auth/bootstrap`
+  correctly rejects with the real "already exists" message against the
+  actual non-empty dev database (no mutation risked or needed, since
+  the dev DB already has an organization); created a real invoice,
+  sent it, and marked it paid through the live
+  `/api/invoices/[id]/send` and `/api/invoices/[id]/mark-paid` routes;
+  triggered a real (stub-mode) Cedar Brain request through
+  `/api/cedar-brain` and flagged it through
+  `/api/cedar-brain/[id]/flag`. Cross-checked the invoice's final
+  `status`/`paidAt` and the request's `flaggedIncorrect`/`flaggedAt`
+  directly via `psql`, then deleted both rows (and the invoice's
+  timeline events) and confirmed the dev database's invoice and Cedar
+  Brain request counts were back at their pre-test values.
