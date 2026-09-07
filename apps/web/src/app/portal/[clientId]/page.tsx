@@ -11,6 +11,19 @@ import { PortalDecideForm } from "./PortalDecideForm";
 
 export const dynamic = "force-dynamic";
 
+// This is the external-facing surface (Bible Section 15.2) — real
+// customer-visible latency risk as a portal client's history grows, so
+// each list here is bounded to a recent preview with a "View all" link
+// to a dedicated paginated page, same pattern as the internal client
+// detail page (Phase 7 scale hardening; see
+// docs/specs/client-portal-pagination.md). "Pending your review" is the
+// one exception: it's a live work queue a client is expected to clear
+// to zero, not a growing archive, so it gets a defensive cap instead of
+// a "view all" page — there's nothing to page through once it's a
+// queue rather than a history.
+const PREVIEW_LIMIT = 10;
+const PENDING_CAP = 50;
+
 // The curated Client Portal view (Bible Section 15.2): "Client sees only
 // explicitly shared resources within their client scope. Review
 // designs/videos/content, comment, approve/request changes, view
@@ -44,32 +57,39 @@ export default async function PortalClientPage({ params }: { params: Promise<{ c
     clientId: client.id,
   });
 
-  const [creatives, invoices, assets] = await Promise.all([
+  const creativeInclude = {
+    campaign: { select: { name: true } },
+    versions: {
+      orderBy: { version: "desc" as const },
+      take: 1,
+      include: { asset: true, approvals: { orderBy: { createdAt: "desc" as const }, take: 1 } },
+    },
+  };
+
+  const [pending, approved, approvedCount, invoices, invoicesCount, assets, assetsCount] = await Promise.all([
     prisma.creative.findMany({
-      where: {
-        status: { in: ["PENDING_APPROVAL", "APPROVED"] },
-        campaign: { project: { clientId: client.id } },
-      },
-      include: {
-        campaign: { select: { name: true } },
-        versions: {
-          orderBy: { version: "desc" },
-          take: 1,
-          include: { asset: true, approvals: { orderBy: { createdAt: "desc" }, take: 1 } },
-        },
-      },
+      where: { status: "PENDING_APPROVAL", campaign: { project: { clientId: client.id } } },
+      include: creativeInclude,
       orderBy: { createdAt: "desc" },
+      take: PENDING_CAP,
     }),
-    prisma.invoice.findMany({ where: { clientId: client.id }, orderBy: { issuedAt: "desc" } }),
+    prisma.creative.findMany({
+      where: { status: "APPROVED", campaign: { project: { clientId: client.id } } },
+      include: creativeInclude,
+      orderBy: { createdAt: "desc" },
+      take: PREVIEW_LIMIT,
+    }),
+    prisma.creative.count({ where: { status: "APPROVED", campaign: { project: { clientId: client.id } } } }),
+    prisma.invoice.findMany({ where: { clientId: client.id }, orderBy: { issuedAt: "desc" }, take: PREVIEW_LIMIT }),
+    prisma.invoice.count({ where: { clientId: client.id } }),
     prisma.asset.findMany({
       where: { clientId: client.id, status: "AVAILABLE" },
       orderBy: { createdAt: "desc" },
       include: { uploadedBy: { include: { user: true } } },
+      take: PREVIEW_LIMIT,
     }),
+    prisma.asset.count({ where: { clientId: client.id, status: "AVAILABLE" } }),
   ]);
-
-  const pending = creatives.filter((c) => c.status === "PENDING_APPROVAL");
-  const approved = creatives.filter((c) => c.status === "APPROVED");
 
   return (
     <div className="space-y-8">
@@ -120,7 +140,16 @@ export default async function PortalClientPage({ params }: { params: Promise<{ c
         )}
       </Card>
 
-      <Card title="Approved history">
+      <Card
+        title="Approved history"
+        action={
+          approvedCount > approved.length && (
+            <Link href={`/portal/${client.id}/approved`} className="text-xs text-cedar-700 hover:underline">
+              View all ({approvedCount})
+            </Link>
+          )
+        }
+      >
         {approved.length === 0 ? (
           <p className="text-sm text-neutral-400">No approved creative yet.</p>
         ) : (
@@ -142,7 +171,16 @@ export default async function PortalClientPage({ params }: { params: Promise<{ c
         )}
       </Card>
 
-      <Card title="Invoices">
+      <Card
+        title="Invoices"
+        action={
+          invoicesCount > invoices.length && (
+            <Link href={`/portal/${client.id}/invoices`} className="text-xs text-cedar-700 hover:underline">
+              View all ({invoicesCount})
+            </Link>
+          )
+        }
+      >
         {invoices.length === 0 ? (
           <p className="text-sm text-neutral-400">No invoices yet.</p>
         ) : (
@@ -158,7 +196,16 @@ export default async function PortalClientPage({ params }: { params: Promise<{ c
         )}
       </Card>
 
-      <Card title="Files">
+      <Card
+        title="Files"
+        action={
+          assetsCount > assets.length && (
+            <Link href={`/portal/${client.id}/files`} className="text-xs text-cedar-700 hover:underline">
+              View all ({assetsCount})
+            </Link>
+          )
+        }
+      >
         {assets.length === 0 ? (
           <p className="text-sm text-neutral-400">No files shared yet.</p>
         ) : (

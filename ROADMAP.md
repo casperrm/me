@@ -406,6 +406,22 @@ SLOs.
       been scope creep. Verified live against the seeded dev database:
       inserted 25 temporary items, confirmed page 1/page 2 split
       exactly 20/5 — see `docs/specs/content-calendar-pagination.md`.
+- [x] **Client Portal pagination.** The audit's own highest-flagged
+      customer-visible-latency item: the external-facing Client Portal
+      fetched every pending-or-approved creative, every invoice, and
+      every available asset for a client on every load. Approved
+      history, invoices, and files each got the bounded-preview +
+      "View all" page pattern (three new pages, `PAGE_SIZE=20`);
+      "Pending your review" got a defensive `take` cap instead of a
+      "view all" page, since it's a work queue meant to reach zero, not
+      a growing archive — building pagination UI for a backlog that
+      shouldn't exist would have been solving the wrong problem. Every
+      new page independently re-checks `clients:read` rather than
+      trusting the parent page. Verified live against the seeded dev
+      database: inserted 15 approved creatives / 15 invoices / 15
+      assets, confirmed correct "View all" counts, then pushed invoices
+      to 22 total and confirmed the new invoices page split exactly
+      20/2 — see `docs/specs/client-portal-pagination.md`.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 
