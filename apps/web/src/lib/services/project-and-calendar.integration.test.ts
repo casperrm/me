@@ -14,6 +14,7 @@ import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
 import {
   addTaskChecklistItem,
+  addTaskComment,
   createProject,
   createTask,
   deleteTaskChecklistItem,
@@ -29,6 +30,7 @@ async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.contentCalendarItem.deleteMany();
+  await prisma.taskComment.deleteMany();
   await prisma.taskChecklistItem.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
@@ -261,6 +263,57 @@ describe("addTaskChecklistItem / toggleTaskChecklistItem / deleteTaskChecklistIt
     ).rejects.toThrow(AuthError);
     await expect(
       toggleTaskChecklistItem({ actorUserId: ownerUserId, organizationId: orgId, itemId: otherItem.id }),
+    ).rejects.toThrow(AuthError);
+  });
+});
+
+describe("addTaskComment", () => {
+  it("adds comments in order, attributed to the real author", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Comment task" });
+    const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { userId: ownerUserId } });
+
+    const first = await addTaskComment({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "Looks good" });
+    const second = await addTaskComment({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "One more pass" });
+
+    expect(first.authorId).toBe(ownerMembership.id);
+
+    const stored = await prisma.taskComment.findMany({ where: { taskId: task.id }, orderBy: { createdAt: "asc" } });
+    expect(stored.map((c) => c.text)).toEqual([first.text, second.text]);
+  });
+
+  it("rejects an empty comment", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Empty comment task" });
+    await expect(
+      addTaskComment({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, text: "   " }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a write from a member with no clients:write on the task's client", async () => {
+    const designer = await prisma.user.findFirstOrThrow({ where: { email: "proj-designer@test.example" } });
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Permission comment task" });
+
+    await expect(
+      addTaskComment({ actorUserId: designer.id, organizationId: orgId, taskId: task.id, text: "Should fail" }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a task from a different organization", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Comment Other Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "comment-other-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await createProject({ actorUserId: otherOwner.id, organizationId: otherOrg.id, clientId: otherClient.id, name: "Other Project" });
+    const otherTask = await createTask({ actorUserId: otherOwner.id, organizationId: otherOrg.id, projectId: otherProject.id, title: "Other Task" });
+
+    await expect(
+      addTaskComment({ actorUserId: ownerUserId, organizationId: orgId, taskId: otherTask.id, text: "Nope" }),
     ).rejects.toThrow(AuthError);
   });
 });

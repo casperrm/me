@@ -11,6 +11,7 @@ import { TaskStatusForm } from "./TaskStatusForm";
 import { TaskPriorityForm } from "./TaskPriorityForm";
 import { TaskEstimateForm } from "./TaskEstimateForm";
 import { TaskChecklist } from "./TaskChecklist";
+import { TaskComments } from "./TaskComments";
 import { NewCampaignForm } from "./NewCampaignForm";
 
 function money(cents: number) {
@@ -31,7 +32,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     include: {
       client: true,
       tasks: {
-        include: { assignee: { include: { user: true } }, checklistItems: { orderBy: { position: "asc" } } },
+        include: {
+          assignee: { include: { user: true } },
+          checklistItems: { orderBy: { position: "asc" } },
+          comments: { include: { author: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
+        },
         orderBy: { createdAt: "asc" },
       },
       campaigns: true,
@@ -150,6 +155,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   </div>
                 </div>
                 <TaskChecklist taskId={task.id} items={task.checklistItems} canWrite={canWrite} />
+                <TaskComments taskId={task.id} comments={task.comments} canWrite={canWrite} />
               </li>
             ))}
           </ul>

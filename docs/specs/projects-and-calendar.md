@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended three times)**.
+Status: **Partially implemented (Phase 1 slice, extended four times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -12,11 +12,11 @@ across modules, so nothing is tracked in a separate spreadsheet.
 ## What's not built yet
 
 Section 12 also calls for **milestones and dependencies with
-overdue/risk signals**, task **comments/attachments**, and **reusable
-project templates** — none of that exists. `Task` checklist, priority,
-and estimate are now real (see below); comments and attachments are
-still not modeled. `Project` has no milestone concept separate from its
-own single `dueDate`. This is a deliberate scope cut, not an oversight —
+overdue/risk signals**, task **attachments**, and **reusable project
+templates** — none of that exists. `Task` checklist, priority, estimate,
+and comments are now real (see below); attachments are still not
+modeled. `Project` has no milestone concept separate from its own
+single `dueDate`. This is a deliberate scope cut, not an oversight —
 extend `Task`/`Project` further (or add a `Milestone` model) when a real
 need for dependency tracking or templates shows up, rather than
 modeling it speculatively now.
@@ -28,6 +28,7 @@ modeling it speculatively now.
 | `Project` | `@cedar/db` | Belongs to a `Client`. `status` is a free string today (PLANNING/IN_PROGRESS/IN_REVIEW/DELIVERED/ARCHIVED by convention, not an enum — see schema comment). |
 | `Task` | `@cedar/db` | Belongs to a `Project`; `assigneeId` references a `Membership`, not a `User` — assignment is org-scoped. |
 | `TaskChecklistItem` | `@cedar/db` | Belongs to a `Task`. Flat, ordered (`position`, append-only — no reordering support), independently checkable (`done`). No nesting, no per-item assignee/due date. |
+| `TaskComment` | `@cedar/db` | Belongs to a `Task`, attributed to the `Membership` that wrote it. Flat, append-only — no edit, no delete, no threading. |
 
 `Task.priority` is a plain `String @default("medium")` (like `status`),
 not an enum — validated against a fixed set (`low`/`medium`/`high`) in
@@ -43,21 +44,22 @@ rather than a calendar being its own data store.
 
 - Read: `clients:read` on the project's/task's owning client.
 - Write (create project, create task, change task status/priority/
-  estimate, add/toggle/delete a checklist item): `clients:write` on the
-  owning client. There is no separate "task-level" permission — anyone
-  who can write to the client can manage all of its projects/tasks/
-  checklist items. Revisit if a role ever needs write access to tasks
-  but not, say, Brand DNA.
+  estimate, add/toggle/delete a checklist item, add a comment):
+  `clients:write` on the owning client. There is no separate "task-level"
+  permission — anyone who can write to the client can manage all of its
+  projects/tasks/checklist items/comments. Revisit if a role ever needs
+  write access to tasks but not, say, Brand DNA.
 
 ## Events
 
 `project.created`, `task.created`, `task.status_changed`,
 `task.priority_changed`, `task.estimate_changed`,
 `task_checklist_item.created`, `task_checklist_item.toggled`,
-`task_checklist_item.deleted` (audit), plus a `project_created`
-`ClientTimelineEvent` (checklist items, priority changes, and estimate
-changes are routine sub-task bookkeeping, not client-facing activity,
-so they don't get a timeline event the way task completion does).
+`task_checklist_item.deleted`, `task_comment.created` (audit), plus a
+`project_created` `ClientTimelineEvent` (checklist items, priority/
+estimate changes, and comments are routine sub-task bookkeeping, not
+client-facing activity, so they don't get a timeline event the way task
+completion does).
 
 ## APIs / entry points
 
@@ -80,6 +82,9 @@ so they don't get a timeline event the way task completion does).
 - `POST /api/checklist-items/[id]/toggle` — flip `done`; no request
   body, the current value is read and inverted server-side.
 - `DELETE /api/checklist-items/[id]` — remove a checklist item.
+- `POST /api/tasks/[taskId]/comments` — add a comment (`text`),
+  attributed to the calling actor's `Membership`. No edit/delete
+  endpoint — a comment is permanent once posted.
 
 ## UI
 
@@ -98,7 +103,12 @@ so they don't get a timeline event the way task completion does).
   delete button, and an "+ Checklist item" quick-add. The checklist
   section is hidden entirely for a read-only viewer when a task has no
   items, so it never clutters the list with an empty affordance no one
-  can use.
+  can use. Below that, comments: collapsed behind a "Show comments (N)"
+  toggle so a task with a long history doesn't dominate the list by
+  default, each line showing the author's name and text, plus a "+
+  Comment" quick-add for writers. Same empty-state rule as the
+  checklist — nothing renders for a read-only viewer on a task with no
+  comments.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates. Reuses
@@ -136,11 +146,13 @@ feeding the future Client Health Score (Section 4.2).
   negative numbers are both caught the same way.
 - **Empty checklist item text:** rejected before any database write,
   same as an empty task title.
+- **Empty comment text:** rejected before any database write, same
+  pattern as an empty checklist item.
 
 ## Acceptance tests
 
 - `apps/web/src/lib/services/project-and-calendar.integration.test.ts` —
-  14 tests against real Postgres: project creation + timeline event,
+  18 tests against real Postgres: project creation + timeline event,
   cross-organization project rejection, task creation/assignment/status
   transition (asserting the `medium` default priority), invalid-assignee
   rejection, permission rejection for a role without `clients:write`,
@@ -152,9 +164,12 @@ feeding the future Client Health Score (Section 4.2).
   `clients:write`-less write is rejected, and a cross-organization task
   or item is rejected for both add and toggle), a priority block:
   `setTaskPriority` actually persists a new value and rejects both an
-  invalid priority and a cross-organization task, and an estimate block:
+  invalid priority and a cross-organization task, an estimate block:
   `setTaskEstimate` persists a new value, clears it back to `null`, and
-  rejects both a negative/`NaN` estimate on create and on change.
+  rejects both a negative/`NaN` estimate on create and on change, and a
+  comments block: `addTaskComment` persists in order with the real
+  author's `Membership` id, rejects an empty comment, rejects a
+  `clients:write`-less write, and rejects a cross-organization task.
 - `apps/web/src/app/api/tasks/[taskId]/checklist/route.contract.test.ts`
   — 5 tests (401/400 missing text/403/200 with a real persisted row at
   `position: 0`/400 cross-organization).
@@ -171,6 +186,9 @@ feeding the future Client Health Score (Section 4.2).
   rejects an invalid value), a new test that persists an explicit
   `estimateHours: 3.5` and rejects a negative one, and the existing
   cross-organization-project rejection.
+- `apps/web/src/app/api/tasks/[taskId]/comments/route.contract.test.ts`
+  — 5 tests (401/400 missing text/403/200 with a real persisted comment
+  attributed to the actor's `Membership` id/400 cross-organization).
 - Manual smoke test performed for the Phase 1 slice: created a project
   and task via the real HTTP routes while logged in, confirmed both
   appeared on `/calendar` and the project detail page rendered
@@ -205,4 +223,15 @@ feeding the future Client Health Score (Section 4.2).
   button (the real `setTaskEstimateAction` server action), reloaded the
   page, and confirmed the input still showed `7` — cross-checked against
   `psql` showing `estimateHours = 7` in the database. Deleted the
+  smoke-test task afterward to leave the dev database clean.
+- Manual smoke test performed for the comments slice against a real
+  running production server: posted a real comment through the real
+  `POST /api/tasks/[taskId]/comments` route, confirmed via `psql` that
+  it was attributed to the correct `Membership` id. Then, through a real
+  headless browser on the actual project detail page, expanded the
+  "Show comments" toggle and confirmed the API-created comment rendered
+  with the right author name; typed a second comment into the real "+
+  Comment" input and submitted it through the real `TaskComments` form,
+  reloaded the page, re-expanded the toggle, and confirmed both comments
+  were present with a "(2)" count. Deleted both comments and the
   smoke-test task afterward to leave the dev database clean.

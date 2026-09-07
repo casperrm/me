@@ -144,6 +144,7 @@ model Membership {
 
   scopedGrants              ScopedGrant[]
   assignedTasks             Task[]
+  taskComments              TaskComment[]
   invitationsSent           Invitation[]          @relation("InvitationInvitedBy")
   uploadedAssets            Asset[]
   ownedContentCalendarItems ContentCalendarItem[]
@@ -428,6 +429,7 @@ model Task {
   createdAt     DateTime    @default(now())
 
   checklistItems TaskChecklistItem[]
+  comments       TaskComment[]
 
   @@map("tasks")
 }
@@ -449,6 +451,25 @@ model TaskChecklistItem {
 
   @@index([taskId])
   @@map("task_checklist_items")
+}
+
+// Section 12's "task... comments" — a flat, append-only conversation log
+// on a task, each entry attributed to the org member who wrote it. No
+// edit/delete (a comment is a permanent record, unlike a checklist item),
+// no threading/replies — see docs/specs/projects-and-calendar.md for what
+// is still deliberately not built (milestones/dependencies, attachments,
+// templates).
+model TaskComment {
+  id        String     @id @default(uuid())
+  taskId    String
+  task      Task       @relation(fields: [taskId], references: [id])
+  authorId  String
+  author    Membership @relation(fields: [authorId], references: [id])
+  text      String
+  createdAt DateTime   @default(now())
+
+  @@index([taskId])
+  @@map("task_comments")
 }
 
 model Campaign {

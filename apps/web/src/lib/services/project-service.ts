@@ -387,3 +387,45 @@ export async function deleteTaskChecklistItem(params: {
     changeSet: { text: item.text },
   });
 }
+
+/**
+ * Section 12's "task... comments" — a flat, append-only conversation log
+ * on a task, attributed to the org member who wrote it. No edit/delete:
+ * a comment is a permanent record, unlike a checklist item, so nothing
+ * here supports retracting one — see docs/specs/projects-and-calendar.md.
+ */
+export async function addTaskComment(params: {
+  actorUserId: string;
+  organizationId: string;
+  taskId: string;
+  text: string;
+}) {
+  const task = await assertTaskInOrg(params.taskId, params.organizationId);
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: task.project.clientId,
+  });
+
+  const text = params.text.trim();
+  if (!text) throw new AuthError("Comment text is required.");
+
+  const comment = await prisma.taskComment.create({
+    data: { taskId: task.id, authorId: membership.id, text },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task_comment.created",
+    resourceType: "TaskComment",
+    resourceId: comment.id,
+    clientId: task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { taskId: task.id },
+  });
+
+  return comment;
+}
