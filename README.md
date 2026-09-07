@@ -58,8 +58,27 @@ placeholders on purpose:
    and in `assets/img/favicon.svg`. If you have a real logo file, swap the
    `<svg>` for an `<img>` tag.
 
+## Sections included
+
+Hero, trust badges, industries strip, services, pricing packages, the
+"Why Us / Cedar Intelligence" differentiator, portfolio, process loop,
+results & testimonials, an "our approach" section, a CTA banner, FAQ
+(native `<details>` accordions, no JS), and a contact form.
+
+## Before going fully live
+
+- **Domain**: `robots.txt`, `sitemap.xml` and the `<link rel="canonical">` /
+  Open Graph tags in `index.html` use a placeholder `cedarpointmedia.com`.
+  Update those once you've picked and registered a real domain.
+- **Pricing**: the three package tiers list scope, not dollar amounts, since
+  exact pricing wasn't specified — add numbers if you want them shown.
+- See "Swapping in your real photos and video" below for the portfolio,
+  testimonials and color placeholders.
+
 ## Notes
 
 - Fully responsive (mobile nav, stacking grids) and accessible (skip link,
-  labelled form fields, semantic headings).
+  labelled form fields, semantic headings, native accordions for FAQ).
+- Includes basic SEO: meta description, Open Graph + Twitter card tags,
+  JSON-LD structured data, `robots.txt` and `sitemap.xml`.
 - No tracking scripts or third-party JS beyond Google Fonts.

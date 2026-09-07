@@ -25,7 +25,7 @@
   });
 
   var sections = document.querySelectorAll('.section, .hero');
-  sections.forEach(function(el){ el.querySelectorAll('h2, .feature-card, .brain-card, .portfolio-card, .loop-step, .stat-card, .testimonial-card').forEach(function(child){
+  sections.forEach(function(el){ el.querySelectorAll('h2, .feature-card, .brain-card, .portfolio-card, .loop-step, .stat-card, .testimonial-card, .pricing-card, .value-row, .faq-item').forEach(function(child){
     child.setAttribute('data-reveal', '');
   }); });
 
