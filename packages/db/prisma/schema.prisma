@@ -430,6 +430,7 @@ model Task {
 
   checklistItems TaskChecklistItem[]
   comments       TaskComment[]
+  attachments    Asset[]
 
   @@map("tasks")
 }
@@ -700,6 +701,8 @@ model Asset {
   client         Client?      @relation(fields: [clientId], references: [id])
   projectId      String?
   project        Project?     @relation(fields: [projectId], references: [id])
+  taskId         String?
+  task           Task?        @relation(fields: [taskId], references: [id])
   creativeId     String?
   creative       Creative?    @relation(fields: [creativeId], references: [id])
   type           String // image | video | document | logo | font
@@ -718,6 +721,7 @@ model Asset {
 
   @@index([organizationId])
   @@index([clientId])
+  @@index([taskId])
   @@map("assets")
 }
 

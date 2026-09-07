@@ -66,6 +66,18 @@ function assetTypeFromContentType(contentType: string): string {
   return "document";
 }
 
+function validateUpload(contentType: string, data: Buffer) {
+  if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+    throw new AssetValidationError(`File type "${contentType}" is not allowed.`);
+  }
+  if (data.byteLength === 0) {
+    throw new AssetValidationError("File is empty.");
+  }
+  if (data.byteLength > MAX_SIZE_BYTES) {
+    throw new AssetValidationError(`File exceeds the ${MAX_SIZE_BYTES / (1024 * 1024)}MB limit.`);
+  }
+}
+
 export async function uploadAsset(params: {
   actorUserId: string;
   organizationId: string;
@@ -74,15 +86,7 @@ export async function uploadAsset(params: {
   contentType: string;
   data: Buffer;
 }) {
-  if (!ALLOWED_CONTENT_TYPES.has(params.contentType)) {
-    throw new AssetValidationError(`File type "${params.contentType}" is not allowed.`);
-  }
-  if (params.data.byteLength === 0) {
-    throw new AssetValidationError("File is empty.");
-  }
-  if (params.data.byteLength > MAX_SIZE_BYTES) {
-    throw new AssetValidationError(`File exceeds the ${MAX_SIZE_BYTES / (1024 * 1024)}MB limit.`);
-  }
+  validateUpload(params.contentType, params.data);
 
   const membership = await requirePermission({
     userId: params.actorUserId,
@@ -126,6 +130,73 @@ export async function uploadAsset(params: {
 
   await prisma.clientTimelineEvent.create({
     data: { clientId: params.clientId, type: "asset_uploaded", summary: `File "${asset.filename}" uploaded.` },
+  });
+
+  return asset;
+}
+
+/**
+ * Section 12's "task... attachments" — reuses the same Asset model and
+ * storage adapter as client files (Section 14) rather than a parallel
+ * upload path, since a task attachment is just a file scoped one level
+ * deeper (organization -> client -> project -> task) than a client file.
+ * See docs/specs/projects-and-calendar.md for the scope boundary.
+ */
+export async function uploadTaskAttachment(params: {
+  actorUserId: string;
+  organizationId: string;
+  taskId: string;
+  filename: string;
+  contentType: string;
+  data: Buffer;
+}) {
+  validateUpload(params.contentType, params.data);
+
+  const task = await prisma.task.findUnique({
+    where: { id: params.taskId },
+    include: { project: { include: { client: true } } },
+  });
+  if (!task || task.project.client.organizationId !== params.organizationId) {
+    throw new AuthError("Task not found.");
+  }
+
+  const membership = await requirePermission({
+    userId: params.actorUserId,
+    organizationId: params.organizationId,
+    permission: "clients:write",
+    clientId: task.project.clientId,
+  });
+
+  const storageKey = `${params.organizationId}/${task.project.clientId}/tasks/${task.id}/${randomUUID()}-${params.filename}`;
+  const stored = await storageAdapter.put({ key: storageKey, data: params.data, contentType: params.contentType });
+
+  const asset = await prisma.asset.create({
+    data: {
+      organizationId: params.organizationId,
+      clientId: task.project.clientId,
+      projectId: task.projectId,
+      taskId: task.id,
+      type: assetTypeFromContentType(params.contentType),
+      filename: params.filename,
+      contentType: params.contentType,
+      sizeBytes: stored.sizeBytes,
+      checksum: stored.checksum,
+      storageKey: stored.key,
+      status: "AVAILABLE",
+      uploadedById: membership.id,
+    },
+  });
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: membership.id,
+    action: "task_attachment.uploaded",
+    resourceType: "Asset",
+    resourceId: asset.id,
+    clientId: task.project.clientId,
+    result: "SUCCESS",
+    changeSet: { filename: asset.filename, sizeBytes: asset.sizeBytes, taskId: task.id },
   });
 
   return asset;

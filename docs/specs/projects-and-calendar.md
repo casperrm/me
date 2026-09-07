@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended four times)**.
+Status: **Partially implemented (Phase 1 slice, extended five times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -12,14 +12,13 @@ across modules, so nothing is tracked in a separate spreadsheet.
 ## What's not built yet
 
 Section 12 also calls for **milestones and dependencies with
-overdue/risk signals**, task **attachments**, and **reusable project
-templates** — none of that exists. `Task` checklist, priority, estimate,
-and comments are now real (see below); attachments are still not
-modeled. `Project` has no milestone concept separate from its own
-single `dueDate`. This is a deliberate scope cut, not an oversight —
-extend `Task`/`Project` further (or add a `Milestone` model) when a real
-need for dependency tracking or templates shows up, rather than
-modeling it speculatively now.
+overdue/risk signals** and **reusable project templates** — neither
+exists. `Task` checklist, priority, estimate, comments, and attachments
+are now real (see below). `Project` has no milestone concept separate
+from its own single `dueDate`. This is a deliberate scope cut, not an
+oversight — extend `Task`/`Project` further (or add a `Milestone` model)
+when a real need for dependency tracking or templates shows up, rather
+than modeling it speculatively now.
 
 ## Entities
 
@@ -29,6 +28,12 @@ modeling it speculatively now.
 | `Task` | `@cedar/db` | Belongs to a `Project`; `assigneeId` references a `Membership`, not a `User` — assignment is org-scoped. |
 | `TaskChecklistItem` | `@cedar/db` | Belongs to a `Task`. Flat, ordered (`position`, append-only — no reordering support), independently checkable (`done`). No nesting, no per-item assignee/due date. |
 | `TaskComment` | `@cedar/db` | Belongs to a `Task`, attributed to the `Membership` that wrote it. Flat, append-only — no edit, no delete, no threading. |
+
+Task attachments reuse `Asset` (Section 14's Files model) rather than a
+separate table — `Asset` gained a nullable `taskId` alongside its
+existing `clientId`/`projectId`, so a task attachment is one row with
+all three set, findable from the client's/project's file history too,
+not a second copy of upload/storage/delete plumbing.
 
 `Task.priority` is a plain `String @default("medium")` (like `status`),
 not an enum — validated against a fixed set (`low`/`medium`/`high`) in
@@ -44,20 +49,23 @@ rather than a calendar being its own data store.
 
 - Read: `clients:read` on the project's/task's owning client.
 - Write (create project, create task, change task status/priority/
-  estimate, add/toggle/delete a checklist item, add a comment):
-  `clients:write` on the owning client. There is no separate "task-level"
-  permission — anyone who can write to the client can manage all of its
-  projects/tasks/checklist items/comments. Revisit if a role ever needs
-  write access to tasks but not, say, Brand DNA.
+  estimate, add/toggle/delete a checklist item, add a comment, upload/
+  delete an attachment): `clients:write` on the owning client. There is
+  no separate "task-level" permission — anyone who can write to the
+  client can manage all of its projects/tasks/checklist items/comments/
+  attachments. Revisit if a role ever needs write access to tasks but
+  not, say, Brand DNA.
 
 ## Events
 
 `project.created`, `task.created`, `task.status_changed`,
 `task.priority_changed`, `task.estimate_changed`,
 `task_checklist_item.created`, `task_checklist_item.toggled`,
-`task_checklist_item.deleted`, `task_comment.created` (audit), plus a
-`project_created` `ClientTimelineEvent` (checklist items, priority/
-estimate changes, and comments are routine sub-task bookkeeping, not
+`task_checklist_item.deleted`, `task_comment.created`,
+`task_attachment.uploaded`, plus the existing `asset.deleted` for a
+removed attachment (audit), plus a `project_created`
+`ClientTimelineEvent` (checklist items, priority/estimate changes,
+comments, and attachments are routine sub-task bookkeeping, not
 client-facing activity, so they don't get a timeline event the way task
 completion does).
 
@@ -85,6 +93,12 @@ completion does).
 - `POST /api/tasks/[taskId]/comments` — add a comment (`text`),
   attributed to the calling actor's `Membership`. No edit/delete
   endpoint — a comment is permanent once posted.
+- `POST /api/tasks/[taskId]/attachments` — upload a file (multipart
+  `file` field), reusing the same content-type allowlist and 15MB limit
+  as `POST /api/clients/[id]/assets`. Download and delete reuse the
+  existing generic `GET /api/assets/[id]/download` (signed-token) and
+  `DELETE /api/assets/[id]` routes — an attachment is just an `Asset`
+  row with `taskId` set, so nothing task-specific needed to exist there.
 
 ## UI
 
@@ -108,7 +122,11 @@ completion does).
   default, each line showing the author's name and text, plus a "+
   Comment" quick-add for writers. Same empty-state rule as the
   checklist — nothing renders for a read-only viewer on a task with no
-  comments.
+  comments. Below that, attachments: same "Show attachments (N)"
+  collapsed pattern, each line a download link (a signed, time-limited
+  URL, same mechanism as the client Files page) plus size, uploader
+  name, and (for writers) a "Remove" button, with a compact file-picker
+  and "Attach" button beneath.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates. Reuses
@@ -148,6 +166,10 @@ feeding the future Client Health Score (Section 4.2).
   same as an empty task title.
 - **Empty comment text:** rejected before any database write, same
   pattern as an empty checklist item.
+- **Disallowed attachment content type, empty file, or file over 15MB:**
+  rejected before storage or the database is touched — the same
+  validation `uploadAsset` already applies to client-level files, shared
+  via one `validateUpload` helper rather than duplicated.
 
 ## Acceptance tests
 
@@ -189,6 +211,18 @@ feeding the future Client Health Score (Section 4.2).
 - `apps/web/src/app/api/tasks/[taskId]/comments/route.contract.test.ts`
   — 5 tests (401/400 missing text/403/200 with a real persisted comment
   attributed to the actor's `Membership` id/400 cross-organization).
+- `apps/web/src/lib/services/asset-service.integration.test.ts` — a new
+  `uploadTaskAttachment` block (4 tests, alongside the existing
+  `uploadAsset`/`deleteAsset` tests): a real upload persists with
+  `taskId`/`clientId`/`projectId` all set and a real file written to
+  disk, a disallowed content type is rejected before storage is
+  touched, a `clients:write`-less upload is rejected, and a
+  cross-organization task is rejected.
+- `apps/web/src/app/api/tasks/[taskId]/attachments/route.contract.test.ts`
+  — 6 tests, same multipart-FormData + temp-storage-directory pattern as
+  `clients/[id]/assets/route.contract.test.ts` (401/400 no file/403/400
+  disallowed content type/200 with a real persisted row and a real file
+  on disk/400 cross-organization).
 - Manual smoke test performed for the Phase 1 slice: created a project
   and task via the real HTTP routes while logged in, confirmed both
   appeared on `/calendar` and the project detail page rendered
@@ -235,3 +269,17 @@ feeding the future Client Health Score (Section 4.2).
   reloaded the page, re-expanded the toggle, and confirmed both comments
   were present with a "(2)" count. Deleted both comments and the
   smoke-test task afterward to leave the dev database clean.
+- Manual smoke test performed for the attachments slice against a real
+  running production server (the real local storage adapter, not the
+  test suite's temp directory): uploaded a real file through the real
+  `POST /api/tasks/[taskId]/attachments` route, confirmed via `psql`
+  that the resulting `Asset` row had `taskId`/`clientId`/`projectId` all
+  set correctly and that the file existed on disk at its `storageKey`.
+  Then, through a real headless browser on the actual project detail
+  page, expanded the "Show attachments" toggle and confirmed the file
+  rendered as a download link; clicked "Remove" and confirmed the
+  attachments section disappeared from the DOM after a reload.
+  Cross-checked via `psql` and the filesystem afterward that both the
+  `Asset` row and the on-disk file were gone — the UI's own delete step
+  already cleaned up after itself, same as the checklist slice. Deleted
+  the smoke-test task afterward to leave the dev database clean.

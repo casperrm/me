@@ -23,6 +23,8 @@ async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.asset.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
@@ -32,6 +34,7 @@ async function wipeDatabase() {
 let orgId: string;
 let ownerUserId: string;
 let clientId: string;
+let taskId: string;
 
 beforeAll(async () => {
   testStorageDir = await mkdtemp(path.join(tmpdir(), "cedar-asset-test-"));
@@ -50,6 +53,10 @@ beforeAll(async () => {
     data: { organizationId: org.id, name: "Asset Client", companyName: "Asset Co", services: "[]" },
   });
   clientId = client.id;
+
+  const project = await prisma.project.create({ data: { clientId, name: "Asset Project" } });
+  const task = await prisma.task.create({ data: { projectId: project.id, title: "Asset Task" } });
+  taskId = task.id;
 });
 
 afterAll(async () => {
@@ -176,5 +183,82 @@ describe("uploadAsset / deleteAsset", () => {
     ).rejects.toThrow(AuthError);
 
     await prisma.membership.delete({ where: { id: otherMembership.id } });
+  });
+});
+
+describe("uploadTaskAttachment", () => {
+  beforeAll(() => {
+    process.cwd = () => testStorageDir;
+  });
+  afterAll(() => {
+    process.cwd = originalCwd;
+  });
+
+  it("stores a valid upload scoped to the task, client, and project", async () => {
+    const { uploadTaskAttachment } = await import("./asset-service");
+    const content = Buffer.from("fake-pdf-bytes");
+
+    const asset = await uploadTaskAttachment({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      taskId,
+      filename: "brief.pdf",
+      contentType: "application/pdf",
+      data: content,
+    });
+
+    expect(asset.taskId).toBe(taskId);
+    expect(asset.clientId).toBe(clientId);
+    expect(asset.status).toBe("AVAILABLE");
+
+    const onDisk = await readFile(path.join(testStorageDir, ".storage", asset.storageKey));
+    expect(onDisk.equals(content)).toBe(true);
+
+    const audit = await prisma.auditEvent.findFirst({ where: { action: "task_attachment.uploaded", resourceId: asset.id } });
+    expect(audit).toBeTruthy();
+  });
+
+  it("rejects a disallowed content type before touching storage", async () => {
+    const { uploadTaskAttachment, AssetValidationError } = await import("./asset-service");
+    await expect(
+      uploadTaskAttachment({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        taskId,
+        filename: "notes.txt",
+        contentType: "text/plain",
+        data: Buffer.from("hello"),
+      }),
+    ).rejects.toThrow(AssetValidationError);
+  });
+
+  it("rejects an upload from a member with no clients:write on the task's client", async () => {
+    const { uploadTaskAttachment } = await import("./asset-service");
+    const designer = await prisma.user.create({
+      data: { email: "asset-task-designer@test.example", name: "Designer", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: orgId, userId: designer.id, role: "DESIGNER", status: "ACTIVE" } });
+
+    await expect(
+      uploadTaskAttachment({ actorUserId: designer.id, organizationId: orgId, taskId, filename: "x.png", contentType: "image/png", data: Buffer.from("x") }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a task from a different organization", async () => {
+    const { uploadTaskAttachment } = await import("./asset-service");
+    const otherOrg = await prisma.organization.create({ data: { name: "Other Asset Task Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "Other Co", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "other-asset-task-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await prisma.project.create({ data: { clientId: otherClient.id, name: "Other Project" } });
+    const otherTask = await prisma.task.create({ data: { projectId: otherProject.id, title: "Other Task" } });
+
+    await expect(
+      uploadTaskAttachment({ actorUserId: ownerUserId, organizationId: orgId, taskId: otherTask.id, filename: "x.png", contentType: "image/png", data: Buffer.from("x") }),
+    ).rejects.toThrow(AuthError);
   });
 });

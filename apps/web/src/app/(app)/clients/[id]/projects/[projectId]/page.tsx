@@ -5,6 +5,7 @@ import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
+import { buildSignedDownloadPath } from "@/lib/storage";
 import { getProjectProfitability } from "@/lib/services/profitability-service";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskStatusForm } from "./TaskStatusForm";
@@ -12,6 +13,7 @@ import { TaskPriorityForm } from "./TaskPriorityForm";
 import { TaskEstimateForm } from "./TaskEstimateForm";
 import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
+import { TaskAttachments } from "./TaskAttachments";
 import { NewCampaignForm } from "./NewCampaignForm";
 
 function money(cents: number) {
@@ -36,6 +38,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           assignee: { include: { user: true } },
           checklistItems: { orderBy: { position: "asc" } },
           comments: { include: { author: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
+          attachments: { include: { uploadedBy: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -156,6 +159,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 </div>
                 <TaskChecklist taskId={task.id} items={task.checklistItems} canWrite={canWrite} />
                 <TaskComments taskId={task.id} comments={task.comments} canWrite={canWrite} />
+                <TaskAttachments
+                  taskId={task.id}
+                  canWrite={canWrite}
+                  attachments={task.attachments.map((a) => ({
+                    id: a.id,
+                    filename: a.filename,
+                    sizeBytes: a.sizeBytes,
+                    downloadUrl: buildSignedDownloadPath(a.id),
+                    uploadedByName: a.uploadedBy?.user.name ?? null,
+                  }))}
+                />
               </li>
             ))}
           </ul>
