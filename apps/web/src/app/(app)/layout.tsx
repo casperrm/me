@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireActor } from "@/lib/guards";
 import { isAuthorized } from "@cedar/auth";
 import { logoutAction } from "@/lib/actions/auth";
 import { unreadNotificationCount } from "@/lib/services/notification-service";
+import { isMfaEnrollmentRequired } from "@/lib/services/mfa-policy-service";
 import { CommandPalette } from "./CommandPalette";
 
 // Every authenticated page reads the session cookie and queries per-user
@@ -19,6 +21,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // permission-denied cards.
   if (actor.membership.role === "CLIENT_PORTAL") {
     redirect("/portal");
+  }
+
+  // Section 23.1 enforcement gate (docs/specs/mfa.md) — an org that has
+  // turned this on gets every OWNER/ADMIN who hasn't enrolled redirected
+  // to /security on every other page until they do. /security itself is
+  // exempt (it's how they enroll) and is compared via the real pathname
+  // the middleware forwards, not a route-group assumption.
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  if (pathname !== "/security" && (await isMfaEnrollmentRequired(actor))) {
+    redirect("/security?mfaRequired=1");
   }
 
   const canSeeTeam = await isAuthorized({

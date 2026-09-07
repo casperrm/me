@@ -50,6 +50,12 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Section 23.1 "MFA for privileged users" — the enforcement half
+  // docs/specs/mfa.md's original scope boundary named as not yet built.
+  // Off by default (no existing organization is silently locked out);
+  // an owner/admin opts in from /team. Only OWNER/ADMIN membership roles
+  // are "privileged" for this gate — see mfa-policy-service.ts.
+  mfaRequiredForPrivilegedRoles Boolean @default(false)
 
   memberships      Membership[]
   invitations      Invitation[]

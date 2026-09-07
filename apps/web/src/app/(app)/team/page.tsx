@@ -3,7 +3,9 @@ import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { Card } from "@/components/Card";
 import { InviteForm } from "./InviteForm";
+import { SetMfaPolicyForm } from "./SetMfaPolicyForm";
 import { changeRoleAction, revokeMembershipAction, grantClientScopeAction } from "@/lib/actions/membership";
+import { getMfaPolicy } from "@/lib/services/mfa-policy-service";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,9 @@ export default async function TeamPage() {
   const actor = canInvite.actor ?? canManage.actor;
   if (!actor) return null;
 
-  const [memberships, invitations, clients] = await Promise.all([
+  const canManageOrgPolicy = await checkPermission("organization:manage");
+
+  const [memberships, invitations, clients, mfaPolicy] = await Promise.all([
     prisma.membership.findMany({
       where: { organizationId: actor.organizationId },
       include: { user: true, scopedGrants: { include: { client: true } } },
@@ -40,6 +44,7 @@ export default async function TeamPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.client.findMany({ where: { organizationId: actor.organizationId }, select: { id: true, name: true } }),
+    getMfaPolicy(actor.organizationId),
   ]);
 
   const ownerCount = memberships.filter((m) => m.role === "OWNER" && m.status === "ACTIVE").length;
@@ -52,6 +57,21 @@ export default async function TeamPage() {
           Invite-only access, roles, and per-client scoping (Bible Section 2, 29).
         </p>
       </div>
+
+      <Card title="Security policy">
+        <p className="text-sm text-neutral-600">
+          {mfaPolicy.requiredForPrivilegedRoles
+            ? "Two-factor authentication is required for Owner and Admin roles. A member with either role who hasn't enrolled yet is redirected to Security until they do."
+            : "Two-factor authentication is optional (Section 23.1) — Owner and Admin members can enroll from Security, but aren't required to."}
+        </p>
+        {canManageOrgPolicy.allowed ? (
+          <SetMfaPolicyForm currentlyRequired={mfaPolicy.requiredForPrivilegedRoles} />
+        ) : (
+          <p className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-400">
+            Only an owner or admin (organization:manage) can change this.
+          </p>
+        )}
+      </Card>
 
       {canInvite.allowed && (
         <Card title="Invite a member">

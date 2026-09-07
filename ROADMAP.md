@@ -35,9 +35,31 @@ deployment.
       needs a decision before this can happen. This is Phase 0's one
       concretely unmet deliverable.
 - [x] MFA (Section 23.1) — TOTP enrollment/login-challenge/recovery codes,
-      per-user opt-in from `/security`. See `docs/specs/mfa.md` for the
-      stated scope boundary: not yet enforced as mandatory for specific
-      roles, and no WebAuthn/security-key option yet.
+      per-user opt-in from `/security`, plus a follow-up enforcement
+      slice: `Organization.mfaRequiredForPrivilegedRoles` (off by
+      default, toggled from a new "Security policy" card on `/team`,
+      `organization:manage`-gated) makes MFA mandatory, not just
+      offered, for OWNER/ADMIN members. The shared `(app)/layout.tsx`
+      shell redirects any gated, unenrolled OWNER/ADMIN to `/security`
+      on every other page (a new `middleware.ts` forwards the real
+      request pathname so the layout can exempt `/security` itself
+      without a route-group assumption); a banner there explains why.
+      See `docs/specs/mfa.md` for the exact scope boundary this closes
+      (the gate named as missing) and what's still open: no
+      WebAuthn/security-key option, no per-role-configurable policy
+      (today it's a single org-wide boolean for OWNER+ADMIN), and the
+      gate blocks page navigation, not direct API calls made with an
+      already-valid session. Verified live against the real running
+      server and a real headless-Chromium browser: turned the policy on,
+      confirmed a real redirect-with-banner for an unenrolled owner
+      (screenshotted — no layout regression), completed a real
+      enrollment through the UI, confirmed the gate lifted immediately,
+      then fully restored state through real flows (a real MFA login
+      challenge, a real password-gated disable, policy back off) with a
+      `psql` cross-check of the resulting four-event audit trail. Also
+      found and cleaned up unrelated leftover `ClientTimelineEvent` rows
+      from an earlier slice's incomplete smoke-test cleanup while
+      checking the dev database's state.
 
 ## Phase 1 — Agency Core: **complete**
 
