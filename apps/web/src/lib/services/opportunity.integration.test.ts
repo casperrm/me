@@ -101,6 +101,51 @@ describe("getOpportunitiesForClient — creative format gap", () => {
   });
 });
 
+describe("getOpportunitiesForClient — peer-format aggregation (Phase 7 scale hardening)", () => {
+  it("computes correct per-format peer counts via a single GROUP BY when peers use multiple formats", async () => {
+    // Regression coverage for the Phase 7 rewrite (opportunity-service.ts)
+    // from per-row JS aggregation to a raw SQL GROUP BY: this exercises
+    // multiple distinct format values across multiple peers in one call,
+    // which is exactly the shape a naive GROUP BY could get wrong (e.g.
+    // mixing up rows across groups) in a way a single-format test can't
+    // catch. See docs/specs/opportunity-engine-scaling.md.
+    const client = await prisma.client.create({
+      data: { organizationId: orgId, name: "Multi-Format Target", companyName: "MFT Inc", services: "[]" },
+    });
+    const peerA = await prisma.client.create({ data: { organizationId: orgId, name: "Multi Peer A", companyName: "MA", services: "[]" } });
+    const peerB = await prisma.client.create({ data: { organizationId: orgId, name: "Multi Peer B", companyName: "MB", services: "[]" } });
+    const peerC = await prisma.client.create({ data: { organizationId: orgId, name: "Multi Peer C", companyName: "MC", services: "[]" } });
+
+    // "reel": peers A and B (2 distinct clients) — should surface.
+    for (const peer of [peerA, peerB]) {
+      const project = await prisma.project.create({ data: { clientId: peer.id, name: "P" } });
+      const campaign = await prisma.campaign.create({ data: { projectId: project.id, name: "C" } });
+      await prisma.creative.create({ data: { campaignId: campaign.id, type: "reel" } });
+    }
+    // "podcast_clip": only peer C (1 distinct client) — below threshold.
+    const projectC = await prisma.project.create({ data: { clientId: peerC.id, name: "P" } });
+    const campaignC = await prisma.campaign.create({ data: { projectId: projectC.id, name: "C" } });
+    await prisma.creative.create({ data: { campaignId: campaignC.id, type: "podcast_clip" } });
+
+    // Target client already has 3 "banner" creatives of its own — the
+    // `distinct: ["type"]` own-formats query must collapse these to one
+    // entry so "banner" never appears as a gap, regardless of how many
+    // rows exist.
+    const ownProject = await prisma.project.create({ data: { clientId: client.id, name: "Own" } });
+    const ownCampaign = await prisma.campaign.create({ data: { projectId: ownProject.id, name: "Own" } });
+    for (let i = 0; i < 3; i++) {
+      await prisma.creative.create({ data: { campaignId: ownCampaign.id, type: "banner" } });
+    }
+
+    const opportunities = await getOpportunitiesForClient(client.id, orgId);
+    const formatGaps = opportunities.filter((o) => o.type === "creative_format_gap");
+
+    expect(formatGaps.find((o) => o.label === "reel")?.peerCount).toBe(2);
+    expect(formatGaps.some((o) => o.label === "podcast_clip")).toBe(false);
+    expect(formatGaps.some((o) => o.label === "banner")).toBe(false);
+  });
+});
+
 describe("getOpportunitiesForClient — isolation", () => {
   it("never uses clients from a different organization as evidence", async () => {
     const otherOrg = await prisma.organization.create({ data: { name: "Other Org" } });

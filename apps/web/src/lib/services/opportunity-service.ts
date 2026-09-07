@@ -38,17 +38,38 @@ const MIN_PEER_COUNT = 2;
  * signals, or external market data is explicitly not built.
  */
 export async function getOpportunitiesForClient(clientId: string, organizationId: string): Promise<Opportunity[]> {
-  const [client, otherClients, ownCreatives, otherCreatives] = await Promise.all([
+  const [client, otherClients, ownFormats, peerFormatCounts] = await Promise.all([
     prisma.client.findUniqueOrThrow({ where: { id: clientId }, select: { services: true } }),
+    // Bounded by organization-wide client count (the Bible's own scale
+    // target is 500 clients), not by creative/content history — unlike
+    // the creative-format queries below, this doesn't grow without
+    // bound over a client's lifetime, so it's left as a plain scan
+    // rather than pushed into raw SQL (see docs/specs/opportunity-engine-scaling.md).
     prisma.client.findMany({ where: { organizationId, id: { not: clientId } }, select: { services: true } }),
+    // Distinct types only — this client's own creative *history* can be
+    // arbitrarily long, but the set of distinct format types it uses is
+    // small and bounded regardless.
     prisma.creative.findMany({
       where: { campaign: { project: { clientId } } },
       select: { type: true },
+      distinct: ["type"],
     }),
-    prisma.creative.findMany({
-      where: { campaign: { project: { client: { organizationId, id: { not: clientId } } } } },
-      select: { type: true, campaign: { select: { project: { select: { clientId: true } } } } },
-    }),
+    // The previous version fetched every creative row for every other
+    // client in the organization just to count distinct peer clients
+    // per format — a full-organization creative-history scan on every
+    // client detail page load. This computes the same per-format peer
+    // counts directly in Postgres via GROUP BY, returning only one row
+    // per distinct format value that exists among peers (Phase 7 scale
+    // hardening; see docs/specs/opportunity-engine-scaling.md).
+    prisma.$queryRaw<{ type: string; peerCount: bigint }[]>`
+      SELECT cr.type AS type, COUNT(DISTINCT p."clientId")::bigint AS "peerCount"
+      FROM creatives cr
+      JOIN campaigns cam ON cam.id = cr."campaignId"
+      JOIN projects p ON p.id = cam."projectId"
+      JOIN clients c ON c.id = p."clientId"
+      WHERE c."organizationId" = ${organizationId} AND c.id != ${clientId}
+      GROUP BY cr.type
+    `,
   ]);
 
   const opportunities: Opportunity[] = [];
@@ -74,21 +95,17 @@ export async function getOpportunitiesForClient(clientId: string, organizationId
 
   // Creative format gap: which production formats have other clients
   // used that this one hasn't — counted by distinct client, same
-  // "how many peers" semantic as the service gap above.
-  const ownFormats = new Set(ownCreatives.map((c) => c.type));
-  const formatToClients = new Map<string, Set<string>>();
-  for (const creative of otherCreatives) {
-    const peerClientId = creative.campaign.project.clientId;
-    if (!formatToClients.has(creative.type)) formatToClients.set(creative.type, new Set());
-    formatToClients.get(creative.type)!.add(peerClientId);
-  }
-  for (const [format, clientIds] of formatToClients) {
-    if (ownFormats.has(format) || clientIds.size < MIN_PEER_COUNT) continue;
+  // "how many peers" semantic as the service gap above. peerFormatCounts
+  // already IS that count, computed in Postgres.
+  const ownFormatSet = new Set(ownFormats.map((c) => c.type));
+  for (const row of peerFormatCounts) {
+    const peerCount = Number(row.peerCount);
+    if (ownFormatSet.has(row.type) || peerCount < MIN_PEER_COUNT) continue;
     opportunities.push({
       type: "creative_format_gap",
-      label: format,
-      evidence: `${clientIds.size} other client${clientIds.size === 1 ? "" : "s"} have "${format}" creative work; none for this client yet.`,
-      peerCount: clientIds.size,
+      label: row.type,
+      evidence: `${peerCount} other client${peerCount === 1 ? "" : "s"} have "${row.type}" creative work; none for this client yet.`,
+      peerCount,
     });
   }
 

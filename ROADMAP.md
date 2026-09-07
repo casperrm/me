@@ -362,6 +362,24 @@ SLOs.
       still open (Opportunity Engine, clients list, content calendar,
       Client Portal, shoots page, asset pickers — unchanged by this
       slice).
+- [x] **Opportunity Engine full-organization creative scan.** The
+      creative-format-gap signal fetched every creative row for every
+      other client in the organization on every client detail page
+      load, just to count distinct peer clients per format in
+      JavaScript. Own-format history had the same shape. Rewrote the
+      peer-format count as a single Postgres `GROUP BY` via
+      `prisma.$queryRaw` (parameterized, no injection surface) and the
+      own-format query to `distinct: ["type"]` — same output, but data
+      transfer now scales with the number of distinct format values in
+      use (a handful) instead of the organization's entire creative
+      history. All 5 existing tests (including the one proving distinct
+      peer *clients*, not distinct creatives, are counted) passed
+      unchanged against the rewrite; added 1 new test exercising
+      multiple peers across multiple formats in one call. Verified live
+      against the seeded dev database with a direct-SQL cross-check —
+      see `docs/specs/opportunity-engine-scaling.md`, including why the
+      service-gap signal (a JSON-string `services` column, not `jsonb`)
+      was deliberately left as-is rather than force-fit into SQL.
 
 ## Cross-cutting gaps worth tracking regardless of phase
 
