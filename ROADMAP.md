@@ -35,8 +35,8 @@ deployment.
       needs a decision before this can happen. This is Phase 0's one
       concretely unmet deliverable.
 - [x] MFA (Section 23.1) — TOTP enrollment/login-challenge/recovery codes,
-      per-user opt-in from `/security`, plus a follow-up enforcement
-      slice: `Organization.mfaRequiredForPrivilegedRoles` (off by
+      per-user opt-in from `/security`, plus two follow-up enforcement
+      slices. First: `Organization.mfaRequiredForPrivilegedRoles` (off by
       default, toggled from a new "Security policy" card on `/team`,
       `organization:manage`-gated) makes MFA mandatory, not just
       offered, for OWNER/ADMIN members. The shared `(app)/layout.tsx`
@@ -44,22 +44,65 @@ deployment.
       on every other page (a new `middleware.ts` forwards the real
       request pathname so the layout can exempt `/security` itself
       without a route-group assumption); a banner there explains why.
-      See `docs/specs/mfa.md` for the exact scope boundary this closes
-      (the gate named as missing) and what's still open: no
-      WebAuthn/security-key option, no per-role-configurable policy
-      (today it's a single org-wide boolean for OWNER+ADMIN), and the
-      gate blocks page navigation, not direct API calls made with an
-      already-valid session. Verified live against the real running
-      server and a real headless-Chromium browser: turned the policy on,
-      confirmed a real redirect-with-banner for an unenrolled owner
-      (screenshotted — no layout regression), completed a real
-      enrollment through the UI, confirmed the gate lifted immediately,
-      then fully restored state through real flows (a real MFA login
-      challenge, a real password-gated disable, policy back off) with a
-      `psql` cross-check of the resulting four-event audit trail. Also
-      found and cleaned up unrelated leftover `ClientTimelineEvent` rows
-      from an earlier slice's incomplete smoke-test cleanup while
-      checking the dev database's state.
+      Second (this slice): closed that first slice's own explicitly-named
+      remaining gap — the gate blocked page navigation only, not a direct
+      API call made with an already-valid session. Moved
+      `MFA_PRIVILEGED_ROLES` to its canonical home,
+      `packages/domain/src/roles.ts` (previously duplicated in
+      `mfa-policy-service.ts`), and added the real gate to
+      `packages/auth/src/authorize.ts`'s `requirePermission`/
+      `requireAnyPermission` — the actual authorization choke point every
+      mutating server action/API route already calls — via a new
+      `MfaRequiredError`, thrown only *after* the permission check itself
+      passes (so an actor who isn't authorized at all still gets a plain
+      `AuthorizationError`, never leaking MFA-gating status to someone
+      who was never going to be allowed the action regardless).
+      Deliberately not added to `isAuthorized`/`isAuthorizedAny` — those
+      are documented read-branching helpers for UI conditionals that
+      return a boolean rather than throw, not the security boundary.
+      Mapped to HTTP 403 with a consistent message in all 38 API route
+      files that already catch `AuthorizationError`, following this
+      codebase's established per-file convention rather than introducing
+      a shared error-mapping abstraction. See `docs/specs/mfa.md` for
+      full design rationale, what's still open (WebAuthn/security-key, a
+      per-role-configurable policy — both unchanged from the first
+      slice), and one explicit gap this slice did not fix:
+      `apps/web/src/lib/actions/*.ts` server actions still don't catch
+      `AuthorizationError`/`MfaRequiredError` at all, so an uncaught
+      `MfaRequiredError` from one propagates the same way an uncaught
+      `AuthorizationError` already did — pre-existing, out of scope here.
+      New coverage: `packages/auth/src/authorize.integration.test.ts` (9
+      tests, real Postgres, new `packages/auth/vitest.config.ts` since
+      this package had no integration-test database wiring before);
+      3 existing route-contract files extended with real HTTP-level 403
+      coverage (expenses +2, team/invite +2, milestone toggle +1); 2
+      pre-existing test files' fixtures fixed for a real, correct
+      behavior change the gate surfaces (an unenrolled OWNER/ADMIN can no
+      longer turn the org's own MFA policy back off via the API until
+      they enroll — not a lockout of the organization, since any other
+      enrolled privileged member, or the same member after enrolling,
+      still can). Full suite: 526 tests across 6 workspaces, all passing.
+      Verified live against the real running server and dev database
+      with real HTTP only (not a browser — this gap was specifically
+      about bypassing the UI): logged in as the seeded owner, confirmed
+      baseline 200 on a direct `POST /api/expenses`, turned the org's MFA
+      policy on via the real API, confirmed via `psql`, then — with the
+      *same* still-valid session cookie and no page ever visited — issued
+      the identical direct mutation and got a real 403 with the
+      MFA-required message; completed real enrollment through the
+      running app (`otplib`-computed TOTP code against the real returned
+      secret), repeated the mutation, got a real 200. Restored state
+      through real flows in the correct order (learned live: disabling
+      MFA before turning the policy off leaves the account unable to turn
+      its own policy off, so cleanup re-enrolled, toggled the policy off
+      first, then disabled MFA), cross-checked via `psql`: policy back to
+      `false`, user back to unenrolled with no stored secret or recovery
+      codes, `expenses` row count back to its exact pre-test value with
+      the two smoke-test rows and their audit events deleted, and 7
+      legitimate new audit events (a real login plus the real MFA/policy
+      lifecycle) left in place as genuine history, matching the first
+      slice's own precedent. Confirmed no server process left running
+      afterward.
 
 ## Phase 1 — Agency Core: **complete**
 

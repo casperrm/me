@@ -25,8 +25,17 @@ beforeAll(async () => {
   await wipeDatabase();
   const org = await prisma.organization.create({ data: { name: "MFA Policy Route Test Agency" } });
   orgId = org.id;
+  // Enrolled (mfaEnabled: true) — this file tests the /api/mfa-policy
+  // route contract itself (auth gate, status codes, persistence), not
+  // the MFA enforcement gate requirePermission now adds on top of every
+  // permission check (see packages/auth/src/authorize.integration.test.ts
+  // and apps/web/src/app/api/expenses/route.contract.test.ts for that):
+  // an unenrolled owner turning the policy on, then genuinely being
+  // unable to turn it back off themselves until they enroll, is real,
+  // correct new behavior — not something this route-contract test
+  // should also have to hold constant while proving the toggle works.
   const owner = await prisma.user.create({
-    data: { email: "mfa-policy-route-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
+    data: { email: "mfa-policy-route-owner@test.example", name: "Owner", passwordHash: "irrelevant", mfaEnabled: true },
   });
   ownerUserId = owner.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });

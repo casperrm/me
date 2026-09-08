@@ -48,6 +48,9 @@ let orgId: string;
 let ownerUserId: string;
 let designerUserId: string;
 let milestoneId: string;
+let gatedOwnerUserId: string;
+let gatedOrgId: string;
+let gatedMilestoneId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -66,6 +69,27 @@ beforeAll(async () => {
   const project = await prisma.project.create({ data: { clientId: client.id, name: "Milestone Toggle Project" } });
   const milestone = await prisma.milestone.create({ data: { projectId: project.id, name: "Kickoff", dueDate: new Date("2030-01-15") } });
   milestoneId = milestone.id;
+
+  // A second, MFA-gated organization — proves this route's 403 for an
+  // unenrolled OWNER is real over HTTP, not just AppLayout's page
+  // redirect. See docs/specs/mfa.md.
+  const gatedOrg = await prisma.organization.create({
+    data: { name: "Milestone Toggle Route Test Agency (MFA-gated)", mfaRequiredForPrivilegedRoles: true },
+  });
+  gatedOrgId = gatedOrg.id;
+  const gatedOwner = await prisma.user.create({
+    data: { email: "milestone-toggle-owner-mfa-gated@test.example", name: "Gated Owner", passwordHash: "irrelevant", mfaEnabled: false },
+  });
+  gatedOwnerUserId = gatedOwner.id;
+  await prisma.membership.create({ data: { organizationId: gatedOrg.id, userId: gatedOwner.id, role: "OWNER", status: "ACTIVE" } });
+  const gatedClient = await prisma.client.create({
+    data: { organizationId: gatedOrg.id, name: "Gated Milestone Toggle Client", companyName: "Inc", services: "[]" },
+  });
+  const gatedProject = await prisma.project.create({ data: { clientId: gatedClient.id, name: "Gated Milestone Toggle Project" } });
+  const gatedMilestone = await prisma.milestone.create({
+    data: { projectId: gatedProject.id, name: "Gated Kickoff", dueDate: new Date("2030-01-15") },
+  });
+  gatedMilestoneId = gatedMilestone.id;
 });
 
 afterAll(async () => {
@@ -113,5 +137,13 @@ describe("POST /api/milestones/[id]/toggle", () => {
     getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
     const res = await POST(request(), { params: Promise.resolve({ id: otherMilestone.id }) });
     expect(res.status).toBe(400);
+  });
+
+  it("returns 403 with the MFA-required message for an unenrolled OWNER when the org's MFA policy is on", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: gatedOwnerUserId }, organizationId: gatedOrgId });
+    const res = await POST(request(), { params: Promise.resolve({ id: gatedMilestoneId }) });
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/MFA enrollment is required/i);
   });
 });

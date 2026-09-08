@@ -1,10 +1,25 @@
 import { prisma } from "@cedar/db";
-import { can, type ActorContext, type Grant, type Permission } from "@cedar/domain";
+import { can, MFA_PRIVILEGED_ROLES, type ActorContext, type Grant, type Permission, type Role } from "@cedar/domain";
 
 export class AuthorizationError extends Error {
   constructor(permission: Permission, clientId?: string) {
     super(`Not authorized: ${permission}${clientId ? ` (client ${clientId})` : ""}`);
     this.name = "AuthorizationError";
+  }
+}
+
+/**
+ * The real security boundary for Section 23.1's MFA enforcement policy
+ * (`Organization.mfaRequiredForPrivilegedRoles`). `(app)/layout.tsx`'s
+ * redirect-to-/security gate (see docs/specs/mfa.md) only ever blocked
+ * page navigation — a still-valid session cookie could call any mutating
+ * API route directly and bypass it entirely. This closes that gap at the
+ * one choke point every mutating server action / API route already calls.
+ */
+export class MfaRequiredError extends Error {
+  constructor() {
+    super("MFA enrollment is required for this account before this action can be performed.");
+    this.name = "MfaRequiredError";
   }
 }
 
@@ -18,7 +33,11 @@ export interface AuthorizeParams {
 async function loadActorAndGrants(userId: string, organizationId: string) {
   const membership = await prisma.membership.findUnique({
     where: { organizationId_userId: { organizationId, userId } },
-    include: { scopedGrants: true },
+    include: {
+      scopedGrants: true,
+      organization: { select: { mfaRequiredForPrivilegedRoles: true } },
+      user: { select: { mfaEnabled: true } },
+    },
   });
 
   if (!membership) return null;
@@ -34,7 +53,30 @@ async function loadActorAndGrants(userId: string, organizationId: string) {
     clientId: g.clientId,
   }));
 
-  return { membership, actor, grants };
+  return { membership, actor, grants, organization: membership.organization, user: membership.user };
+}
+
+/**
+ * Throws MfaRequiredError when the actor's role is MFA-gated by the
+ * organization's policy and this specific user hasn't enrolled. Called
+ * only from requirePermission/requireAnyPermission, after the permission
+ * check already passed — an actor who isn't authorized for the action at
+ * all gets a plain AuthorizationError and never learns whether MFA
+ * gating even applies to them. Deliberately not called from
+ * isAuthorized/isAuthorizedAny: those are read-branching helpers for UI
+ * conditionals that return a boolean rather than throw (see their own
+ * doc comments below) — making them throw would break every existing
+ * call site that expects a boolean, and a UI conditional isn't the
+ * security boundary anyway.
+ */
+function checkMfaGate(
+  role: string,
+  org: { mfaRequiredForPrivilegedRoles: boolean },
+  user: { mfaEnabled: boolean },
+): void {
+  if (org.mfaRequiredForPrivilegedRoles && !user.mfaEnabled && MFA_PRIVILEGED_ROLES.includes(role as Role)) {
+    throw new MfaRequiredError();
+  }
 }
 
 /** Returns true/false — use in server components / read paths that just branch UI. */
@@ -62,6 +104,8 @@ export async function requirePermission(params: AuthorizeParams) {
   });
 
   if (!allowed) throw new AuthorizationError(params.permission, params.clientId);
+
+  checkMfaGate(loaded.actor.role, loaded.organization, loaded.user);
 
   return loaded.membership;
 }
@@ -99,6 +143,8 @@ export async function requireAnyPermission(params: AuthorizeAnyParams) {
   );
 
   if (!allowed) throw new AuthorizationError(params.permissions[0], params.clientId);
+
+  checkMfaGate(loaded.actor.role, loaded.organization, loaded.user);
 
   return loaded.membership;
 }

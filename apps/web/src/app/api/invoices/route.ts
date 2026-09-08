@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AuthorizationError } from "@cedar/auth";
+import { AuthorizationError, MfaRequiredError } from "@cedar/auth";
 import { getCurrentActor } from "@/lib/current-actor";
 import { createInvoice } from "@/lib/services/invoice-service";
 import { AuthError } from "@/lib/services/auth-service";
@@ -30,6 +30,12 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof AuthorizationError) {
       return NextResponse.json({ error: "You don't have permission to create invoices." }, { status: 403 });
+    }
+    if (err instanceof MfaRequiredError) {
+      return NextResponse.json(
+        { error: "MFA enrollment is required for this account before this action can be performed." },
+        { status: 403 },
+      );
     }
     if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: 400 });
     throw err;

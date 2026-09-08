@@ -22,6 +22,9 @@ async function wipeDatabase() {
 let orgId: string;
 let ownerUserId: string;
 let designerUserId: string;
+let gatedOrgId: string;
+let gatedUnenrolledAdminUserId: string;
+let gatedEnrolledAdminUserId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -38,6 +41,28 @@ beforeAll(async () => {
   });
   designerUserId = designer.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: designer.id, role: "DESIGNER", status: "ACTIVE" } });
+
+  // A second organization with the MFA enforcement policy on — proves
+  // requirePermission's MFA gate is a real 403 over HTTP for this route
+  // too, not only the /api/expenses one. See docs/specs/mfa.md.
+  const gatedOrg = await prisma.organization.create({
+    data: { name: "Invite Route Test Agency (MFA-gated)", mfaRequiredForPrivilegedRoles: true },
+  });
+  gatedOrgId = gatedOrg.id;
+  const gatedUnenrolledAdmin = await prisma.user.create({
+    data: { email: "invite-route-admin-mfa-gated@test.example", name: "Gated Admin", passwordHash: "irrelevant", mfaEnabled: false },
+  });
+  gatedUnenrolledAdminUserId = gatedUnenrolledAdmin.id;
+  await prisma.membership.create({
+    data: { organizationId: gatedOrgId, userId: gatedUnenrolledAdmin.id, role: "ADMIN", status: "ACTIVE" },
+  });
+  const gatedEnrolledAdmin = await prisma.user.create({
+    data: { email: "invite-route-admin-mfa-enrolled@test.example", name: "Enrolled Admin", passwordHash: "irrelevant", mfaEnabled: true },
+  });
+  gatedEnrolledAdminUserId = gatedEnrolledAdmin.id;
+  await prisma.membership.create({
+    data: { organizationId: gatedOrgId, userId: gatedEnrolledAdmin.id, role: "ADMIN", status: "ACTIVE" },
+  });
 });
 
 afterAll(async () => {
@@ -91,5 +116,21 @@ describe("POST /api/team/invite", () => {
 
     const invitation = await prisma.invitation.findFirst({ where: { email: "new-real@test.example" } });
     expect(invitation).toMatchObject({ organizationId: orgId, role: "DESIGNER" });
+  });
+
+  it("returns 403 with the MFA-required message for an unenrolled ADMIN when the org's MFA policy is on", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: gatedUnenrolledAdminUserId }, organizationId: gatedOrgId });
+    const res = await POST(request({ email: "gated-invite@test.example", role: "DESIGNER" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/MFA enrollment is required/i);
+  });
+
+  it("still succeeds for an enrolled ADMIN in the same MFA-gated organization", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: gatedEnrolledAdminUserId }, organizationId: gatedOrgId });
+    const res = await POST(request({ email: "gated-invite-enrolled@test.example", role: "DESIGNER" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.inviteLink).toMatch(/^\/invite\//);
   });
 });

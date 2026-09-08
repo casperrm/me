@@ -13,12 +13,17 @@
 // permissions generally), not built here to avoid a data-driven policy
 // table nothing yet needs.
 import { requirePermission } from "@cedar/auth";
+import { MFA_PRIVILEGED_ROLES } from "@cedar/domain";
 import { prisma } from "@cedar/db";
 import { emitAuditEvent } from "@cedar/events";
 import { AuthError } from "./auth-service";
 
-/** Roles this gate can require MFA for. Role identity, not permission holdership — see module doc comment. */
-export const MFA_PRIVILEGED_ROLES = ["OWNER", "ADMIN"] as const;
+// MFA_PRIVILEGED_ROLES now lives in packages/domain/src/roles.ts (its
+// canonical home — packages/auth's requirePermission/requireAnyPermission
+// need the same list for the API-level half of this gate, see
+// docs/specs/mfa.md). Re-exported here so any existing import of it from
+// this module keeps working unchanged.
+export { MFA_PRIVILEGED_ROLES };
 
 export interface MfaPolicy {
   requiredForPrivilegedRoles: boolean;

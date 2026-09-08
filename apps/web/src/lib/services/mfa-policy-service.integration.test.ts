@@ -33,14 +33,24 @@ beforeAll(async () => {
   const org = await prisma.organization.create({ data: { name: "MFA Policy Test Agency" } });
   orgId = org.id;
 
+  // Both privileged fixtures are enrolled (mfaEnabled: true) — this file
+  // tests mfa-policy-service.ts's own policy logic (getMfaPolicy,
+  // setMfaRequiredForPrivilegedRoles, isMfaEnrollmentRequired), not the
+  // MFA gate requirePermission now enforces on top of it (see
+  // packages/auth/src/authorize.integration.test.ts for that). Enrolled
+  // here so this file's own toggle-the-policy-back-off calls aren't
+  // themselves blocked by the very gate a later toggle turns on — a real,
+  // correct consequence of closing the API bypass documented in
+  // docs/specs/mfa.md: an unenrolled OWNER/ADMIN genuinely cannot turn
+  // the org's own MFA requirement off once it's on, by design.
   const owner = await prisma.user.create({
-    data: { email: "mfa-policy-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
+    data: { email: "mfa-policy-owner@test.example", name: "Owner", passwordHash: "irrelevant", mfaEnabled: true },
   });
   ownerUserId = owner.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });
 
   const admin = await prisma.user.create({
-    data: { email: "mfa-policy-admin@test.example", name: "Admin", passwordHash: "irrelevant" },
+    data: { email: "mfa-policy-admin@test.example", name: "Admin", passwordHash: "irrelevant", mfaEnabled: true },
   });
   adminUserId = admin.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: admin.id, role: "ADMIN", status: "ACTIVE" } });

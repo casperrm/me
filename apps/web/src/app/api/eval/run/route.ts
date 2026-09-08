@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AuthorizationError, requirePermission } from "@cedar/auth";
+import { AuthorizationError, MfaRequiredError, requirePermission } from "@cedar/auth";
 import { getCurrentActor } from "@/lib/current-actor";
 import { runRoutingEval } from "@/lib/services/eval-service";
 
@@ -16,6 +16,12 @@ export async function POST() {
   } catch (err) {
     if (err instanceof AuthorizationError) {
       return NextResponse.json({ error: "You don't have permission to run evaluations." }, { status: 403 });
+    }
+    if (err instanceof MfaRequiredError) {
+      return NextResponse.json(
+        { error: "MFA enrollment is required for this account before this action can be performed." },
+        { status: 403 },
+      );
     }
     throw err;
   }

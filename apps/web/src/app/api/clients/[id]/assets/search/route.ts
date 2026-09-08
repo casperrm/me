@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AuthorizationError } from "@cedar/auth";
+import { AuthorizationError, MfaRequiredError } from "@cedar/auth";
 import { getCurrentActor } from "@/lib/current-actor";
 import { searchClientAssets } from "@/lib/services/asset-service";
 
@@ -21,6 +21,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   } catch (err) {
     if (err instanceof AuthorizationError) {
       return NextResponse.json({ error: "You don't have permission to view this client's files." }, { status: 403 });
+    }
+    if (err instanceof MfaRequiredError) {
+      return NextResponse.json(
+        { error: "MFA enrollment is required for this account before this action can be performed." },
+        { status: 403 },
+      );
     }
     throw err;
   }

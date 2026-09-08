@@ -31,6 +31,9 @@ let clientId: string;
 let projectId: string;
 let otherProjectId: string;
 let campaignId: string;
+let gatedOrgId: string;
+let gatedUnenrolledOwnerUserId: string;
+let gatedEnrolledOwnerUserId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -41,6 +44,29 @@ beforeAll(async () => {
   });
   ownerUserId = owner.id;
   await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });
+
+  // A second organization with the MFA enforcement policy on, to prove
+  // the API-level gate (packages/auth's requirePermission) is a real
+  // HTTP-level boundary over this route, not just AppLayout's page
+  // redirect — see docs/specs/mfa.md.
+  const gatedOrg = await prisma.organization.create({
+    data: { name: "Route Contract Test Agency (MFA-gated)", mfaRequiredForPrivilegedRoles: true },
+  });
+  gatedOrgId = gatedOrg.id;
+  const gatedUnenrolledOwner = await prisma.user.create({
+    data: { email: "route-owner-mfa-gated@test.example", name: "Gated Owner", passwordHash: "irrelevant", mfaEnabled: false },
+  });
+  gatedUnenrolledOwnerUserId = gatedUnenrolledOwner.id;
+  await prisma.membership.create({
+    data: { organizationId: gatedOrgId, userId: gatedUnenrolledOwner.id, role: "OWNER", status: "ACTIVE" },
+  });
+  const gatedEnrolledOwner = await prisma.user.create({
+    data: { email: "route-owner-mfa-enrolled@test.example", name: "Enrolled Owner", passwordHash: "irrelevant", mfaEnabled: true },
+  });
+  gatedEnrolledOwnerUserId = gatedEnrolledOwner.id;
+  await prisma.membership.create({
+    data: { organizationId: gatedOrgId, userId: gatedEnrolledOwner.id, role: "OWNER", status: "ACTIVE" },
+  });
 
   const client = await prisma.client.create({
     data: { organizationId: org.id, name: "Expense Route Test Client", companyName: "Inc", services: "[]" },
@@ -129,5 +155,21 @@ describe("POST /api/expenses", () => {
       request({ category: "Ad spend", amountCents: 9900, clientId, projectId: otherProjectId, campaignId }),
     );
     expect(rejected.status).toBe(400);
+  });
+
+  it("returns 403 with the MFA-required message for an unenrolled OWNER when the org's MFA policy is on — the real API-level boundary, not just the page-navigation redirect", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: gatedUnenrolledOwnerUserId }, organizationId: gatedOrgId });
+    const res = await POST(request({ category: "Software", amountCents: 1000 }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/MFA enrollment is required/i);
+  });
+
+  it("still succeeds for an enrolled OWNER in the same MFA-gated organization", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: gatedEnrolledOwnerUserId }, organizationId: gatedOrgId });
+    const res = await POST(request({ category: "Software", amountCents: 1000 }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, expenseId: expect.any(String) });
   });
 });

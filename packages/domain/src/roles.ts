@@ -16,6 +16,19 @@ export type Role =
 
 export type MembershipStatus = "ACTIVE" | "INVITED" | "REVOKED";
 
+// Roles Section 23.1's MFA enforcement gate can require enrollment for —
+// canonical home for this list, not `mfa-policy-service.ts` (a real gate
+// consumer, not a definer): `packages/auth`'s `requirePermission`/
+// `requireAnyPermission` need it too (the API-level enforcement half of
+// the same gate — see docs/specs/mfa.md), and domain policy is the
+// correct place for a role-identity list both `@cedar/auth` and
+// `apps/web` depend on already, rather than either depending on the
+// other. Role identity, not permission holdership — OWNER and ADMIN are
+// the two roles that hold organization-wide `organization:manage` by
+// construction (see `ROLE_GLOBAL_PERMISSIONS` below), the roles a
+// compromised account could do the most damage from.
+export const MFA_PRIVILEGED_ROLES: readonly Role[] = ["OWNER", "ADMIN"];
+
 // Permission catalog. Section 2.2 describes the full authorization
 // dimensions (resource, action, scope, sensitivity, approval rule) this
 // will eventually grow into; Phase 0 only needs enough permissions to
