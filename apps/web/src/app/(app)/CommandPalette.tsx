@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface SearchResult {
-  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot";
+  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot" | "task";
   id: string;
   title: string;
   subtitle: string;
@@ -18,6 +18,7 @@ const TYPE_LABEL: Record<string, string> = {
   creative: "Creative",
   content: "Content",
   shoot: "Shoot",
+  task: "Task",
 };
 
 // Bible Section 28.2: "Global search/command palette can find records and
@@ -115,7 +116,7 @@ export function CommandPalette() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onInputKeyDown}
-              placeholder="Search clients, projects, campaigns, creative…"
+              placeholder="Search clients, projects, tasks, campaigns, creative…"
               className="w-full border-b border-neutral-100 px-4 py-3 text-sm outline-none"
             />
             <div className="max-h-80 overflow-y-auto">

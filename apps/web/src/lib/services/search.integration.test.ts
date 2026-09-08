@@ -11,6 +11,10 @@ async function wipeDatabase() {
   await prisma.creativeVersion.deleteMany();
   await prisma.creative.deleteMany();
   await prisma.campaign.deleteMany();
+  await prisma.taskComment.deleteMany();
+  await prisma.taskChecklistItem.deleteMany();
+  await prisma.taskDependency.deleteMany();
+  await prisma.task.deleteMany();
   await prisma.project.deleteMany();
   await prisma.client.deleteMany();
   await prisma.organization.deleteMany();
@@ -19,6 +23,7 @@ async function wipeDatabase() {
 let orgId: string;
 let clientAId: string;
 let clientBId: string;
+let projectAId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -36,6 +41,7 @@ beforeAll(async () => {
   clientBId = clientB.id;
 
   const projectA = await prisma.project.create({ data: { clientId: clientAId, name: "Voltage Launch Campaign" } });
+  projectAId = projectA.id;
   await prisma.project.create({ data: { clientId: clientBId, name: "Bakery Grand Opening" } });
 
   const campaign = await prisma.campaign.create({ data: { projectId: projectA.id, name: "Voltage Spring Push" } });
@@ -45,6 +51,7 @@ beforeAll(async () => {
     data: { clientId: clientAId, title: "Voltage teaser post", channel: "instagram" },
   });
   await prisma.shoot.create({ data: { clientId: clientAId, title: "Voltage product shoot" } });
+  await prisma.task.create({ data: { projectId: projectA.id, title: "Voltage kickoff task" } });
 });
 
 afterAll(async () => {
@@ -58,10 +65,17 @@ describe("searchRecords", () => {
     expect(results).toHaveLength(0);
   });
 
-  it("finds matches across clients, projects, campaigns, creatives, content, and shoots", async () => {
+  it("finds matches across clients, projects, campaigns, creatives, content, shoots, and tasks", async () => {
     const results = await searchRecords({ organizationId: orgId, query: "voltage" });
     const types = results.map((r) => r.type).sort();
-    expect(types).toEqual(["campaign", "client", "content", "project", "shoot"]);
+    expect(types).toEqual(["campaign", "client", "content", "project", "shoot", "task"]);
+  });
+
+  it("matches on task title and points at the task's project", async () => {
+    const results = await searchRecords({ organizationId: orgId, query: "kickoff" });
+    const task = results.find((r) => r.type === "task");
+    expect(task?.title).toBe("Voltage kickoff task");
+    expect(task?.url).toBe(`/clients/${clientAId}/projects/${projectAId}`);
   });
 
   it("is case-insensitive", async () => {

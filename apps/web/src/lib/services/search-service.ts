@@ -1,7 +1,7 @@
 import { prisma } from "@cedar/db";
 
 export interface SearchResult {
-  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot";
+  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot" | "task";
   id: string;
   title: string;
   subtitle: string;
@@ -34,7 +34,7 @@ export async function searchRecords(params: {
   const clientScope = params.clientIds ? { id: { in: params.clientIds } } : {};
   const contains = { contains: q, mode: "insensitive" as const };
 
-  const [clients, projects, campaigns, creatives, contentItems, shoots] = await Promise.all([
+  const [clients, projects, campaigns, creatives, contentItems, shoots, tasks] = await Promise.all([
     prisma.client.findMany({
       where: { organizationId: params.organizationId, ...clientScope, OR: [{ name: contains }, { companyName: contains }] },
       take: RESULTS_PER_TYPE,
@@ -65,6 +65,11 @@ export async function searchRecords(params: {
     prisma.shoot.findMany({
       where: { client: { organizationId: params.organizationId, ...clientScope }, title: contains },
       include: { client: true },
+      take: RESULTS_PER_TYPE,
+    }),
+    prisma.task.findMany({
+      where: { project: { client: { organizationId: params.organizationId, ...clientScope } }, title: contains },
+      include: { project: { include: { client: true } } },
       take: RESULTS_PER_TYPE,
     }),
   ]);
@@ -105,6 +110,13 @@ export async function searchRecords(params: {
       title: s.title,
       subtitle: s.client.name,
       url: `/clients/${s.clientId}/shoots`,
+    })),
+    ...tasks.map((t) => ({
+      type: "task" as const,
+      id: t.id,
+      title: t.title,
+      subtitle: `${t.project.name} — ${t.project.client.name}`,
+      url: `/clients/${t.project.clientId}/projects/${t.projectId}`,
     })),
   ];
 

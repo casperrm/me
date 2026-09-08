@@ -7,9 +7,9 @@ actions").
 ## Purpose
 
 A `⌘K`/`Ctrl+K` command palette, reachable from anywhere in the app
-shell, that finds a Client/Project/Campaign/Creative/Content Calendar
-item/Shoot by name and jumps straight to it — instead of clicking through
-Clients → Projects → Campaigns to find one thing.
+shell, that finds a Client/Project/Task/Campaign/Creative/Content
+Calendar item/Shoot by name and jumps straight to it — instead of
+clicking through Clients → Projects → Campaigns to find one thing.
 
 ## Scope boundary — stated explicitly
 
@@ -23,6 +23,15 @@ routing and execution. Building a second, parallel command-execution path
 here would fragment that responsibility. The palette's only "action" is
 navigation to a result.
 
+`Task` was added as a 7th entity type in a follow-up slice — the original
+Phase 1 search slice predates Task priority/comments/attachments/
+dependencies, and a core, high-frequency record with a real `title` field
+being unsearchable was a real, conspicuous gap, not a deliberate scope
+decision. `Invoice` remains deliberately out of scope: it has no free-text
+name/title field to substring-match against (amount, status, and dates
+aren't the kind of thing this palette searches), so adding it would mean
+inventing a search key nobody asked for, unlike every other entity here.
+
 ## Design
 
 - `search-service.ts`'s `searchRecords` is a stateless, unauthorized query
@@ -33,14 +42,18 @@ navigation to a result.
   This mirrors `calendar-service.ts`'s pattern and keeps the isolation
   guarantee (Section 38) in one place (`getReadableClientIds`), not
   reimplemented per search type.
-- Six entity types are searched in parallel (`Promise.all`), each
+- Seven entity types are searched in parallel (`Promise.all`), each
   case-insensitive substring match (`ILIKE` via Prisma's
   `mode: "insensitive"`), each capped at 5 results: `Client`
   (name/companyName), `Project` (name), `Campaign` (name), `Creative`
-  (type/platform), `ContentCalendarItem` (title), `Shoot` (title).
+  (type/platform), `ContentCalendarItem` (title), `Shoot` (title), `Task`
+  (title, scoped through `project.client.organizationId` — a task result
+  links to its project's detail page, the same place `content`/`shoot`
+  results link to a list page rather than a dedicated per-item page,
+  since neither has its own standalone URL).
 - Queries shorter than 2 characters return nothing immediately — avoids
-  a wasteful six-way full-table scan on every keystroke of a 1-character
-  query.
+  a wasteful seven-way full-table scan on every keystroke of a
+  1-character query.
 
 ## Permissions
 
@@ -80,17 +93,30 @@ None. Synchronous, same as every other read path in this codebase.
 
 ## Acceptance tests
 
-- `apps/web/src/lib/services/search.integration.test.ts` — 6 tests
+- `apps/web/src/lib/services/search.integration.test.ts` — 8 tests
   against real Postgres: sub-2-character queries return nothing,
-  a matching query finds results across all six entity types at once,
-  matching is case-insensitive, creative type/platform text is
-  searchable, results are correctly scoped to a given `clientIds`
-  allowlist (Section 38 isolation), and a same-named record in a
-  different organization never leaks into results.
-- Manual smoke test performed for this slice against the real running
-  server: searched for the seeded demo client by partial name and
-  confirmed the result and URL, confirmed a 1-character query returned
-  nothing, confirmed an unauthenticated request was rejected with 401,
-  searched for seeded project/campaign text and got both records back
-  with correct titles/subtitles/URLs, and confirmed the "Search… ⌘K"
-  trigger renders in the sidebar.
+  a matching query finds results across all seven entity types at once,
+  a dedicated test that a task title match points at its own project's
+  URL (not a nonexistent per-task page), matching is case-insensitive,
+  creative type/platform text is searchable, results are correctly
+  scoped to a given `clientIds` allowlist (Section 38 isolation), and a
+  same-named record in a different organization never leaks into
+  results.
+- `apps/web/src/app/api/search/route.contract.test.ts` — gained a
+  dedicated task test proving a real task is found by title over real
+  HTTP and correctly scoped to the caller's readable clients, alongside
+  the pre-existing 401/scoping coverage.
+- Manual smoke test performed for the original slice against the real
+  running server: searched for the seeded demo client by partial name
+  and confirmed the result and URL, confirmed a 1-character query
+  returned nothing, confirmed an unauthenticated request was rejected
+  with 401, searched for seeded project/campaign text and got both
+  records back with correct titles/subtitles/URLs, and confirmed the
+  "Search… ⌘K" trigger renders in the sidebar.
+- Manual smoke test performed for the Task follow-up slice against the
+  real running server and dev database: searched for a real seeded
+  task's title through the actual `⌘K` palette in a headless browser,
+  confirmed a real "Task" badge rendered and selecting the result
+  navigated to that task's real project detail page (where the task
+  itself is visible), and confirmed the search input's placeholder text
+  now mentions tasks.

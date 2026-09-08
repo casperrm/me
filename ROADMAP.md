@@ -244,11 +244,23 @@ canonical system.
 - [x] Global search / command palette (Section 28.2) — `⌘K`/`Ctrl+K`
       overlay finding Clients/Projects/Campaigns/Creatives/Content
       Calendar items/Shoots by name, scoped through the same
-      `getReadableClientIds` isolation the Section 12 calendar uses.
-      Explicit scope boundary in `docs/specs/search.md`: this is "find
-      records," not Section 28.2's paired "initiate permitted actions" —
-      that belongs with Cedar Command Center, not a second parallel
-      command-execution path.
+      `getReadableClientIds` isolation the Section 12 calendar uses. A
+      follow-up slice added `Task` as a 7th searchable entity type — the
+      original slice predates Task priority/comments/attachments/
+      dependencies, and a core, high-frequency record with a real
+      `title` field being unsearchable was a real gap, not a deliberate
+      decision; a task result links to its own project's detail page,
+      the same pattern `content`/`shoot` results already used (neither
+      has a standalone per-item URL). `Invoice` stays deliberately out
+      of scope — no free-text field exists to match against, so adding
+      it would mean inventing a search key nobody asked for. Explicit
+      scope boundary in `docs/specs/search.md`: this is "find records,"
+      not Section 28.2's paired "initiate permitted actions" — that
+      belongs with Cedar Command Center, not a second parallel
+      command-execution path. Verified live: searched for a real seeded
+      task's title through the actual `⌘K` palette in a headless
+      browser, confirmed the "Task" badge rendered and selecting it
+      navigated to the task's real project page.
 - [x] Activity timeline (`ClientTimelineEvent`) now gets real writes from
       Brand DNA saves, project creation, campaign creation, asset
       uploads, creative approvals, task creation/completion, and invoice
