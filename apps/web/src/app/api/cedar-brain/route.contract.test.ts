@@ -11,7 +11,8 @@ const { getCurrentActor } = vi.hoisted(() => ({ getCurrentActor: vi.fn() }));
 vi.mock("@/lib/current-actor", () => ({ getCurrentActor }));
 
 import { prisma } from "@cedar/db";
-import { CEDAR_BRAIN_PROMPT_VERSION, SYSTEM_PROMPT_TEMPLATE } from "@/lib/cedar-brain";
+import { CEDAR_BRAIN_PROMPT_VERSION, routeToAgents, SYSTEM_PROMPT_TEMPLATE } from "@/lib/cedar-brain";
+import { selectModelForRequest } from "@/lib/model-catalog";
 import { POST } from "./route";
 
 async function wipeDatabase() {
@@ -80,6 +81,33 @@ describe("POST /api/cedar-brain", () => {
     const stored = await prisma.cedarBrainRequest.findUnique({ where: { id: body.cedarBrainRequestId } });
     expect(stored).toMatchObject({ organizationId: orgId, mode: "stub", success: true, promptVersion: "v4" });
     expect(stored!.latencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("records the catalog-selected model (not a hardcoded literal) for a low-complexity prompt", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const prompt = "Hello there, how are you?";
+    const expectedModel = selectModelForRequest(routeToAgents(prompt));
+    const res = await POST(request({ prompt }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    const stored = await prisma.cedarBrainRequest.findUnique({ where: { id: body.cedarBrainRequestId } });
+    expect(stored!.modelName).toBe(expectedModel.id);
+    expect(expectedModel.tier).toBe("fast");
+  });
+
+  it("records the catalog-selected model for a high-complexity, multi-domain prompt", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const prompt =
+      "We need a video storyboard, a matching banner design, and a Meta ads campaign with a budget and KPIs.";
+    const expectedModel = selectModelForRequest(routeToAgents(prompt));
+    const res = await POST(request({ prompt }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    const stored = await prisma.cedarBrainRequest.findUnique({ where: { id: body.cedarBrainRequestId } });
+    expect(stored!.modelName).toBe(expectedModel.id);
+    expect(expectedModel.tier).toBe("premium");
   });
 
   it("captures a real prompt version snapshot with the actual template text (Section 33 registry)", async () => {

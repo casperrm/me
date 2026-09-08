@@ -5,7 +5,7 @@
 // substring matching meant "script" matched inside "description" and
 // "ad" matched inside "already"/"administrator".
 import { describe, expect, it } from "vitest";
-import { parsePerAgentSections, routeToAgents } from "./cedar-brain";
+import { callCedarBrain, parsePerAgentSections, routeToAgents } from "./cedar-brain";
 
 describe("routeToAgents — word-boundary matching (regression for the substring bug)", () => {
   it("does not match 'script' inside 'description'", () => {
@@ -88,5 +88,29 @@ describe("parsePerAgentSections — real per-agent output breakdown (no extra AP
       { agent: "quality_control", output: "Looks fine." },
       { agent: "marketing", output: "Use a bold hook." },
     ]);
+  });
+});
+
+describe("callCedarBrain — stub mode records the catalog-selected model (Section 33 routing policy)", () => {
+  // No ANTHROPIC_API_KEY in the test environment, so these always run
+  // the stub branch — see docs/specs/model-catalog.md for why
+  // recording modelId even in stub mode is real, useful telemetry
+  // rather than a no-op.
+  it("records the fast-tier model id for a low-complexity prompt (2 routed agents)", async () => {
+    const agents = routeToAgents("Hello there, how are you?");
+    expect(agents).toHaveLength(2);
+    const result = await callCedarBrain("Hello there, how are you?", agents);
+    expect(result.mode).toBe("stub");
+    expect(result.modelId).toBe("claude-haiku-4-5-20251001");
+  });
+
+  it("records the premium-tier model id for a high-complexity, multi-domain prompt", async () => {
+    const prompt =
+      "We need a video storyboard, a matching banner design, and a Meta ads campaign with a budget and KPIs.";
+    const agents = routeToAgents(prompt);
+    expect(agents.length).toBeGreaterThanOrEqual(4);
+    const result = await callCedarBrain(prompt, agents);
+    expect(result.mode).toBe("stub");
+    expect(result.modelId).toBe("claude-opus-5");
   });
 });

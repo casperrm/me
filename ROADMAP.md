@@ -433,16 +433,55 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       cross-check: sent a real request, confirmed a `v4` row existed
       with the real template text, confirmed the page rendered it. See
       `docs/specs/cedar-prompt-registry.md`.
+- [x] Model Catalog and Routing Policy (Section 33) — the last item
+      ADR-007's "what this ADR will need to decide" list had named: "a
+      real model catalog ... the model-catalog half does not [exist]."
+      A small, static `MODEL_CATALOG`
+      (`apps/web/src/lib/model-catalog.ts`) of 3 real Anthropic model
+      ids, one per tier (`claude-haiku-4-5-20251001` fast,
+      `claude-sonnet-5` standard, `claude-opus-5` premium), and
+      `selectModelForRequest()`, a deterministic function of how many
+      agents `routeToAgents()` matched (≤2 → fast, 3 → standard, ≥4 →
+      premium) — the only real, already-computed complexity signal
+      Cedar Brain has today. `callCedarBrain()`'s live Anthropic call
+      now uses the selected model's real id instead of a hardcoded
+      `"claude-sonnet-5"` literal, and returns a new `modelId` field in
+      *both* its stub and live return shapes, so stub-mode requests
+      (every request in any environment with no `ANTHROPIC_API_KEY`,
+      including this sandbox) no longer discard which model would have
+      been used. `/api/cedar-brain/route.ts`'s two hardcoded
+      `"claude-sonnet-5"` literals (success and failure paths) were
+      replaced with the real selection. Explicit, stated-honestly scope
+      boundary in `docs/specs/model-catalog.md`: breadth of routing is
+      a real proxy for request complexity, not the live-response
+      *quality* evaluation Section 33's own wording asks for — that
+      needs a rubric-based LLM-judge harness, which
+      `docs/specs/ai-eval-harness.md` documents as not built. Also not
+      multi-provider, and does not change budget accounting (still raw
+      token totals regardless of tier — per-model dollar-cost
+      governance remains open). `/command/supervisor` gained a "Model
+      routing policy" card: all 3 catalog entries, plus a real
+      `groupBy` aggregate breakdown of actual per-model usage for the
+      organization (historical pre-catalog rows shown in an honestly
+      labeled "not recorded (pre-catalog)" bucket, never backfilled).
+      12 new tests (8 in the new `model-catalog.test.ts`, 2 in
+      `cedar-brain.test.ts`, 2 in the route-contract suite) — full
+      `apps/web` suite 512/512 across 83 files. Verified live against
+      the seeded dev database: sent a 2-agent prompt through the API
+      (recorded `claude-haiku-4-5-20251001`) and a 5-agent prompt
+      through the real Command Center UI (recorded `claude-opus-5`),
+      confirmed both via direct `psql`, and confirmed
+      `/command/supervisor`'s new card rendered the real breakdown via
+      a headless-Chromium screenshot. See `docs/specs/model-catalog.md`.
 - [ ] AI Gateway, semantic/vector retrieval, live-response evaluation
       scoring, true per-agent specialization (a separate Anthropic call
-      per routed agent, each with its own specialist prompt), a real
-      model catalog (Section 33's "route to the least expensive model")
-      — not started. What *is* built: real per-agent output structure
-      within the existing single call
+      per routed agent, each with its own specialist prompt) — not
+      started. What *is* built: real per-agent output structure within
+      the existing single call
       (`docs/specs/cedar-brain-per-agent-output.md`), the budget
       mechanism a future per-agent-fan-out slice would rely on
-      (`docs/specs/ai-budget-governance.md`), and the prompt version
-      registry above.
+      (`docs/specs/ai-budget-governance.md`), the prompt version
+      registry, and the model catalog/routing policy above.
 
 ## Phase 4 — Integrations and Publishing: **starter slice exists**
 

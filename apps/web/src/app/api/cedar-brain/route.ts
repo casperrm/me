@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@cedar/db";
 import { getCurrentActor } from "@/lib/current-actor";
 import { routeToAgents, callCedarBrain, CEDAR_BRAIN_PROMPT_VERSION, SYSTEM_PROMPT_TEMPLATE } from "@/lib/cedar-brain";
+import { selectModelForRequest } from "@/lib/model-catalog";
 import { buildGovernedContext } from "@/lib/services/context-retrieval-service";
 import { alertIfOverBudget, getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { ensurePromptSnapshotRecorded } from "@/lib/services/prompt-registry-service";
@@ -73,7 +74,13 @@ export async function POST(req: Request) {
         response: JSON.stringify(result),
         clientId: clientId ?? null,
         mode: result.mode,
-        modelName: result.mode === "live" ? "claude-sonnet-5" : null,
+        // Real catalog-selected model id, recorded in both live and
+        // stub mode (Section 33 model routing policy — see
+        // docs/specs/model-catalog.md). Stub-mode rows previously wrote
+        // null here, discarding which model *would* have been used;
+        // now that's real, useful telemetry even with no
+        // ANTHROPIC_API_KEY configured.
+        modelName: result.modelId,
         promptVersion: CEDAR_BRAIN_PROMPT_VERSION,
         latencyMs,
         success: true,
@@ -103,7 +110,12 @@ export async function POST(req: Request) {
         response: null,
         clientId: clientId ?? null,
         mode: "live",
-        modelName: "claude-sonnet-5",
+        // A failure only ever happens on the live path (stub mode
+        // can't throw — see callCedarBrain), so the model that *would*
+        // have been used is still deterministically known from the
+        // routed agent count, even though callCedarBrain never got far
+        // enough to return it.
+        modelName: selectModelForRequest(agents).id,
         promptVersion: CEDAR_BRAIN_PROMPT_VERSION,
         latencyMs,
         success: false,

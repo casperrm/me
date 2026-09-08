@@ -920,7 +920,7 @@ model CedarBrainRequest {
   response              String? // JSON
   clientId              String?
   mode                  String // "live" | "stub"
-  modelName             String? // null for stub mode — no model was actually called
+  modelName             String? // catalog-selected model id (see model-catalog.ts), recorded in both live and stub mode since the model-catalog slice; null only on rows created before that slice existed
   promptVersion         String // manually bumped constant in cedar-brain.ts when the system prompt changes
   latencyMs             Int
   success               Boolean

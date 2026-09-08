@@ -22,6 +22,11 @@ export interface RecentFlagged {
   flaggedByName: string | null;
 }
 
+export interface ModelUsageBucket {
+  modelName: string | null;
+  count: number;
+}
+
 export interface AiSupervisorSummary {
   totalRequests: number;
   successCount: number;
@@ -100,6 +105,27 @@ export async function getAiSupervisorSummary(organizationId: string): Promise<Ai
       flaggedByName: r.flaggedByMembership?.user.name ?? null,
     })),
   };
+}
+
+/**
+ * Section 33 model routing policy (see docs/specs/model-catalog.md) —
+ * a real breakdown of how many of this organization's CedarBrainRequest
+ * rows used each model, grouped in the database (`groupBy`, not an
+ * unbounded findMany reduced in JS — this codebase's established
+ * Phase 7 scale-hardening convention, see profitability-service.ts for
+ * precedent). Rows created before the model-catalog slice existed (or
+ * any future row where recording genuinely failed) have `modelName:
+ * null` — a real historical fact, not backfilled or fabricated into a
+ * fake model id.
+ */
+export async function getModelUsageBreakdown(organizationId: string): Promise<ModelUsageBucket[]> {
+  const rows = await prisma.cedarBrainRequest.groupBy({
+    by: ["modelName"],
+    where: { organizationId },
+    _count: { id: true },
+    orderBy: { _count: { id: "desc" } },
+  });
+  return rows.map((row) => ({ modelName: row.modelName, count: row._count.id }));
 }
 
 /**

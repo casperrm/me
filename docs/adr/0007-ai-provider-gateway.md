@@ -22,6 +22,23 @@
   `docs/specs/cedar-prompt-registry.md`. Deliberately NOT a
   live-editable admin UI — see that doc for the multi-tenancy risk that
   ruled it out.
+- **Updated:** 2026-09-08 — added a real model catalog and routing
+  policy (Section 33: "route tasks to the least expensive model that
+  meets quality requirements") — the model-catalog half of "prompt/
+  model version registry" that the prompt-version update above
+  explicitly left open. A small static catalog of 3 real model tiers
+  (`claude-haiku-4-5-20251001` fast, `claude-sonnet-5` standard,
+  `claude-opus-5` premium) and a deterministic selection rule based on
+  the number of agents `routeToAgents()` matched — the only real,
+  already-computed complexity signal Cedar Brain has today. This is
+  explicitly NOT a quality-evaluated or ML-driven router: no live-
+  response evaluation exists (see `docs/specs/ai-eval-harness.md`), so
+  breadth of routing is an honest, bounded proxy, not the "quality
+  requirements" Section 33's own wording actually asks for. Also NOT
+  multi-provider (still Anthropic-only) and does NOT change budget
+  accounting (still raw token totals regardless of model tier — see
+  `docs/specs/ai-budget-governance.md`; per-model dollar-cost
+  governance remains open). See `docs/specs/model-catalog.md`.
 
 ## Context
 
@@ -35,10 +52,12 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
 - `routeToAgents()` — a keyword classifier, not a model call — decides
   which named specialist agents (marketing, design, video, localization,
   campaign, quality_control) a request touches.
-- `callCedarBrain()` makes one direct call to the Anthropic API
-  (`claude-sonnet-5`) with those agent names in the system prompt, or
-  returns a deterministic stub if `ANTHROPIC_API_KEY` is unset. Every
-  request is logged to `CedarBrainRequest` regardless of mode.
+- `callCedarBrain()` makes one direct call to the Anthropic API with
+  those agent names in the system prompt, using a model selected by
+  the routing policy described below (originally always
+  `claude-sonnet-5`), or returns a deterministic stub if
+  `ANTHROPIC_API_KEY` is unset. Every request is logged to
+  `CedarBrainRequest` regardless of mode.
 - No prompt/model version registry (see the registry update below for
   what *is* built), no *true* per-agent specialization (separate calls
   with separate specialist prompts — see the per-agent update below
@@ -101,13 +120,30 @@ placeholder; a working stub lives in `apps/web/src/lib/cedar-brain.ts`.
   See `docs/specs/cedar-prompt-registry.md`. This is the other item the
   section below had named as still needed — a *model* catalog/routing
   policy is not part of it and remains open.
+- **Update:** `apps/web/src/lib/model-catalog.ts` now holds a real,
+  static `MODEL_CATALOG` (3 real Anthropic model ids, one per tier) and
+  `selectModelForRequest(agents)`, a deterministic function of how many
+  agents `routeToAgents()` matched (≤2 → fast/Haiku, 3 → standard/
+  Sonnet, ≥4 → premium/Opus). `callCedarBrain()` now uses the selected
+  model's real id in its Anthropic call instead of a hardcoded
+  `"claude-sonnet-5"` literal, and returns `modelId` in both its live
+  *and* stub return shapes — `/api/cedar-brain/route.ts` records that
+  real id on every `CedarBrainRequest` row (success and failure paths),
+  replacing two separate hardcoded literals, including in stub mode,
+  which previously discarded this information as `null`. This closes
+  the model-catalog half of the item below — finer-grained (per-model
+  dollar) budget governance and multi-provider abstraction remain open.
+  See `docs/specs/model-catalog.md`.
 
 ## What this ADR will need to decide when AI Foundation (Phase 3) is built
 
-- Model routing policy and a real model catalog (Section 33: "route
-  tasks to the least expensive model that meets quality requirements")
-  — the prompt-version half of "prompt/model version registry" now
-  exists (see the update above); the model-catalog half does not.
+- ~~Model routing policy and a real model catalog~~ — **Resolved**
+  (see the model-catalog update above): a real static catalog and a
+  deterministic, routed-agent-count-based selection rule now exist.
+  Still open within this: a *quality-evaluated* router (Section 33's
+  literal "quality requirements" wording) would need a rubric-based
+  LLM-judge harness over live responses, which doesn't exist — see
+  `docs/specs/ai-eval-harness.md` and `docs/specs/model-catalog.md`.
 - Finer-grained budget enforcement (per-user/workflow/provider, not
   just per-organization — the organization-level mechanism now exists,
   see the update above).

@@ -2,10 +2,11 @@ import { isAuthorized } from "@cedar/auth";
 import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
-import { getAiSupervisorSummary } from "@/lib/services/ai-supervisor-service";
+import { getAiSupervisorSummary, getModelUsageBreakdown } from "@/lib/services/ai-supervisor-service";
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
 import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { getPromptSnapshots } from "@/lib/services/prompt-registry-service";
+import { MODEL_CATALOG } from "@/lib/model-catalog";
 import { RunEvalButton } from "./RunEvalButton";
 import { SetAiBudgetForm } from "./SetAiBudgetForm";
 
@@ -19,12 +20,13 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots] = await Promise.all([
+  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage] = await Promise.all([
     getAiSupervisorSummary(actor.organizationId),
     getRecentEvalRuns(),
     getAiBudgetStatus(actor.organizationId),
     isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
     getPromptSnapshots(),
+    getModelUsageBreakdown(actor.organizationId),
   ]);
   const latestEvalRun = evalRuns[0];
 
@@ -193,6 +195,49 @@ export default async function AiSupervisorPage() {
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card title="Model routing policy">
+        <p className="mb-3 text-xs text-neutral-500">
+          A real, static catalog of 3 model tiers and a deterministic selection rule based on how many agents
+          `routeToAgents()` matched (Section 33 — see docs/specs/model-catalog.md). This is an honest, bounded
+          first cut: breadth of routing is a real, already-computed complexity signal, not the live-response
+          quality evaluation Section 33&apos;s own wording asks for — that would need a rubric-based LLM-judge
+          harness, which docs/specs/ai-eval-harness.md documents as not built.
+        </p>
+        <ul className="mb-4 space-y-2">
+          {MODEL_CATALOG.map((entry) => (
+            <li key={entry.id} className="rounded-lg border border-neutral-100 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{entry.label}</span>
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs uppercase tracking-wide text-neutral-500">
+                  {entry.tier}
+                </span>
+              </div>
+              <div className="mt-1 font-mono text-xs text-neutral-400">{entry.id}</div>
+              <p className="mt-1 text-xs text-neutral-600">{entry.notes}</p>
+            </li>
+          ))}
+        </ul>
+        <div>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
+            Actual usage (this organization)
+          </h4>
+          {modelUsage.length === 0 ? (
+            <p className="text-sm text-neutral-400">No Cedar Brain requests recorded yet.</p>
+          ) : (
+            <ul className="space-y-1 text-xs text-neutral-500">
+              {modelUsage.map((bucket) => (
+                <li key={bucket.modelName ?? "null"} className="flex justify-between">
+                  <span className={bucket.modelName ? "font-mono" : "italic"}>
+                    {bucket.modelName ?? "not recorded (pre-catalog)"}
+                  </span>
+                  <span>{bucket.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Card>
     </div>
   );

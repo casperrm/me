@@ -5,6 +5,7 @@
 // output. The routing logic below is a deliberately simple stand-in so the
 // Command Center has a real, working end-to-end path to build on rather
 // than a mock.
+import { selectModelForRequest } from "./model-catalog";
 
 // Bumped manually whenever SYSTEM_PROMPT_TEMPLATE below changes. Recorded
 // on every CedarBrainRequest row, and — since this slice —
@@ -131,6 +132,14 @@ ${sectionTemplate}${
 export async function callCedarBrain(prompt: string, agents: CedarAgent[], governedContext?: string) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
+  // Model routing policy (Section 33) — a deterministic tier selection
+  // based on how many agents this request routed to (see
+  // docs/specs/model-catalog.md). Computed regardless of mode: even a
+  // stub-mode response (every request in this sandbox, since no
+  // ANTHROPIC_API_KEY is configured) records which model *would* have
+  // been used — real telemetry, not thrown away like it used to be.
+  const selectedModel = selectModelForRequest(agents);
+
   if (!apiKey) {
     return {
       mode: "stub" as const,
@@ -140,6 +149,7 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[], gover
         output: `[stub] ${agent} would produce its part of this request here.`,
       })),
       usage: null,
+      modelId: selectedModel.id,
     };
   }
 
@@ -153,7 +163,7 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[], gover
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-5",
+      model: selectedModel.id,
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
@@ -176,5 +186,6 @@ export async function callCedarBrain(prompt: string, agents: CedarAgent[], gover
     usage: data.usage
       ? { inputTokens: data.usage.input_tokens as number, outputTokens: data.usage.output_tokens as number }
       : null,
+    modelId: selectedModel.id,
   };
 }
