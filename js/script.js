@@ -104,54 +104,66 @@
     });
   });
 
-  // ---- Lightbox ----
+  // ---- Lightbox (only present on pages with a portfolio grid) ----
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
   const lightboxClose = document.getElementById('lightboxClose');
 
-  portfolioItems.forEach((item) => {
-    item.addEventListener('click', () => {
-      const img = item.querySelector('img');
-      lightboxImg.src = img.src;
-      lightboxImg.alt = img.alt;
-      lightbox.classList.add('open');
-      document.body.style.overflow = 'hidden';
+  if (lightbox && lightboxImg && lightboxClose) {
+    portfolioItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        const img = item.querySelector('img');
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt;
+        lightbox.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      });
     });
-  });
 
-  const closeLightbox = () => {
-    lightbox.classList.remove('open');
-    document.body.style.overflow = '';
-  };
-  lightboxClose.addEventListener('click', closeLightbox);
-  lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox) closeLightbox();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeLightbox();
-  });
+    const closeLightbox = () => {
+      lightbox.classList.remove('open');
+      document.body.style.overflow = '';
+    };
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  }
 
-  // ---- Contact form (front-end only, opens mail client) ----
+  // ---- Contact form (only present on the contact page; opens mail client) ----
   const contactForm = document.getElementById('contactForm');
   const formNote = document.getElementById('formNote');
-  contactForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const service = document.getElementById('service').value;
-    const message = document.getElementById('message').value.trim();
+  if (contactForm && formNote) {
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const service = document.getElementById('service').value;
+      const message = document.getElementById('message').value.trim();
 
-    const subject = encodeURIComponent(`New project inquiry — ${service}`);
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\nService: ${service}\n\nMessage:\n${message}`
-    );
+      const subject = encodeURIComponent(`New project inquiry — ${service}`);
+      const body = encodeURIComponent(
+        `Name: ${name}\nEmail: ${email}\nService: ${service}\n\nMessage:\n${message}`
+      );
 
-    window.location.href = `mailto:consultingcedarpoint@gmail.com?subject=${subject}&body=${body}`;
+      window.location.href = `mailto:consultingcedarpoint@gmail.com?subject=${subject}&body=${body}`;
 
-    formNote.textContent = 'Opening your email client... if nothing happens, email us directly at consultingcedarpoint@gmail.com.';
-    formNote.classList.add('success');
+      formNote.textContent = 'Opening your email client... if nothing happens, email us directly at consultingcedarpoint@gmail.com.';
+      formNote.classList.add('success');
+    });
+  }
+
+  // ---- Active nav link ----
+  const currentPage = (window.location.pathname.split('/').pop() || 'index.html');
+  document.querySelectorAll('.main-nav a').forEach((link) => {
+    const linkPage = link.getAttribute('href').split('#')[0] || 'index.html';
+    if (linkPage === currentPage) link.classList.add('active');
   });
 
   // ---- Footer year ----
-  document.getElementById('year').textContent = new Date().getFullYear();
+  const yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
 })();
