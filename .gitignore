@@ -23,6 +23,9 @@ coverage/
 *.log
 npm-debug.log*
 
+# local agent worktrees (isolated background-agent checkouts, never repo content)
+/.claude/worktrees/
+
 # playwright e2e
 /test-results/
 /playwright-report/
