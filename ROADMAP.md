@@ -112,7 +112,7 @@ canonical system.
 - [x] Clients/contacts, Brand DNA (versioned, with a real edit UI at
       `/clients/[id]/brand/edit` — see `docs/specs/brand-dna.md`),
       projects/tasks (creation, assignment, status transitions, and —
-      added in eight follow-up slices — per-task checklists: add/toggle/
+      added in nine follow-up slices — per-task checklists: add/toggle/
       delete a flat ordered list of sub-items; task priority
       (low/medium/high, defaulting to medium, changeable inline via its
       own `<select>` next to status); task estimate (a nullable hours
@@ -141,9 +141,56 @@ canonical system.
       checklist, priority, estimate, comments, attachments, milestones,
       (the smallest real cut of) task dependencies, and (a similarly
       scoped cut of) project templates — leaving only a real
-      dependency-graph/critical-path engine and template *editing* as
-      still-deliberately-unbuilt refinements within those cut features,
-      not open list items. Each slice was verified live against a real
+      dependency-graph/critical-path engine as a still-deliberately-
+      unbuilt refinement within those cut features, not an open list
+      item. A ninth follow-up then closed that same paragraph's other
+      named refinement, template *editing*: `renameProjectTemplate`,
+      `deleteProjectTemplate` (deletes the template's
+      `ProjectTemplateTask` rows first, in one `prisma.$transaction`,
+      since that relation has no `onDelete: Cascade`), `addTemplateTask`
+      (append-only, same `position = current count` convention checklist
+      items use, importing `TASK_PRIORITIES` from `project-service.ts`
+      rather than redefining it), and `removeTemplateTask` — all four
+      gated on `clients:write` with **no `clientId`**, restricting them
+      to an actor who holds it organization-wide (OWNER always, ADMIN by
+      role, or an explicit org-wide `ScopedGrant`) rather than any one
+      client's grant, since managing the shared template library isn't
+      scoped to a client the way creating/instantiating a template is —
+      verified by a dedicated integration test proving a per-client (not
+      org-wide) `clients:write` grant is correctly denied. A new
+      `/templates` management page (nav-gated the same org-wide way,
+      matching `/integrations`'s own pattern) lists every template with
+      an inline rename form, a `confirm()`-guarded delete button (same
+      weight `RevokeConnectionButton` already established), and a
+      per-task remove button plus add-task form — no reordering, same
+      append-only precedent checklist items set. Deleting a template
+      never affects projects already instantiated from it, since
+      `createProjectFromTemplate` copies tasks into independent rows
+      rather than keeping a live reference — confirmed by re-reading
+      that function before documenting it. New coverage: the existing
+      `project-template-service.integration.test.ts` grew from 12 to 24
+      tests; three new route-contract files
+      (`project-templates/[id]/route.contract.test.ts` for PATCH/DELETE,
+      `project-templates/[id]/tasks/route.contract.test.ts`,
+      `project-template-tasks/[id]/route.contract.test.ts`) add 19 more.
+      Full suite: 557 tests across 6 workspaces (up from 526), all
+      passing. Verified live against the real running server and dev
+      database: reused the seeded "FastCharge Launch" project rather
+      than creating a fresh one, saved it as a template through the
+      real pre-existing UI flow (proving that path still works), then
+      through a real headless-Chromium pass on the new `/templates`
+      page renamed the template, added a task, removed a task, and
+      deleted the whole template (accepting its real `confirm()`
+      dialog) — each step cross-checked with `psql`, including
+      confirming the deleted template's task rows were really gone with
+      no FK error ever surfacing to the user. A screenshot taken
+      mid-pass was visually inspected and showed a clean layout with no
+      overlapping or unclickable controls. Cleaned up back to the exact
+      pre-test row counts (0 templates/0 template tasks), leaving only
+      the real audit events and login sessions the pass legitimately
+      generated, and confirmed no server process was left running
+      afterward.
+      Each slice was verified live against a real
       running server: checklist via a full real add/toggle/delete round
       trip driven through a headless browser against a real seeded
       task; priority via a real API-created task whose priority was

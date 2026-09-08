@@ -58,7 +58,7 @@ async function assertProjectInOrg(projectId: string, organizationId: string) {
   return project;
 }
 
-const TASK_PRIORITIES = ["low", "medium", "high"] as const;
+export const TASK_PRIORITIES = ["low", "medium", "high"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 function validateEstimateHours(estimateHours: number | null | undefined) {

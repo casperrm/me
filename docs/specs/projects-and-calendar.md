@@ -1,6 +1,6 @@
 # Module: Projects, Tasks & Calendar
 
-Status: **Partially implemented (Phase 1 slice, extended eight times)**.
+Status: **Partially implemented (Phase 1 slice, extended nine times)**.
 Bible reference: Section 12.
 
 ## Purpose
@@ -28,14 +28,17 @@ oversights:
 - **Templates:** a template snapshots task titles and priorities only —
   no milestones, no checklist items, no dependencies, no due-date
   offsets (a template task instantiates with no due date; the operator
-  sets real dates per run). No template *editing* either — saving a
-  project as a template again under the same name just creates a
-  second, independent template row; there's no versioning or
-  "update this template" concept.
+  sets real dates per run). Saving a project as a template again under
+  the same name still creates a second, independent template row —
+  there's no versioning or "this template supersedes that one" concept.
+  Template *editing* (rename/delete/add-task/remove-task) is now real —
+  see below — but reordering a template's tasks is not: same as task
+  checklist items, tasks are append-only, and removing + re-adding one
+  is the escape hatch to fix an order.
 
 Build a real graph-traversal layer (and a project-level risk score), a
-richer template shape, or template editing when a real need for any of
-those shows up, rather than modeling it speculatively now.
+richer template shape, or template versioning when a real need for any
+of those shows up, rather than modeling it speculatively now.
 
 ## Entities
 
@@ -91,6 +94,23 @@ rather than a calendar being its own data store.
   organization, not any one client — there is no separate
   "templates:read" permission; the check simply mirrors "can this actor
   see this client's page at all."
+- Template editing (rename/delete/add-task/remove-task, plus the
+  management page's own listing,
+  `listProjectTemplatesForManagement`): gated on `clients:write` with
+  **no `clientId`** — unlike creating/instantiating a template, none of
+  these are naturally scoped to one client's context, since a dedicated
+  template-management surface manages the org's shared library, not one
+  client's page. `can()` (`packages/domain/src/policy.ts`) restricts an
+  omitted `clientId` on a `CLIENT_SCOPABLE_PERMISSIONS` permission to an
+  actor who holds it organization-wide: OWNER always, ADMIN via
+  `ROLE_GLOBAL_PERMISSIONS`, or anyone else only via an explicit
+  org-wide `ScopedGrant` (`clientId: null`) — a per-client grant is not
+  enough, proven by a dedicated integration test. This is the same tier
+  of access that already lets someone create a template from any
+  client's project, just made explicit rather than incidental.
+  Deliberately not `organization:manage` — that tier is reserved for org
+  security/infra settings (MFA policy, AI budget, Integration Center),
+  not day-to-day PM artifacts.
 
 ## Events
 
@@ -102,6 +122,8 @@ rather than a calendar being its own data store.
 removed attachment, `milestone.created`, `milestone.toggled`,
 `milestone.deleted`, `task_dependency.created`,
 `task_dependency.deleted`, `project_template.created`,
+`project_template.renamed`, `project_template.deleted`,
+`project_template.task_added`, `project_template.task_removed`,
 `project.created_from_template` (audit), plus a `project_created`
 `ClientTimelineEvent` for both a template-instantiated project (summary
 names the source template) and the routine `project.created` case
@@ -173,6 +195,24 @@ event the way task completion does).
   same pattern nearly every other page-load read in this app already
   uses), not a client-side fetch. Add one only if a future consumer
   actually needs to read the list without a full page render.
+- `PATCH /api/project-templates/[id]` — rename a template (`name`,
+  required, trimmed, rejected if empty).
+- `DELETE /api/project-templates/[id]` — delete a template. Deletes its
+  `ProjectTemplateTask` rows first, in the same `prisma.$transaction`,
+  since `ProjectTemplateTask.template` has no `onDelete: Cascade` on its
+  relation — deleting the parent row first would hit a foreign-key
+  error rather than a migration being needed.
+- `POST /api/project-templates/[id]/tasks` — append one task to a
+  template (`title`, required; `priority`, optional, one of
+  `low`/`medium`/`high`, defaults to `medium`). `position` is just the
+  current task count at insert time, the same append-only convention
+  task checklist items already use — no reordering support here either.
+- `DELETE /api/project-template-tasks/[id]` — remove one task from a
+  template.
+- The `/templates` management page (below) is populated by the server
+  component calling `listProjectTemplatesForManagement` directly, same
+  as `listProjectTemplates` above — no `GET /api/project-templates`
+  route either, for the same reason.
 
 ## UI
 
@@ -234,6 +274,22 @@ event the way task completion does).
   one-field form (template name, defaulting to the project's own name)
   that snapshots the project's current tasks; on success it shows an
   inline "Saved as a template (N tasks)." confirmation.
+- `/templates` — the template-management page, gated org-wide
+  `clients:write` (`PermissionDenied` otherwise, same as
+  `/integrations`); the sidebar nav item itself is conditionally shown
+  the same way `/integrations`'s is, rather than always rendered and
+  crashing into a permission-denied card underneath. Lists every org
+  template (name, task count, created date); each is a card with an
+  inline rename form (text input + explicit "Save" button — not
+  autosubmit-on-keystroke, same pattern as `TaskEstimateForm`), a
+  "Delete" button (a `confirm()` dialog first, same pattern
+  `RevokeConnectionButton` already established for a comparably
+  irreversible action), its task list (title + priority, each with a
+  "Remove" button, no confirm — a single task is not the whole-entity,
+  irreversible-in-effect action a template delete is, matching how
+  checklist-item/dependency removal don't confirm either), and a
+  compact add-task form (title input + priority `<select>` defaulting
+  to medium + "Add" button) at the bottom.
 - `/calendar` — org-wide (or client-scoped, for a collaborator without
   org-wide `clients:read`) view of everything due in the next 60 days:
   task due dates, project due dates, invoice due dates, and now
@@ -324,6 +380,36 @@ feeding the future Client Health Score (Section 4.2).
   Instantiating from a template in a different organization is rejected
   even though templates have no client to scope by — the check is
   directly against `template.organizationId`.
+- **Empty template rename:** rejected before any database write, same
+  pattern as an empty template-creation name.
+- **A cross-organization template `id` (rename/delete/add-task) or
+  template task `id` (remove-task):** rejected the same
+  walk-to-`organizationId` way as everywhere else — `assertTemplateInOrg`
+  for the first three, a new `assertTemplateTaskInOrg` (template task →
+  template → `organizationId`) for the last.
+- **Invalid template task priority:** rejected before any database
+  write, same fixed-set (`low`/`medium`/`high`) validation `Task`
+  itself uses, imported from `project-service.ts`'s `TASK_PRIORITIES`
+  rather than redefined.
+- **Deleting a template that still has task rows:** would otherwise hit
+  a foreign-key error, since `ProjectTemplateTask.template` has no
+  `onDelete: Cascade`. `deleteProjectTemplate` deletes the task rows
+  first, in the same `prisma.$transaction` as the template row itself,
+  rather than adding a migration for a cascade.
+- **A per-client (not org-wide) `clients:write` `ScopedGrant` calling
+  any of rename/delete/add-task/remove-task/
+  `listProjectTemplatesForManagement`:** rejected. These functions never
+  pass a `clientId` to `requirePermission`, so `can()` only honors an
+  org-wide grant (`clientId: null`) or a role's global permissions —
+  never a grant scoped to one specific client, even one that client's
+  own writes would otherwise satisfy. Locked down by a dedicated
+  integration test.
+- **Deleting a template that projects were already instantiated from:**
+  does not touch those projects at all — `createProjectFromTemplate`
+  copies the template's tasks into real, independent `Task` rows at
+  instantiation time rather than keeping any live reference back to the
+  template, so a template can be freely renamed or deleted after the
+  fact with zero effect on projects it already produced.
 
 ## Acceptance tests
 
@@ -409,7 +495,7 @@ feeding the future Client Health Score (Section 4.2).
   (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
   cross-organization).
 - `apps/web/src/lib/services/project-template-service.integration.test.ts`
-  — 12 tests against real Postgres: `createProjectTemplateFromProject`
+  — 24 tests against real Postgres (up from 12): `createProjectTemplateFromProject`
   snapshots the real tasks (title/priority/position) in order and
   records an audit event, allows an empty project to become a
   task-less template, rejects an empty name, rejects a
@@ -420,10 +506,40 @@ feeding the future Client Health Score (Section 4.2).
   copied from the template (verified via a real `ClientTimelineEvent`
   too), falls back to the template's own name when none is given,
   rejects a `clients:write`-less write, rejects a cross-organization
-  template, and rejects an unknown client.
+  template, and rejects an unknown client; four new blocks cover
+  template editing: `renameProjectTemplate` (persists a new name and
+  audits it, rejects an empty name, rejects a cross-organization
+  template), `deleteProjectTemplate` (a real delete removes the
+  template *and* leaves zero `ProjectTemplateTask` rows behind —
+  verified via a subsequent `findMany` — with the deleted name/task
+  count captured in the audit event's `changeSet` since the resource
+  itself is gone afterward, rejects a cross-organization template),
+  `addTemplateTask` (appends at the correct next `position` including a
+  second append landing one further along, defaults to `medium`
+  priority when omitted, rejects an invalid priority, rejects a
+  cross-organization template), and `removeTemplateTask` (removes the
+  row and leaves the others intact, rejects a cross-organization
+  template task) — plus a `listProjectTemplatesForManagement` read test
+  and an org-wide-gating boundary test: a member holding `clients:write`
+  only via a per-client `ScopedGrant` (not org-wide) is rejected on all
+  four writes and the management list, then the same template is
+  successfully renamed by the OWNER immediately after, proving the
+  rejection is the org-wide boundary specifically, not a bug rejecting
+  everyone.
 - `apps/web/src/app/api/projects/[projectId]/templates/route.contract.test.ts`
   — 5 tests (401/400 missing name/403/200 with a real persisted
   template and its real task snapshot/400 cross-organization).
+- `apps/web/src/app/api/project-templates/[id]/route.contract.test.ts`
+  (`PATCH`/`DELETE`) — 9 tests: PATCH (401/400 missing name/403/200 with
+  a real persisted rename/400 cross-organization), DELETE (401/403/200
+  with the template *and* its task rows actually gone/400
+  cross-organization).
+- `apps/web/src/app/api/project-templates/[id]/tasks/route.contract.test.ts`
+  — 6 tests (401/400 missing title/403/200 with a real persisted task at
+  the correct next position/400 invalid priority/400 cross-organization).
+- `apps/web/src/app/api/project-template-tasks/[id]/route.contract.test.ts`
+  (`DELETE`) — 4 tests (401/403/200 with the row actually gone/400
+  cross-organization).
 - `apps/web/src/app/api/clients/[id]/projects/from-template/route.contract.test.ts`
   — 5 tests (401/400 missing `templateId`/403/200 with a real persisted
   project and its real copied tasks/400 cross-organization template).
@@ -571,3 +687,34 @@ feeding the future Client Health Score (Section 4.2).
   route-contract or component test would have exercised the same form
   logic without ever noticing the visual overlap; only a real browser
   at a real viewport width surfaced it.
+- Manual smoke test performed for the template-editing slice against a
+  real running production server, driven entirely through a headless
+  Chromium browser against the seeded owner and the seeded "FastCharge
+  Launch" project (Volt Mobile), reusing it rather than creating a fresh
+  project/client so there was nothing extra to clean up: clicked "Save
+  as template" on the real project detail page (proving the pre-existing
+  create path is unbroken), confirmed the success message, navigated to
+  the new `/templates` page and confirmed the real template rendered
+  with its real 3-task snapshot; renamed it through the real inline form
+  and confirmed the new name and task count persisted after a reload;
+  added a task ("Smoke Test Added Task", High) through the real add-task
+  form and confirmed it rendered after a reload; removed that task
+  through its real "Remove" button and confirmed it was gone after a
+  reload; deleted the whole template through the real "Delete" button
+  (confirming the real `confirm()` dialog fired with the expected
+  message and accepting it) and confirmed both the page and a `psql`
+  check showed it gone — including its task rows, with no FK error ever
+  surfaced. A screenshot taken after the rename+add-task steps was
+  visually inspected and showed a clean, non-overlapping layout (card
+  header, rename form, task list, and add-task form each on their own
+  line with no clipped or unclickable controls). Cross-checked via
+  `psql` throughout and afterward: `project_templates`/
+  `project_template_tasks` row counts were back to their exact
+  pre-test values (0/0) once the UI's own delete step ran — same
+  self-cleaning pattern as the checklist/attachments slices — and the
+  seeded project's own 3 tasks were untouched. The five new
+  `project_template.*` audit events and two real login `session.created`
+  events were left in place as genuine history, matching this session's
+  established convention (e.g. the MFA slice) of keeping real audit
+  trail rather than deleting it. Confirmed no `next-server`/`next start`
+  process was left running afterward.
