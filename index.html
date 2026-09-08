@@ -36,11 +36,22 @@
   <symbol id="i-facebook" viewBox="0 0 24 24"><path d="M15 8h2V5h-2a4 4 0 0 0-4 4v2H9v3h2v6h3v-6h2.2l.8-3H14V9a1 1 0 0 1 1-1z" fill="currentColor"/></symbol>
   <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1 .4 2.1.6 3.2.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.5 21 3 13.5 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.1.2 2.2.6 3.2.1.3 0 .7-.2 1L6.6 10.8z" fill="currentColor"/></symbol>
   <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 8.8c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4.2.5.6 1.5.6 1.6.1.1.1.3 0 .4-.1.2-.2.3-.3.4-.1.1-.3.3-.4.4-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.2.1.4.1.5-.1.2-.2.6-.7.8-.9.2-.2.3-.2.5-.1.2.1 1.4.7 1.7.8.3.1.4.2.5.3 0 .2 0 .8-.3 1.3-.3.5-1.5 1.1-2.1 1.1-.5 0-1.9-.2-3.6-1.6-2.1-1.7-3.4-3.8-3.6-4.1-.1-.3-.7-1-.7-1.9 0-.9.5-1.3.6-1.5z" fill="currentColor"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M17 2v4h-4M3 12a9 9 0 0 1 15-6.7L20 8M7 22v-4h4M21 12a9 9 0 0 1-15 6.7L4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
+
+<div class="scroll-progress" id="scrollProgress"></div>
 
 <div class="preloader" id="preloader"><div class="preloader-mark"><span>C</span></div></div>
 
 <div class="cursor-glow" id="cursorGlow"></div>
+
+<nav class="section-nav" id="sectionNav" aria-label="Jump to section">
+  <a href="#home" data-section="home" aria-label="Home"></a>
+  <a href="#services" data-section="services" aria-label="Services"></a>
+  <a href="#work-teaser" data-section="work-teaser" aria-label="Our Work"></a>
+  <a href="#process" data-section="process" aria-label="Process"></a>
+  <a href="#get-started" data-section="get-started" aria-label="Get Started"></a>
+</nav>
 
 <!-- ===== HEADER ===== -->
 <header class="site-header" id="siteHeader">
@@ -144,35 +155,131 @@
       </div>
 
       <div class="services-grid">
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-1"><svg class="icon"><use href="#i-lightbulb"></use></svg></div>
-          <h3>Social Media Management</h3>
-          <p>Daily content, scheduling, and community engagement across Instagram, TikTok, Facebook & X — kept consistent, on-brand, and on time.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-1"><svg class="icon"><use href="#i-lightbulb"></use></svg></div>
+              <h3>Social Media Management</h3>
+              <p>Daily content, scheduling, and community engagement across Instagram, TikTok, Facebook & X — kept consistent, on-brand, and on time.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Social Media Management</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Daily posts & Stories</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Community replies & DMs</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Multi-platform scheduling</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Monthly content calendar</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-2"><svg class="icon"><use href="#i-pen"></use></svg></div>
-          <h3>Creative Content & Design</h3>
-          <p>Scroll-stopping graphics, reels, and campaign concepts — from clean corporate posts to bold, meme-driven creative that actually gets shared.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-2"><svg class="icon"><use href="#i-pen"></use></svg></div>
+              <h3>Creative Content & Design</h3>
+              <p>Scroll-stopping graphics, reels, and campaign concepts — from clean corporate posts to bold, meme-driven creative that actually gets shared.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Creative Content & Design</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Custom graphics & reels</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Campaign concepts</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> On-brand templates</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Unlimited revisions</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-3"><svg class="icon"><use href="#i-target"></use></svg></div>
-          <h3>Paid Social & Meta Ads</h3>
-          <p>Targeted ad campaigns across Meta, TikTok & Google — built to lower cost-per-result and put your brand in front of the right audience.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-3"><svg class="icon"><use href="#i-target"></use></svg></div>
+              <h3>Paid Social & Meta Ads</h3>
+              <p>Targeted ad campaigns across Meta, TikTok & Google — built to lower cost-per-result and put your brand in front of the right audience.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Paid Social & Meta Ads</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Meta / TikTok / Google setup</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Audience targeting & testing</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Budget optimization</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Weekly performance tuning</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-4"><svg class="icon"><use href="#i-compass"></use></svg></div>
-          <h3>Brand & Growth Strategy</h3>
-          <p>A clear content calendar, brand voice, and growth roadmap — smart strategy that turns followers into real customers.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-4"><svg class="icon"><use href="#i-compass"></use></svg></div>
+              <h3>Brand & Growth Strategy</h3>
+              <p>A clear content calendar, brand voice, and growth roadmap — smart strategy that turns followers into real customers.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Brand & Growth Strategy</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Brand voice & content calendar</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Competitor analysis</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Growth roadmap</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Quarterly strategy reviews</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-5"><svg class="icon"><use href="#i-chart-bar"></use></svg></div>
-          <h3>Analytics & Reporting</h3>
-          <p>Transparent monthly reports on reach, engagement, and conversions — so you always know exactly what's working.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-5"><svg class="icon"><use href="#i-chart-bar"></use></svg></div>
+              <h3>Analytics & Reporting</h3>
+              <p>Transparent monthly reports on reach, engagement, and conversions — so you always know exactly what's working.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Analytics & Reporting</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Monthly performance reports</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Reach / engagement / conversions</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Actionable insights</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Transparent dashboards</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="service-card" data-reveal>
-          <div class="service-icon svc-6"><svg class="icon"><use href="#i-image"></use></svg></div>
-          <h3>Product & Campaign Shoots</h3>
-          <p>Full concept-to-post product photography and ad design for launches, promos, and seasonal campaigns.</p>
+        <div class="service-card flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="service-icon svc-6"><svg class="icon"><use href="#i-image"></use></svg></div>
+              <h3>Product & Campaign Shoots</h3>
+              <p>Full concept-to-post product photography and ad design for launches, promos, and seasonal campaigns.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for what's included</span>
+            </div>
+            <div class="flip-card-back">
+              <h3>Product & Campaign Shoots</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Concept development</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Product photography</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Ad design & copywriting</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Seasonal campaign planning</li>
+              </ul>
+              <a href="contact.html" class="btn btn-primary btn-sm">Get Started</a>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -244,30 +351,110 @@
       </div>
 
       <div class="process-rail">
-        <div class="process-step" data-reveal>
-          <div class="process-num">01</div>
-          <h3>The Idea</h3>
-          <p>We dig into your brand, your audience, and your goals to shape a concept worth building on.</p>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">01</div>
+              <h3>The Idea</h3>
+              <p>We dig into your brand, your audience, and your goals to shape a concept worth building on.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for details</span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">01</div>
+              <h3>The Idea</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Brand & audience research</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Competitor scan</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Concept direction</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Kickoff call</li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="process-step" data-reveal>
-          <div class="process-num">02</div>
-          <h3>The Content</h3>
-          <p>Creative content, strong visuals, and consistent communication — kept clean and smart, day by day.</p>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">02</div>
+              <h3>The Content</h3>
+              <p>Creative content, strong visuals, and consistent communication — kept clean and smart, day by day.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for details</span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">02</div>
+              <h3>The Content</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Monthly content calendar</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Visual style guide</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Caption & copywriting</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Approval workflow</li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="process-step" data-reveal>
-          <div class="process-num">03</div>
-          <h3>The Strategy</h3>
-          <p>Smart strategy, growth strategy, digital strategy — we build the plan that puts your brand in front of the right audience.</p>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">03</div>
+              <h3>The Strategy</h3>
+              <p>Smart strategy, growth strategy, digital strategy — we build the plan that puts your brand in front of the right audience.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for details</span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">03</div>
+              <h3>The Strategy</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Platform-by-platform plan</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Posting cadence</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Paid vs. organic mix</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Clear KPIs</li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="process-step" data-reveal>
-          <div class="process-num">04</div>
-          <h3>The Growth</h3>
-          <p>We manage your social media to increase visibility, engagement & customers — building trust and authority over time.</p>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">04</div>
+              <h3>The Growth</h3>
+              <p>We manage your social media to increase visibility, engagement & customers — building trust and authority over time.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for details</span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">04</div>
+              <h3>The Growth</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Daily community management</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Ads live & optimized</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Engagement tracking</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Weekly tuning</li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
-        <div class="process-step" data-reveal>
-          <div class="process-num">05</div>
-          <h3>The Partnership</h3>
-          <p>You focus on your business. We take care of your digital presence — for the long run, not just one campaign.</p>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">05</div>
+              <h3>The Partnership</h3>
+              <p>You focus on your business. We take care of your digital presence — for the long run, not just one campaign.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap for details</span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">05</div>
+              <h3>The Partnership</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Monthly performance report</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Strategy check-in calls</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Ongoing optimization</li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> Long-term roadmap</li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> Tap to flip back</span>
+            </div>
+          </div>
         </div>
       </div>
 

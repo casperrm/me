@@ -9,8 +9,9 @@
     }
   });
 
-  // ---- Header scroll state ----
+  // ---- Header scroll state + scroll progress bar ----
   const header = document.getElementById('siteHeader');
+  const scrollProgress = document.getElementById('scrollProgress');
   const onScroll = () => {
     if (window.scrollY > 40) header.classList.add('scrolled');
     else header.classList.remove('scrolled');
@@ -18,6 +19,12 @@
     const backToTop = document.getElementById('backToTop');
     if (window.scrollY > 500) backToTop.classList.add('show');
     else backToTop.classList.remove('show');
+
+    if (scrollProgress) {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (window.scrollY / docHeight) * 100 : 0;
+      scrollProgress.style.width = pct + '%';
+    }
   };
   document.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -131,6 +138,51 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox();
     });
+  }
+
+  // ---- Flip cards (services + process steps) ----
+  document.querySelectorAll('.flip-card').forEach((card) => {
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-pressed', 'false');
+
+    const toggle = () => {
+      const flipped = card.classList.toggle('flipped');
+      card.setAttribute('aria-pressed', flipped ? 'true' : 'false');
+    };
+    card.addEventListener('click', toggle);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+    // Let links on the back of the card (e.g. "Get Started") navigate
+    // normally instead of just re-triggering the flip.
+    card.querySelectorAll('a').forEach((a) => {
+      a.addEventListener('click', (e) => e.stopPropagation());
+    });
+  });
+
+  // ---- Quick section-jump nav (homepage only) ----
+  const sectionNav = document.getElementById('sectionNav');
+  if (sectionNav) {
+    const navDots = Array.from(sectionNav.querySelectorAll('a'));
+    const sections = navDots
+      .map((a) => document.getElementById(a.getAttribute('data-section')))
+      .filter(Boolean);
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            navDots.forEach((a) => a.classList.toggle('active', a.getAttribute('data-section') === id));
+          }
+        });
+      },
+      { rootMargin: '-45% 0px -45% 0px', threshold: 0 }
+    );
+    sections.forEach((s) => sectionObserver.observe(s));
   }
 
   // ---- Contact form (only present on the contact page) ----
