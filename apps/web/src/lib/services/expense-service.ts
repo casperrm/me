@@ -19,6 +19,7 @@ export async function createExpense(params: {
   description?: string;
   clientId?: string;
   projectId?: string;
+  campaignId?: string;
   incurredAt?: Date;
 }) {
   const membership = await requirePermission({
@@ -47,11 +48,23 @@ export async function createExpense(params: {
     if (!project) throw new AuthError("Project not found for this client.");
   }
 
+  // A campaign-tagged expense with no project doesn't make sense (a
+  // campaign always belongs to exactly one project) — and the campaign
+  // must actually belong to the given project, not just exist somewhere
+  // in the organization. Mirrors the project-belongs-to-client check
+  // above, one level down.
+  if (params.campaignId) {
+    if (!params.projectId) throw new AuthError("A campaign can only be set alongside its project.");
+    const campaign = await prisma.campaign.findFirst({ where: { id: params.campaignId, projectId: params.projectId } });
+    if (!campaign) throw new AuthError("Campaign not found for this project.");
+  }
+
   const expense = await prisma.expense.create({
     data: {
       organizationId: params.organizationId,
       clientId: params.clientId,
       projectId: params.projectId,
+      campaignId: params.campaignId,
       category: params.category.trim(),
       amountCents: params.amountCents,
       description: params.description || undefined,

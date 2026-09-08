@@ -572,6 +572,7 @@ model Campaign {
 
   creatives            Creative[]
   contentCalendarItems ContentCalendarItem[]
+  expenses             Expense[]
 
   @@map("campaigns")
 }
@@ -851,6 +852,15 @@ model Expense {
   // service layer enforces this, not the schema).
   projectId      String?
   project        Project?     @relation(fields: [projectId], references: [id])
+  // Optional: attributes this cost to a specific campaign within the
+  // project for campaign-level profitability (Section 4.2/16 Phase 5:
+  // "reconciled actual spend," not just Campaign.budgetCents's manual
+  // estimate). Only meaningful alongside a projectId — a campaign
+  // belongs to one project (and that project to one client), so a
+  // campaign-tagged expense is implicitly project- and client-tagged
+  // too (the service layer enforces this, not the schema).
+  campaignId     String?
+  campaign       Campaign?    @relation(fields: [campaignId], references: [id])
   category       String
   amountCents    Int
   description    String?
@@ -858,6 +868,7 @@ model Expense {
 
   @@index([clientId])
   @@index([projectId])
+  @@index([campaignId])
   @@map("expenses")
 }
 

@@ -13,13 +13,14 @@ import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
 import { createExpense } from "./expense-service";
 import { createInvoice } from "./invoice-service";
-import { getClientProfitability, getProjectProfitability } from "./profitability-service";
+import { getCampaignProfitability, getClientProfitability, getProjectProfitability } from "./profitability-service";
 
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.campaign.deleteMany();
   await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
@@ -213,5 +214,151 @@ describe("getProjectProfitability", () => {
     const foreignNames = projects.map((p) => p.projectName);
     expect(foreignNames).not.toContain("Project One");
     expect(foreignNames).not.toContain("Project Two");
+  });
+});
+
+describe("createExpense campaign validation", () => {
+  it("rejects a campaignId with no projectId", async () => {
+    const project = await prisma.project.create({ data: { clientId: clientAId, name: "Campaign-Check Project" } });
+    const campaign = await prisma.campaign.create({ data: { projectId: project.id, name: "Orphan-check Campaign" } });
+    await expect(
+      createExpense({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        category: "Ads",
+        amountCents: 1000,
+        clientId: clientAId,
+        campaignId: campaign.id,
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a campaignId that belongs to a different project", async () => {
+    const projectA = await prisma.project.create({ data: { clientId: clientAId, name: "Campaign Project A" } });
+    const projectB = await prisma.project.create({ data: { clientId: clientAId, name: "Campaign Project B" } });
+    const campaignOnB = await prisma.campaign.create({ data: { projectId: projectB.id, name: "Campaign On B" } });
+    await expect(
+      createExpense({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        category: "Ads",
+        amountCents: 1000,
+        clientId: clientAId,
+        projectId: projectA.id,
+        campaignId: campaignOnB.id,
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("accepts a campaignId that belongs to the given project", async () => {
+    const project = await prisma.project.create({ data: { clientId: clientAId, name: "Valid Campaign Project" } });
+    const campaign = await prisma.campaign.create({ data: { projectId: project.id, name: "Valid Campaign" } });
+    const expense = await createExpense({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      category: "Ads",
+      amountCents: 1000,
+      clientId: clientAId,
+      projectId: project.id,
+      campaignId: campaign.id,
+    });
+    expect(expense.campaignId).toBe(campaign.id);
+  });
+});
+
+describe("getCampaignProfitability", () => {
+  it("computes budget vs. actual cost per campaign, with an unassigned bucket for untagged project expenses", async () => {
+    const client = await prisma.client.create({
+      data: { organizationId: orgId, name: "Campaign-Scoped Client", companyName: "C Inc", services: "[]" },
+    });
+    const project = await prisma.project.create({ data: { clientId: client.id, name: "Campaign-Scoped Project" } });
+    const campaignOne = await prisma.campaign.create({
+      data: { projectId: project.id, name: "Campaign One", budgetCents: 50000 },
+    });
+    const campaignTwo = await prisma.campaign.create({
+      data: { projectId: project.id, name: "Campaign Two" }, // no budget set
+    });
+
+    await createExpense({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      category: "Ad spend",
+      amountCents: 30000,
+      clientId: client.id,
+      projectId: project.id,
+      campaignId: campaignOne.id,
+    });
+    // Untagged project-level expense — must not count against either
+    // campaign, reported separately as unassigned.
+    await createExpense({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      category: "General",
+      amountCents: 4000,
+      clientId: client.id,
+      projectId: project.id,
+    });
+
+    const { campaigns, unassignedCostCents } = await getCampaignProfitability(project.id);
+
+    const one = campaigns.find((c) => c.campaignId === campaignOne.id)!;
+    expect(one.budgetCents).toBe(50000);
+    expect(one.actualCostCents).toBe(30000);
+    expect(one.varianceCents).toBe(20000);
+
+    const two = campaigns.find((c) => c.campaignId === campaignTwo.id)!;
+    expect(two.budgetCents).toBeNull();
+    expect(two.actualCostCents).toBe(0);
+    expect(two.varianceCents).toBeNull();
+
+    expect(unassignedCostCents).toBe(4000);
+  });
+
+  it("rejects a campaign-tagged expense when the campaign doesn't belong to the given project", async () => {
+    const projectA = await prisma.project.create({ data: { clientId: clientAId, name: "Cross-Project A" } });
+    const projectB = await prisma.project.create({ data: { clientId: clientAId, name: "Cross-Project B" } });
+    const campaignOnA = await prisma.campaign.create({ data: { projectId: projectA.id, name: "Cross-Project Campaign" } });
+    await expect(
+      createExpense({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        category: "Ads",
+        amountCents: 1000,
+        clientId: clientAId,
+        projectId: projectB.id,
+        campaignId: campaignOnA.id,
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("rejects a campaign-tagged expense from a different organization's campaign", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Other Campaign Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Campaign Client", companyName: "X", services: "[]" },
+    });
+    const otherProject = await prisma.project.create({ data: { clientId: otherClient.id, name: "Other Org Project" } });
+    const otherCampaign = await prisma.campaign.create({ data: { projectId: otherProject.id, name: "Other Org Campaign" } });
+
+    const ownProject = await prisma.project.create({ data: { clientId: clientAId, name: "Own Org Project" } });
+    await expect(
+      createExpense({
+        actorUserId: ownerUserId,
+        organizationId: orgId,
+        category: "Ads",
+        amountCents: 1000,
+        clientId: clientAId,
+        projectId: ownProject.id,
+        campaignId: otherCampaign.id,
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("scopes strictly to the given project's own campaigns", async () => {
+    const otherProject = await prisma.project.create({ data: { clientId: clientAId, name: "Unrelated Project" } });
+    await prisma.campaign.create({ data: { projectId: otherProject.id, name: "Unrelated Campaign" } });
+
+    const someProject = await prisma.project.create({ data: { clientId: clientAId, name: "Scope-Check Project" } });
+    const { campaigns } = await getCampaignProfitability(someProject.id);
+    expect(campaigns.map((c) => c.campaignName)).not.toContain("Unrelated Campaign");
   });
 });

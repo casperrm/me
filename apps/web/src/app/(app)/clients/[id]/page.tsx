@@ -109,6 +109,15 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     orderBy: { name: "asc" },
     take: 100,
   });
+  // Same bounded-picker rationale as allProjects above — feeds
+  // AddExpenseForm's campaign picker, scoped client-side to whichever
+  // project is selected.
+  const allCampaigns = await prisma.campaign.findMany({
+    where: { projectId: { in: allProjects.map((p) => p.id) } },
+    select: { id: true, name: true, projectId: true },
+    orderBy: { name: "asc" },
+    take: 100,
+  });
 
   return (
     <div className="space-y-8">
@@ -393,7 +402,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                   View all ({client._count.expenses})
                 </Link>
               )}
-              {canWriteFinance && <AddExpenseForm clientId={client.id} projects={allProjects} />}
+              {canWriteFinance && <AddExpenseForm clientId={client.id} projects={allProjects} campaigns={allCampaigns} />}
             </div>
           }
         >

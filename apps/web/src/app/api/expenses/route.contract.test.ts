@@ -17,6 +17,7 @@ import { POST } from "./route";
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.expense.deleteMany();
+  await prisma.campaign.deleteMany();
   await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
@@ -28,6 +29,8 @@ let orgId: string;
 let ownerUserId: string;
 let clientId: string;
 let projectId: string;
+let otherProjectId: string;
+let campaignId: string;
 
 beforeAll(async () => {
   await wipeDatabase();
@@ -45,6 +48,10 @@ beforeAll(async () => {
   clientId = client.id;
   const project = await prisma.project.create({ data: { clientId: client.id, name: "Expense Route Test Project" } });
   projectId = project.id;
+  const otherProject = await prisma.project.create({ data: { clientId: client.id, name: "Other Expense Route Test Project" } });
+  otherProjectId = otherProject.id;
+  const campaign = await prisma.campaign.create({ data: { projectId: project.id, name: "Expense Route Test Campaign" } });
+  campaignId = campaign.id;
 });
 
 afterAll(async () => {
@@ -106,6 +113,21 @@ describe("POST /api/expenses", () => {
 
     getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
     const rejected = await POST(request({ category: "Contractor", amountCents: 7500, projectId }));
+    expect(rejected.status).toBe(400);
+  });
+
+  it("persists a campaignId when given alongside its project, and rejects a campaign from a different project", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await POST(request({ category: "Ad spend", amountCents: 9900, clientId, projectId, campaignId }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const stored = await prisma.expense.findUnique({ where: { id: body.expenseId } });
+    expect(stored?.campaignId).toBe(campaignId);
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const rejected = await POST(
+      request({ category: "Ad spend", amountCents: 9900, clientId, projectId: otherProjectId, campaignId }),
+    );
     expect(rejected.status).toBe(400);
   });
 });

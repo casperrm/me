@@ -5,6 +5,7 @@ import { prisma } from "@cedar/db";
 import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
+import { getCampaignProfitability } from "@/lib/services/profitability-service";
 import { NewCreativeForm } from "./NewCreativeForm";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,10 @@ const STATUS_STYLE: Record<string, string> = {
   APPROVED: "bg-cedar-100 text-cedar-800",
   REJECTED: "bg-red-100 text-red-700",
 };
+
+function money(cents: number) {
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+}
 
 export default async function CampaignDetailPage({
   params,
@@ -49,6 +54,18 @@ export default async function CampaignDetailPage({
     clientId: campaign.project.clientId,
   });
 
+  const canReadFinance = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "finance:read",
+  });
+  // Computed from all of the project's campaigns, then this one
+  // campaign's row is picked out — same pattern the project detail page
+  // uses to pick its own row out of getProjectProfitability(clientId).
+  const campaignProfitability = canReadFinance
+    ? (await getCampaignProfitability(campaign.projectId)).campaigns.find((c) => c.campaignId === campaign.id)
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -60,6 +77,43 @@ export default async function CampaignDetailPage({
           {campaign.status} {campaign.objective && `· ${campaign.objective}`}
         </p>
       </div>
+
+      {canReadFinance && (
+        <Card title="Profitability">
+          {campaignProfitability ? (
+            <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-neutral-500">Budget</dt>
+                <dd className="text-lg font-semibold">
+                  {campaignProfitability.budgetCents === null ? "—" : money(campaignProfitability.budgetCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Actual spend</dt>
+                <dd className="text-lg font-semibold">{money(campaignProfitability.actualCostCents)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Variance</dt>
+                <dd
+                  className={`text-lg font-semibold ${
+                    campaignProfitability.varianceCents !== null && campaignProfitability.varianceCents < 0 ? "text-red-600" : ""
+                  }`}
+                >
+                  {campaignProfitability.varianceCents === null ? "—" : money(campaignProfitability.varianceCents)}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-neutral-400">No data available for this campaign.</p>
+          )}
+          {campaignProfitability?.actualCostCents === 0 && (
+            <p className="mt-2 text-xs text-neutral-400">
+              No expenses have been tagged to this campaign yet — log one on the client page and assign it to this
+              campaign{campaignProfitability.budgetCents === null ? " (no budget set either, so variance shows as —)" : ""}.
+            </p>
+          )}
+        </Card>
+      )}
 
       <Card title="Creatives">
         {campaign.creatives.length === 0 ? (

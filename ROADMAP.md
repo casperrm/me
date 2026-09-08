@@ -462,12 +462,34 @@ them.
       capacity risk is a coarse task-count proxy (no time-tracking/
       effort model exists), cost leakage identifies the largest category
       but not root cause, and no signal here uses trend data.
-- [ ] Missing: campaign/service-level profitability (project-level is
-      now built — see above; campaign-level needs reconciled actual
-      spend, not just `Campaign.budgetCents`'s manual estimate;
-      service-level needs a billable line-item model on invoices,
-      `Client.services` today is just a tag list; see
-      `docs/specs/profitability.md`).
+- [x] Campaign-level profitability attribution (Section 4.2/16 Phase 5)
+      — new `Expense.campaignId` (optional FK to `Campaign`), validated
+      by `createExpense` against the given `projectId` (not just the
+      organization), mirroring the project-belongs-to-client check one
+      level deeper. Deliberately cost-only, no `Invoice.campaignId`:
+      this agency invoices at the project/retainer level, not per
+      campaign, so there is no campaign-level revenue to attribute —
+      confirmed by checking how `Campaign.budgetCents` is used before
+      building anything. New `getCampaignProfitability(projectId)`
+      compares each campaign's real actual spend against
+      `Campaign.budgetCents`'s pre-existing manual estimate (the
+      "reconciled actual spend" this bullet used to name as missing),
+      reporting the difference as a variance, `null` when no budget was
+      ever set — with an "unassigned" bucket for project-level expenses
+      not tagged to any specific campaign. UI: `AddExpenseForm` gained
+      an optional campaign picker, shown only once a project is chosen
+      and scoped to that project's own campaigns; the campaign detail
+      page gained a real Profitability card (budget/actual spend/
+      variance). Verified live: created a real expense against the
+      seeded "FastCharge 65W Launch" campaign via the running server's
+      API, cross-checked in Postgres, and drove a real headless browser
+      to confirm the campaign detail page's Profitability card and the
+      expense form's campaign picker both render correctly with no
+      layout issues; all inserted rows cleaned up afterward. Explicit
+      scope boundary in `docs/specs/profitability.md`: service-level
+      attribution still needs a billable line-item model on invoices,
+      `Client.services` today is just a tag list — deferred with
+      reasons given, not faked.
 
 Phase 5's concretely buildable scope is now complete.
 

@@ -48,6 +48,12 @@ export default async function ClientExpensesPage({
     orderBy: { name: "asc" },
     take: 100,
   });
+  const campaigns = await prisma.campaign.findMany({
+    where: { projectId: { in: projects.map((p) => p.id) } },
+    select: { id: true, name: true, projectId: true },
+    orderBy: { name: "asc" },
+    take: 100,
+  });
 
   return (
     <div className="space-y-6">
@@ -59,7 +65,7 @@ export default async function ClientExpensesPage({
         <p className="text-sm text-neutral-500">All expenses ever logged against {client.name} ({totalCount} total).</p>
       </div>
 
-      <Card action={canWriteFinance && <AddExpenseForm clientId={client.id} projects={projects} />}>
+      <Card action={canWriteFinance && <AddExpenseForm clientId={client.id} projects={projects} campaigns={campaigns} />}>
         {items.length === 0 ? (
           <p className="text-sm text-neutral-400">No expenses logged against this client yet.</p>
         ) : (

@@ -15,15 +15,13 @@ export interface ClientProfitability {
  *
  * Explicit scope boundary — only client-level attribution is built here.
  * Revenue is real (Invoice.clientId already exists); cost is real
- * (Expense.clientId, added this slice). Project/campaign/service-level
- * attribution would need Invoice.projectId and Expense.projectId (agencies
- * would need to actually tag invoices/expenses at that granularity, which
- * no UI supports yet) and a real service line-item model on invoices
- * (Client.services is just a tag list, not billable line items) —
- * building a service line-item model without a way to populate them would
- * just be unused schema, not a real feature. Project-level attribution
- * (see getProjectProfitability below) closes the project dimension of
- * that gap; service/campaign-level line items remain out of scope.
+ * (Expense.clientId, added this slice). Project- and campaign-level
+ * attribution (see getProjectProfitability/getCampaignProfitability
+ * below) close the project and campaign dimensions of that gap.
+ * Service-level would still need a real billable line-item model on
+ * invoices (Client.services is just a tag list, not billable line
+ * items) — building one without a way to populate it would just be
+ * unused schema, not a real feature, so it remains out of scope.
  *
  * Revenue counts only PAID invoices — an unpaid or draft invoice isn't
  * recognized revenue. Expenses with no clientId are org-wide overhead
@@ -141,6 +139,64 @@ export async function getProjectProfitability(clientId: string): Promise<{
   return {
     projects: results,
     unassignedRevenueCents: unassignedInvoice._sum.amountCents ?? 0,
+    unassignedCostCents: unassignedExpense._sum.amountCents ?? 0,
+  };
+}
+
+export interface CampaignProfitability {
+  campaignId: string;
+  campaignName: string;
+  budgetCents: number | null; // Campaign.budgetCents — a manual estimate, never reconciled spend
+  actualCostCents: number;
+  varianceCents: number | null; // budgetCents - actualCostCents, null when there's no budget to compare against
+}
+
+/**
+ * Section 4.2/16 Phase 5: campaign-level attribution within a project, now
+ * that Expense.campaignId exists and the write path validates the tag.
+ * This is deliberately narrower than getProjectProfitability/
+ * getClientProfitability — there is no campaign-level revenue concept
+ * (this agency invoices at the project/retainer level, never per
+ * campaign; see docs/specs/profitability.md), so this only reports
+ * actual cost against `Campaign.budgetCents`'s pre-existing manual
+ * estimate, i.e. the "reconciled actual spend" the roadmap names as
+ * missing. An expense tagged to the project but not to any specific
+ * campaign is real project cost but isn't attributable to one campaign,
+ * so it's reported as `unassignedCostCents` — same "never guessed at or
+ * split evenly" rule as every other level of this module.
+ */
+export async function getCampaignProfitability(projectId: string): Promise<{
+  campaigns: CampaignProfitability[];
+  unassignedCostCents: number;
+}> {
+  const [campaigns, expensesByCampaign, unassignedExpense] = await Promise.all([
+    prisma.campaign.findMany({ where: { projectId }, select: { id: true, name: true, budgetCents: true } }),
+    prisma.expense.groupBy({
+      by: ["campaignId"],
+      where: { projectId, campaignId: { not: null } },
+      _sum: { amountCents: true },
+    }),
+    prisma.expense.aggregate({
+      where: { projectId, campaignId: null },
+      _sum: { amountCents: true },
+    }),
+  ]);
+
+  const costByCampaign = new Map(expensesByCampaign.map((row) => [row.campaignId as string, row._sum.amountCents ?? 0]));
+
+  const results: CampaignProfitability[] = campaigns.map((campaign) => {
+    const actualCostCents = costByCampaign.get(campaign.id) ?? 0;
+    return {
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      budgetCents: campaign.budgetCents,
+      actualCostCents,
+      varianceCents: campaign.budgetCents === null ? null : campaign.budgetCents - actualCostCents,
+    };
+  });
+
+  return {
+    campaigns: results,
     unassignedCostCents: unassignedExpense._sum.amountCents ?? 0,
   };
 }

@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 export function AddExpenseForm({
   clientId,
   projects,
+  campaigns,
 }: {
   clientId: string;
   projects?: { id: string; name: string }[];
+  campaigns?: { id: string; name: string; projectId: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -16,8 +18,14 @@ export function AddExpenseForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [campaignId, setCampaignId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Scoped to the selected project — a campaign belongs to exactly one
+  // project, so showing every client campaign here would let someone
+  // pick one that createExpense's own validation would then reject.
+  const campaignsForProject = (campaigns ?? []).filter((c) => c.projectId === projectId);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +41,7 @@ export function AddExpenseForm({
           description: description || undefined,
           clientId,
           projectId: projectId || undefined,
+          campaignId: campaignId || undefined,
         }),
       });
       const data = await res.json();
@@ -44,6 +53,7 @@ export function AddExpenseForm({
       setAmount("");
       setDescription("");
       setProjectId("");
+      setCampaignId("");
       setOpen(false);
       router.refresh();
     } finally {
@@ -89,13 +99,30 @@ export function AddExpenseForm({
       {projects && projects.length > 0 && (
         <select
           value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
+          onChange={(e) => {
+            setProjectId(e.target.value);
+            setCampaignId(""); // a campaign from the old project no longer applies
+          }}
           className="w-full rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
         >
           <option value="">No project (unassigned)</option>
           {projects.map((project) => (
             <option key={project.id} value={project.id}>
               {project.name}
+            </option>
+          ))}
+        </select>
+      )}
+      {projectId && campaignsForProject.length > 0 && (
+        <select
+          value={campaignId}
+          onChange={(e) => setCampaignId(e.target.value)}
+          className="w-full rounded-md border border-neutral-200 px-2 py-1.5 text-sm"
+        >
+          <option value="">No campaign (project-level)</option>
+          {campaignsForProject.map((campaign) => (
+            <option key={campaign.id} value={campaign.id}>
+              {campaign.name}
             </option>
           ))}
         </select>
