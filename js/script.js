@@ -133,7 +133,12 @@
     });
   }
 
-  // ---- Contact form (only present on the contact page; opens mail client) ----
+  // ---- Contact form (only present on the contact page) ----
+  // Opens a pre-filled Gmail compose window rather than a plain "mailto:" link.
+  // mailto: only works when the visitor's device has a desktop mail client
+  // configured, which fails silently for most people on phones/Chromebooks —
+  // going straight to Gmail's own compose URL is reliable since the inbox
+  // this form sends to is a Gmail address anyway.
   const contactForm = document.getElementById('contactForm');
   const formNote = document.getElementById('formNote');
   if (contactForm && formNote) {
@@ -148,11 +153,18 @@
       const body = encodeURIComponent(
         `Name: ${name}\nEmail: ${email}\nService: ${service}\n\nMessage:\n${message}`
       );
+      const mailtoUrl = `mailto:consultingcedarpoint@gmail.com?subject=${subject}&body=${body}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=consultingcedarpoint@gmail.com&su=${subject}&body=${body}`;
 
-      window.location.href = `mailto:consultingcedarpoint@gmail.com?subject=${subject}&body=${body}`;
+      const gmailTab = window.open(gmailUrl, '_blank', 'noopener');
+      if (!gmailTab) {
+        // Popup blocked — fall back to the OS mail handler.
+        window.location.href = mailtoUrl;
+      }
 
-      formNote.textContent = 'Opening your email client... if nothing happens, email us directly at consultingcedarpoint@gmail.com.';
+      formNote.innerHTML = `Opening Gmail in a new tab to send your message — just hit send there. Trouble seeing it? Email us directly at <a href="${mailtoUrl}">consultingcedarpoint@gmail.com</a>.`;
       formNote.classList.add('success');
+      contactForm.reset();
     });
   }
 

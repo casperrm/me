@@ -175,7 +175,8 @@ h3 { font-size: 1.25rem; }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-weight: 800; font-size: 1.15rem; }
-.brand-mark { color: var(--ink); display: inline-flex; }
+.brand-mark { color: var(--ink); display: inline-flex; transition: transform 0.35s ease; }
+.brand:hover .brand-mark { transform: rotate(-8deg) scale(1.08); }
 .site-header.scrolled .brand-mark,
 .section-dark .brand-mark,
 .site-footer .brand-mark { color: var(--blue); }
@@ -358,7 +359,9 @@ h3 { font-size: 1.25rem; }
   display: flex; align-items: center; justify-content: center;
   font-size: 1.25rem; color: var(--white);
   margin-bottom: 20px;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
+.service-card:hover .service-icon { transform: scale(1.1) rotate(-4deg); box-shadow: 0 12px 24px rgba(11,14,26,0.18); }
 .svc-1 { background: linear-gradient(135deg, var(--blue), var(--blue-light)); }
 .svc-2 { background: linear-gradient(135deg, var(--purple), #a78bfa); }
 .svc-3 { background: linear-gradient(135deg, var(--orange), #ff8a5c); }
@@ -493,11 +496,13 @@ h3 { font-size: 1.25rem; }
   display: flex; align-items: center; gap: 16px;
   margin-bottom: 20px;
 }
+.contact-detail:hover .icon { background: var(--blue); color: var(--white); transform: scale(1.06); }
 .contact-detail .icon {
   width: 46px; height: 46px; border-radius: 12px;
   background: rgba(41,82,233,0.08); color: var(--blue);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem; flex-shrink: 0;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
 }
 .contact-detail span { display: block; font-size: 0.78rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.04em; }
 .contact-detail a { font-weight: 700; }
@@ -508,7 +513,10 @@ h3 { font-size: 1.25rem; }
   display: flex; align-items: center; justify-content: center;
   transition: all 0.25s ease;
 }
-.social-row a:hover { background: var(--ink); border-color: var(--ink); color: var(--white); transform: translateY(-3px); }
+.social-row a:hover { background: var(--ink); border-color: var(--ink); color: var(--white); transform: translateY(-4px) scale(1.06); box-shadow: var(--shadow-md); }
+.social-row a[aria-label="Instagram"]:hover { background: radial-gradient(circle at 30% 110%, #fdf497, #fd5949 45%, #d6249f 60%, #285AEB 90%); border-color: transparent; }
+.social-row a[aria-label="WhatsApp"]:hover { background: #25d366; border-color: transparent; }
+.social-row a[aria-label="Email"]:hover { background: var(--blue); border-color: transparent; }
 
 .contact-form {
   background: var(--off-white);
@@ -550,8 +558,23 @@ h3 { font-size: 1.25rem; }
 .footer-links h5 { color: var(--white); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 18px; }
 .footer-links a { display: block; margin-bottom: 12px; font-size: 0.9rem; transition: color 0.2s ease; }
 .footer-links a:hover { color: var(--white); }
-.footer-status { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
-.footer-status .icon { font-size: 0.5rem; color: #22c55e; }
+.footer-status { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-top: 4px; }
+.footer-status .icon { font-size: 0.5rem; color: #22c55e; animation: statusPulse 2.2s ease-in-out infinite; }
+@keyframes statusPulse { 0%,100%{ opacity: 1; filter: drop-shadow(0 0 0 rgba(34,197,94,0.6)); } 50%{ opacity: 0.55; filter: drop-shadow(0 0 4px rgba(34,197,94,0.6)); } }
+
+.footer-social { display: flex; gap: 10px; margin-top: 18px; }
+.footer-social a {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.75);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s ease;
+}
+.footer-social a .icon { width: 0.95em; height: 0.95em; }
+.footer-social a:hover { transform: translateY(-4px) scale(1.06); color: var(--white); box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
+.footer-social a[aria-label="Instagram"]:hover { background: radial-gradient(circle at 30% 110%, #fdf497, #fd5949 45%, #d6249f 60%, #285AEB 90%); border-color: transparent; }
+.footer-social a[aria-label="WhatsApp"]:hover { background: #25d366; border-color: transparent; }
+.footer-social a[aria-label="Email"]:hover { background: var(--blue); border-color: transparent; }
 .footer-bottom { padding: 24px 0; text-align: center; font-size: 0.82rem; color: rgba(255,255,255,0.4); }
 
 /* ---------- Back to top ---------- */
@@ -567,6 +590,45 @@ h3 { font-size: 1.25rem; }
 }
 .back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 .back-to-top:hover { background: var(--blue); }
+
+/* ---------- WhatsApp floating button ---------- */
+.whatsapp-fab {
+  position: fixed; bottom: 28px; left: 28px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #25d366; color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 12px 28px rgba(37, 211, 102, 0.45);
+  z-index: 400;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.whatsapp-fab .icon { width: 28px; height: 28px; }
+.whatsapp-fab:hover { transform: scale(1.08); box-shadow: 0 16px 34px rgba(37, 211, 102, 0.55); }
+.whatsapp-fab-ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid #25d366;
+  animation: whatsappPulse 2.4s ease-out infinite;
+}
+@keyframes whatsappPulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+.whatsapp-fab-label {
+  position: absolute; left: calc(100% + 12px); top: 50%;
+  transform: translateY(-50%) translateX(-6px);
+  background: var(--ink); color: var(--white);
+  font-size: 0.82rem; font-weight: 700;
+  padding: 8px 14px; border-radius: 100px;
+  white-space: nowrap;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.whatsapp-fab:hover .whatsapp-fab-label { opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0); }
+@media (max-width: 720px) {
+  .whatsapp-fab { bottom: 20px; left: 20px; width: 52px; height: 52px; }
+  .whatsapp-fab-label { display: none; }
+}
 
 /* ---------- Lightbox ---------- */
 .lightbox {
