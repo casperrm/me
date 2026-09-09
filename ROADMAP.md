@@ -22,7 +22,43 @@ deployment.
       invitations, RBAC (`packages/domain`, `packages/auth`).
 - [x] Audit framework (`packages/events`, Section 23.2 schema).
 - [x] Base UI system, owner dashboard, team/permissions screens
-      (`apps/web`).
+      (`apps/web`). A follow-up slice closed a real Section 28.2 gap
+      ("meaningful empty/error states") this app never had: no
+      `error.tsx` boundary anywhere, meaning an uncaught error from any
+      Server Component render or server action crashed the *entire*
+      page to Next.js's generic "Application error" screen — the exact
+      failure mode two earlier slices had each hit and separately
+      worked around at one specific call site (`docs/specs/
+      projects-and-calendar.md`'s blocked-task bug; `docs/specs/mfa.md`'s
+      explicitly-named "server actions don't catch
+      AuthorizationError/MfaRequiredError" gap), without ever fixing the
+      underlying absence of a boundary. New shared
+      `apps/web/src/components/ErrorBoundaryContent.tsx` plus three
+      `error.tsx` files — `(app)/error.tsx` (→ `/dashboard`),
+      `portal/error.tsx` (→ `/portal`), and the root `apps/web/src/app/
+      error.tsx` (→ `/login`, and — per Next.js's nesting rule that a
+      segment's own `layout.tsx` sits outside that segment's
+      `error.tsx` — the only boundary that can catch a failure inside
+      `(app)/layout.tsx` or `portal/layout.tsx` themselves, both of
+      which do real data fetching). Deliberately never renders
+      `error.message` — Next.js already strips it for a server-thrown
+      error before the boundary sees it, a security default worth
+      keeping, not fighting. Explicit scope boundary in
+      `docs/specs/error-boundaries.md`: no `global-error.tsx` (the true
+      root layout only renders static shell markup, nothing in it can
+      throw); server actions still don't do their own try/catch, so
+      this is the *last* line of defense, not a replacement for
+      preventing a predictable rejection at the call site (the pattern
+      already used for the blocked-task bug); no error-tracking service
+      wired up, only `console.error` with the real `digest`. Verified
+      live against the real running server: reproduced a genuine
+      uncaught server-action error on purpose — tampered with
+      `TaskPriorityForm`'s hidden `taskId` input via the browser's own
+      DOM (a real-world equivalent of a task deleted in another tab)
+      and submitted, driving a real, uncaught `AuthError("Task not
+      found.")` from inside `setTaskPriorityAction` — and confirmed the
+      real app showed the new friendly boundary with a working "Try
+      again" button, not Next's generic crash page.
 - [x] Health endpoints (`apps/api` `/health` + `/ready`).
 - [x] Queue/worker runtime (`apps/worker`) now carries a real job — the
       Section 30 overdue-escalation scan (hourly, `immediately: true` on

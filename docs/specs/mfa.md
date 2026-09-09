@@ -30,8 +30,14 @@ covering exactly OWNER and ADMIN — see the rationale in
 `packages/domain/src/roles.ts`'s doc comment on `MFA_PRIVILEGED_ROLES`
 for why a data-driven per-role policy table wasn't built for a two-role
 list); and server actions (`apps/web/src/lib/actions/*.ts`) still don't
-catch `AuthorizationError`/`MfaRequiredError` at all — a pre-existing gap
-this slice did not fix, named explicitly below rather than left silent.
+catch `AuthorizationError`/`MfaRequiredError` themselves — a pre-existing
+gap this slice did not fix, named explicitly below rather than left
+silent. A later, separately-scoped slice (`docs/specs/error-boundaries.md`)
+added a real app-wide `error.tsx` boundary, so an uncaught
+`MfaRequiredError` from a server action now shows a friendly fallback
+instead of crashing the whole page — a real improvement, but not the
+same thing as the action catching it and returning an inline message;
+that retrofit remains unbuilt.
 
 ## Enforcement policy
 

@@ -267,8 +267,12 @@ event the way task completion does).
   top of the server-side enforcement, added specifically so selecting
   "Done" on a blocked task can't reach the unhandled-exception path a
   thrown `AuthError` would otherwise hit inside a plain `<form action>`
-  server action (there's no `error.tsx` boundary in this app to catch
-  it gracefully). The server-side check in `setTaskStatus` remains the
+  server action. A later slice added a real `error.tsx` boundary
+  app-wide (see `docs/specs/error-boundaries.md`) as the *last* line of
+  defense for whatever still gets through; this disabled option remains
+  the *first* line of defense for this specific, predictable rejection,
+  since preventing an unnecessary round-trip is still better UX than
+  catching it after the fact. The server-side check in `setTaskStatus` remains the
   actual authority; the disabled option is UX, not the enforcement. In
   the page header, a "Save as template" toggle (writers only) opens a
   one-field form (template name, defaulting to the project's own name)
