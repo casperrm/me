@@ -392,10 +392,31 @@ canonical system.
       state), a real fan-out (`notifyClientWriters`) wired into approval
       requests (QC-aware severity), failed content-calendar publishes,
       and a new hourly worker escalation job for overdue tasks/projects/
-      content. Explicit scope boundary in `docs/specs/notifications.md`:
-      payment-risk and integration-degradation escalation triggers need
-      modules that don't exist yet (real invoicing, Phase 4 connectors);
-      email/push channels are adapters for later, not built.
+      content. A follow-up slice added the payment-risk trigger this
+      module's own scope boundary had deferred — real invoicing didn't
+      exist yet at the time; it does now (`Invoice.dueAt`/`.status`, the
+      same data Client Health Score's `payment_status` factor already
+      uses). New `escalateOverdueInvoices()` in
+      `apps/worker/src/jobs/escalations.ts`, mirroring the existing
+      task/project/content pattern exactly (same 24h dedupe window,
+      `notifyClientWriters`) but `CRITICAL` severity, not `WARNING` —
+      unpaid revenue past due is weighted heaviest in Client Health
+      Score for the same reason. This slice also wrote
+      `escalations.integration.test.ts`, the first real test coverage
+      that file ever had despite being `apps/worker`'s very first job
+      (3 tests: all four escalation types fire exactly once and
+      deduplicate correctly on a re-scan, a paid invoice past due is
+      never escalated, an invoice not yet due is never escalated).
+      Explicit scope boundary in `docs/specs/notifications.md`:
+      integration-degradation escalation still needs Phase 4 connectors
+      that don't exist; email/push channels are adapters for later, not
+      built. Verified live: created a real overdue unpaid invoice for
+      the seeded demo client, ran the real worker process, confirmed via
+      `psql` a real `CRITICAL` `invoice_overdue` notification with the
+      correct formatted-dollar title, confirmed it rendered on
+      `/notifications` with the right action URL, and confirmed a
+      second scan produced no duplicate; test rows cleaned up
+      afterward.
 - [x] Global search / command palette (Section 28.2) — `⌘K`/`Ctrl+K`
       overlay finding Clients/Projects/Campaigns/Creatives/Content
       Calendar items/Shoots by name, scoped through the same

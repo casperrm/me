@@ -18,11 +18,15 @@ for it.
 ## Scope boundary — stated explicitly
 
 Section 30 also lists "payment risk" and "integration degradation" as
-escalation triggers. Those aren't built here: payment risk needs real
-invoicing/payment automation (Section 16, not built) and integration
-degradation needs real Phase 4 connectors (not built). This slice covers
-the escalation triggers that already have real, non-stubbed data behind
-them: overdue tasks/projects/content, approval requests, Quality Control
+escalation triggers. Payment risk is now built — a follow-up slice
+added it once real invoicing existed to source it from (`Invoice.dueAt`/
+`.status`, the same data Client Health Score's `payment_status` factor
+already uses; at the original writing, invoicing/payment automation
+didn't exist yet, which is why this was deferred). Integration
+degradation still isn't built: it needs real Phase 4 connectors, which
+don't exist. This slice (plus the payment-risk follow-up) covers every
+escalation trigger that has real, non-stubbed data behind it: overdue
+tasks/projects/content/invoices, approval requests, Quality Control
 failures, and failed content-calendar publishes. Email/push notification
 channels (Section 30: "may be added through adapters and user
 preferences") are also not built — in-app only for now.
@@ -58,6 +62,7 @@ preferences") are also not built — in-app only for now.
 | `approval_requested` | `requestApproval` (`creative-service.ts`) | `CRITICAL` if the automatic Quality Control run (see `docs/specs/quality-control.md`) came back `fail`, `WARNING` if `warning`, else `INFO`. |
 | `content_publish_failed` | `setContentCalendarItemStatus` moving to `FAILED` | `WARNING`, body is the failure reason. |
 | `task_overdue` / `project_overdue` / `content_overdue` | `apps/worker`'s escalation job | `WARNING`, deduplicated 24h per resource. |
+| `invoice_overdue` | `apps/worker`'s escalation job | `CRITICAL` (payment risk — unpaid revenue past due — is weighted heavier than a deliverable slipping, matching Client Health Score's own reasoning for weighting `payment_status` heaviest), deduplicated 24h per resource. |
 
 Every trigger excludes the acting member from their own notification
 (via `excludeMembershipId`) — a person doesn't need to be told about
@@ -119,6 +124,16 @@ acknowledges on another's behalf.
   notification-service read/acknowledge functions are correctly scoped
   to the caller's own membership (including rejecting a cross-membership
   attempt).
+- `apps/worker/src/jobs/escalations.integration.test.ts` — new in the
+  payment-risk follow-up slice, the first real test coverage
+  `escalations.ts` ever had (previously untested since it was written,
+  despite being `apps/worker`'s very first job). 3 tests against real
+  Postgres: a real overdue task, project, content item, and invoice each
+  escalate exactly once in a single scan (asserting the invoice's real
+  `CRITICAL` severity and a title carrying the real formatted amount),
+  re-running the scan immediately produces zero further notifications
+  (the 24h dedupe window), a paid invoice past its due date is never
+  escalated, and an invoice not yet due is never escalated.
 - Manual smoke test performed for this slice against the real running
   server and a real running `apps/worker` process against Redis:
   invited and accepted an ADMIN user, requested an approval as the
@@ -129,3 +144,13 @@ acknowledges on another's behalf.
   Postgres and confirmed it escalated the task to both client-writers
   automatically, and confirmed a second scan correctly deduplicated
   (zero new notifications) rather than re-escalating the same task.
+- Manual smoke test performed for the payment-risk follow-up slice:
+  created a real overdue unpaid `Invoice` for the seeded demo client
+  through the running server, ran the actual `apps/worker` process
+  against real Redis and Postgres, confirmed via `psql` a real
+  `Notification` row was created with `category = "invoice_overdue"`,
+  `severity = "CRITICAL"`, and the correct formatted-dollar title,
+  confirmed it rendered on `/notifications` with the correct action URL
+  (the client's own page), and confirmed a second scan produced no
+  duplicate; the test invoice and its notification were deleted
+  afterward.

@@ -104,21 +104,67 @@ async function escalateOverdueContent() {
   return escalated;
 }
 
+async function escalateOverdueInvoices() {
+  const overdue = await prisma.invoice.findMany({
+    where: { dueAt: { lt: new Date() }, status: { not: "PAID" } },
+    include: { client: true },
+  });
+
+  let escalated = 0;
+  for (const invoice of overdue) {
+    const alreadyNotified = await hasRecentNotification({
+      resourceType: "Invoice",
+      resourceId: invoice.id,
+      category: "invoice_overdue",
+      sinceMs: DEDUPE_WINDOW_MS,
+    });
+    if (alreadyNotified) continue;
+
+    await notifyClientWriters({
+      organizationId: invoice.client.organizationId,
+      clientId: invoice.clientId,
+      // CRITICAL, not WARNING like the deliverable-overdue triggers above
+      // — unpaid revenue past due is the signal Client Health Score
+      // itself weighs heaviest (health-scores.ts: "the signal with the
+      // clearest business consequence").
+      severity: "CRITICAL",
+      category: "invoice_overdue",
+      resourceType: "Invoice",
+      resourceId: invoice.id,
+      title: `Invoice overdue: $${(invoice.amountCents / 100).toLocaleString()}`,
+      body: `Was due ${invoice.dueAt!.toLocaleDateString()}.`,
+      actionUrl: `/clients/${invoice.clientId}`,
+    });
+    escalated += 1;
+  }
+  return escalated;
+}
+
 /**
  * Section 30: "Escalation rules for overdue approvals, project risk,
  * payment risk, integration degradation, security events, and failed
  * workflows." This covers the overdue-deliverable half (tasks, projects,
- * content calendar due dates) — payment risk / integration degradation /
- * security events need modules that don't exist yet (real invoicing
- * automation, Phase 4 connectors) and are explicitly not faked here.
+ * content calendar due dates) plus — since a follow-up slice added it,
+ * once real invoicing existed to source it from (`Invoice.dueAt`/
+ * `.status`, the same data Client Health Score's `payment_status` factor
+ * already uses) — payment risk (overdue unpaid invoices). Integration
+ * degradation and security events still need modules that don't exist
+ * yet (Phase 4 connectors, a security-event model) and are explicitly
+ * not faked here.
  */
 export async function runEscalationScan() {
-  const [tasks, projects, content] = await Promise.all([
+  const [tasks, projects, content, invoices] = await Promise.all([
     escalateOverdueTasks(),
     escalateOverdueProjects(),
     escalateOverdueContent(),
+    escalateOverdueInvoices(),
   ]);
-  const total = tasks + projects + content;
-  logger.info("escalation scan complete", { tasksEscalated: tasks, projectsEscalated: projects, contentEscalated: content });
+  const total = tasks + projects + content + invoices;
+  logger.info("escalation scan complete", {
+    tasksEscalated: tasks,
+    projectsEscalated: projects,
+    contentEscalated: content,
+    invoicesEscalated: invoices,
+  });
   return total;
 }
