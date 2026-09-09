@@ -18,7 +18,10 @@ A TypeScript-first npm-workspaces monorepo, per Bible Section 35:
 /packages/db       Prisma schema + migrations + seed (PostgreSQL, ADR-003)
 /packages/auth     Sessions, password hashing, invitations, authorization glue (ADR-006)
 /packages/events   Append-only audit event emission
-/packages/ai       Empty — Cedar Brain's real home once Phase 3 lands (ADR-007)
+/packages/ai       CedarAgent/routeToAgents + the AI eval harness only —
+                   see ADR-007's dated log; callCedarBrain and the rest
+                   of Cedar Brain's live-Anthropic integration still
+                   live in apps/web/src/lib on purpose
 /packages/connectors  Empty — connector SDK, Phase 4 (Section 34's adapter contract)
 /packages/automation  Empty — workflow engine, Phase 1-2+
 /packages/ui       Empty — shared components extracted once a second UI surface exists

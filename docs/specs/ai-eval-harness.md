@@ -149,27 +149,143 @@ fails, and a run-history list (timestamp + pass/total, color-coded).
   not live-response quality" above. A rubric-based LLM-judge harness
   for `callCedarBrain`'s actual output is real, valuable, separately-
   scoped follow-up work.
-- **No CI/scheduled automatic runs** — the harness runs on demand via
-  the "Run eval now" button. Wiring it into `apps/worker` as a
-  scheduled job (so a routing regression is caught even if no one
-  clicks the button) is a real, small follow-up, not built here to
-  keep this slice's scope to "the harness exists and works," which is
-  the actual gap that was open.
+- **Scheduled automatic runs now exist.** This module's own prior
+  wording named the gap explicitly: "the harness runs on demand via
+  the 'Run eval now' button... wiring it into `apps/worker` as a
+  scheduled job... is a real, small follow-up." That follow-up is
+  built: `apps/worker/src/jobs/ai-eval.ts` runs the same
+  `runRoutingEval()` daily (`AI_EVAL_INTERVAL_MS = 24h`, registered in
+  `apps/worker/src/index.ts` alongside the existing `escalations`/
+  `health-scores` jobs), with `immediately: true` so a worker restart
+  runs one eval right away rather than leaving a routing regression
+  uncaught for up to a day. It writes the exact same
+  `AiEvalRun`/`AiEvalResult` rows a manual "Run eval now" click does,
+  so `/command/supervisor`'s existing card renders an automatic run
+  identically to a manual one — no UI changes were needed. No new
+  alerting was added for a failing scheduled run: `AiEvalRun` has no
+  `organizationId` (it's genuinely global, deployment-wide routing
+  logic, not tenant data), so there's no natural "which org do we
+  notify" the way `AiBudget`'s per-organization alerting has — a human
+  still needs to check `/command/supervisor` to see a scheduled run's
+  result, same as a manual one.
+- **This required a real extraction into `packages/ai`, not a broader
+  Cedar Brain migration.** `apps/worker` has never imported anything
+  from `apps/web` — a module boundary this codebase has consistently
+  respected (`apps/worker` only ever depends on `packages/*`) — so
+  scheduling `runRoutingEval()` there needed `routeToAgents`/
+  `CedarAgent` (`apps/web/src/lib/cedar-brain.ts`) and the eval harness
+  itself (`apps/web/src/lib/services/eval-service.ts`) to move
+  somewhere `apps/worker` can reach: `packages/ai/src/routing.ts` and
+  `packages/ai/src/eval.ts`, exported from `packages/ai/src/index.ts`.
+  **This does NOT reopen the "no full Cedar Brain migration into
+  packages/ai" decision** made by the most recent prior Cedar Brain
+  slice (model catalog) and every one before it — `callCedarBrain`,
+  `buildSystemPrompt`, `parsePerAgentSections`,
+  `SYSTEM_PROMPT_TEMPLATE`, model selection, the prompt version
+  registry, and budget governance all deliberately stay in
+  `apps/web/src/lib/cedar-brain.ts`/`model-catalog.ts`/etc., exactly
+  where every prior slice put them. Only the two pieces that are (a)
+  fully deterministic, (b) not tied to any live Anthropic call, and
+  (c) the actual thing a second real consumer (this worker job) needed
+  moved — for that concrete, immediate reason, not speculatively.
+  `apps/web/src/lib/cedar-brain.ts` and
+  `apps/web/src/lib/services/eval-service.ts` now re-export from
+  `@cedar/ai` (the same thin-shim pattern
+  `mfa-policy-service.ts` used for `MFA_PRIVILEGED_ROLES`), so every
+  existing call site in `apps/web` kept importing from
+  `@/lib/cedar-brain`/`@/lib/services/eval-service` unchanged. See
+  `docs/adr/0007-ai-provider-gateway.md`'s dated log for the same
+  rationale in ADR form.
 - **10 cases, not exhaustive** — the golden set proves the pattern and
   covers every agent type at least once; growing it as new routing
   cases matter is ordinary, expected maintenance, not a gap in this
   slice.
+
+## Scheduled job (this follow-up slice) — what moved, and verification
+
+`CedarAgent`/`routeToAgents` and `ROUTING_EVAL_SUITE`/
+`ROUTING_GOLDEN_SET`/`sameAgentSet`/`runRoutingEval`/`getRecentEvalRuns`
+moved to `packages/ai/src/routing.ts` and `packages/ai/src/eval.ts`
+respectively (exported from `packages/ai/src/index.ts`), verbatim
+including the word-boundary-matching doc comments. `apps/web/src/lib/
+cedar-brain.ts` and `apps/web/src/lib/services/eval-service.ts` became
+thin re-export shims (`export { routeToAgents, type CedarAgent } from
+"@cedar/ai";` and `export * from "@cedar/ai";`) — zero call-site changes
+needed anywhere else in `apps/web`. `apps/worker/src/jobs/ai-eval.ts`
+calls `runRoutingEval()` from `@cedar/ai` and logs the result; registered
+in `apps/worker/src/index.ts` as a new `ai-eval` queue/worker, daily
+cadence, `immediately: true` on restart — same shape as the existing
+`escalations`/`health-scores` jobs.
+
+- Test coverage moved, not lost: `apps/web/src/lib/cedar-brain.test.ts`'s
+  8 `routeToAgents`-specific cases moved to the new
+  `packages/ai/src/routing.test.ts` (still 8, no Postgres/mocking
+  needed — pure function); `apps/web/src/lib/services/
+  eval-service.integration.test.ts`'s 3 cases moved to the new
+  `packages/ai/src/eval.integration.test.ts` (still 3, against real
+  Postgres via a new `packages/ai/vitest.config.ts` pinned to
+  `cedarpoint_test`, copied from `packages/auth/vitest.config.ts`'s
+  established pattern). `apps/web/src/lib/cedar-brain.test.ts` itself
+  shrank from 15 to 7 tests (only `parsePerAgentSections`/
+  `callCedarBrain` coverage remains — genuinely still in that file).
+  Net effect: `apps/web`'s suite went from 571 to 560 tests (-11, moved
+  out); `packages/ai`'s went from 0 to 11 (+11, moved in). **Full
+  monorepo total unchanged at 637 tests**, confirmed by running the
+  whole-workspace suite before and after this slice.
+- `npm run typecheck --workspaces --if-present`: clean across all 15
+  workspaces, including the new `@cedar/ai` and the touched `@cedar/web`/
+  `@cedar/worker`.
+- `next lint` (apps/web): no warnings or errors.
+- `npm run build --workspace=@cedar/web`: succeeds.
+- `cd apps/worker && npm run build` (`tsc --noEmit`): clean.
+- **Live smoke test against a real running `apps/worker` process and a
+  real running `apps/web` process, with a direct-SQL cross-check and a
+  real headless-Chromium UI check**: flushed Redis first (so BullMQ's
+  persisted repeatable-job state from any prior process couldn't
+  suppress `immediately: true`), confirmed `ai_eval_runs`/
+  `ai_eval_results` were empty in the real dev database, started
+  `apps/worker` and confirmed a real log line — `{"level":"info",
+  "message":"ai eval job complete","suite":"cedar-brain-routing",
+  "totalCases":10,"passedCases":10}` — appeared within seconds of
+  startup; cross-checked directly against Postgres and confirmed one
+  `AiEvalRun` row (`suite = 'cedar-brain-routing'`, `totalCases = 10`,
+  `passedCases = 10`) with exactly 10 linked `AiEvalResult` rows;
+  started `apps/web`, logged in as the seeded owner
+  (`consultingcedarpoint@gmail.com`), and confirmed `/command/
+  supervisor`'s pre-existing "Evaluation harness" card rendered "Latest
+  run — 10/10 passed" and the matching run-history entry for that exact
+  automatically-triggered run, with a full-page screenshot showing a
+  clean layout — proving the UI needed zero changes, since it writes
+  the identical `AiEvalRun`/`AiEvalResult` shape a manual "Run eval now"
+  click does. Deleted the smoke-test `AiEvalRun`/`AiEvalResult` rows
+  afterward and confirmed both tables were back to 0 rows; stopped both
+  processes and confirmed via `pgrep -fa "next-server|next start|tsx
+  src/index.ts"` that nothing was left running.
 
 ## Acceptance
 
 - `packages/db/prisma/schema.prisma` — `AiEvalRun`/`AiEvalResult`
   models, migration `20260907062829_add_ai_eval_harness`.
 - `apps/web/src/lib/cedar-brain.ts` — word-boundary keyword matching
-  (bug fix).
-- `apps/web/src/lib/services/eval-service.ts` — golden set + harness.
+  (bug fix; `routeToAgents`/`CedarAgent` since re-exported from
+  `@cedar/ai`, see below).
+- `apps/web/src/lib/services/eval-service.ts` — now a thin re-export of
+  `@cedar/ai` (was: golden set + harness, now moved — see below).
 - `apps/web/src/app/api/eval/run/route.ts` — trigger endpoint.
 - `apps/web/src/app/(app)/command/supervisor/page.tsx` and
   `RunEvalButton.tsx` — UI.
-- `apps/web/src/lib/cedar-brain.test.ts`,
-  `apps/web/src/lib/services/eval-service.integration.test.ts`,
-  `apps/web/src/app/api/eval/run/route.contract.test.ts` — 14 tests.
+- `apps/web/src/lib/cedar-brain.test.ts` (7 tests, down from 15 — the
+  8 `routeToAgents` cases moved out, see below) and
+  `apps/web/src/app/api/eval/run/route.contract.test.ts` (3 tests,
+  unchanged).
+- `packages/ai/src/routing.ts`, `packages/ai/src/eval.ts`,
+  `packages/ai/src/index.ts` — `CedarAgent`/`routeToAgents` and the
+  eval harness itself, moved from `apps/web` so `apps/worker` can call
+  `runRoutingEval()` without importing from `apps/web`.
+  `packages/ai/src/routing.test.ts` (8 tests) and
+  `packages/ai/src/eval.integration.test.ts` (3 tests) — moved
+  verbatim from `apps/web`. `packages/ai/vitest.config.ts` — new,
+  pinned to `cedarpoint_test`.
+- `apps/worker/src/jobs/ai-eval.ts` — the new scheduled job.
+- `apps/worker/src/index.ts` — registers the `ai-eval` queue/worker,
+  daily cadence, `immediately: true` on restart.

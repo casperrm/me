@@ -2,10 +2,23 @@
 // talks to. Today this is a router + a thin call to the Anthropic API; the
 // real version fans work out to dedicated Marketing/Design/Video/
 // Localization/Campaign/QC agents (see ARCHITECTURE.md) and merges their
-// output. The routing logic below is a deliberately simple stand-in so the
-// Command Center has a real, working end-to-end path to build on rather
-// than a mock.
+// output.
+//
+// CedarAgent and routeToAgents (the deterministic routing logic) moved to
+// packages/ai/src/routing.ts so apps/worker's scheduled AI eval job can
+// call routeToAgents without apps/worker importing from apps/web — a
+// module boundary this codebase has otherwise always respected. Re-exported
+// below so every existing call site in apps/web keeps importing from
+// "@/lib/cedar-brain" unchanged. Everything else here (this file's actual
+// Anthropic integration — callCedarBrain, buildSystemPrompt,
+// parsePerAgentSections, SYSTEM_PROMPT_TEMPLATE, model selection, prompt
+// version registry, budget governance) deliberately stays here per
+// established Phase 3 precedent — see docs/adr/0007-ai-provider-gateway.md's
+// dated log.
 import { selectModelForRequest } from "./model-catalog";
+
+export { routeToAgents, type CedarAgent } from "@cedar/ai";
+import type { CedarAgent } from "@cedar/ai";
 
 // Bumped manually whenever SYSTEM_PROMPT_TEMPLATE below changes. Recorded
 // on every CedarBrainRequest row, and — since this slice —
@@ -15,53 +28,6 @@ import { selectModelForRequest } from "./model-catalog";
 // real text, not just a version string (see
 // docs/specs/cedar-prompt-registry.md).
 export const CEDAR_BRAIN_PROMPT_VERSION = "v4";
-
-export type CedarAgent =
-  | "marketing"
-  | "design"
-  | "video"
-  | "localization"
-  | "campaign"
-  | "quality_control";
-
-const AGENT_KEYWORDS: Record<CedarAgent, string[]> = {
-  marketing: ["campaign", "hook", "offer", "promote", "ad", "advertise", "launch"],
-  design: ["design", "creative", "visual", "logo", "banner", "carousel", "graphic"],
-  video: ["video", "reel", "storyboard", "script", "voice-over", "edit"],
-  localization: ["translate", "localiz", "arabic", "french", "spanish", "language"],
-  campaign: ["budget", "kpi", "ads manager", "meta", "tiktok ads", "google ads", "spend"],
-  quality_control: ["review", "check", "qc", "quality", "proofread"],
-};
-
-// "localiz" is a deliberate stem (matches localize/localization/localizing)
-// — every other keyword is a complete word or phrase and gets matched on a
-// word boundary at both ends, so it can't fire as a mid-word substring (a
-// real bug the AI Evaluation Harness caught: plain .includes() matching
-// meant "script" matched inside "de-SCRIPT-ion" and "ad" matched inside
-// "already"/"administrator" — see docs/specs/ai-eval-harness.md).
-const PREFIX_KEYWORDS = new Set(["localiz"]);
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function matchesKeyword(lowerPrompt: string, keyword: string): boolean {
-  const trailingBoundary = PREFIX_KEYWORDS.has(keyword) ? "" : "\\b";
-  const pattern = new RegExp(`\\b${escapeRegExp(keyword)}${trailingBoundary}`);
-  return pattern.test(lowerPrompt);
-}
-
-export function routeToAgents(prompt: string): CedarAgent[] {
-  const lower = prompt.toLowerCase();
-  const matched = (Object.keys(AGENT_KEYWORDS) as CedarAgent[]).filter((agent) =>
-    AGENT_KEYWORDS[agent].some((kw) => matchesKeyword(lower, kw)),
-  );
-  // Every request that reaches Cedar Brain should at least touch marketing
-  // strategy and get a QC pass before it's considered "done" (Section 23).
-  if (matched.length === 0) matched.push("marketing");
-  if (!matched.includes("quality_control")) matched.push("quality_control");
-  return matched;
-}
 
 // Live mode makes exactly ONE Anthropic call per request (not one per
 // routed agent) — Section 33's budget/cost-governance mechanism doesn't

@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@cedar/ai": "*",
     "@cedar/config": "*",
     "@cedar/db": "*",
     "@cedar/events": "*",

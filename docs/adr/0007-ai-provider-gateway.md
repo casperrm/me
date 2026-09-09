@@ -39,6 +39,35 @@
   accounting (still raw token totals regardless of model tier — see
   `docs/specs/ai-budget-governance.md`; per-model dollar-cost
   governance remains open). See `docs/specs/model-catalog.md`.
+- **Updated:** 2026-09-09 — `packages/ai` is no longer a pure
+  placeholder. Scheduling the AI Evaluation Harness as a daily
+  `apps/worker` job (Section 6.3/33 — closing that module's own
+  explicitly-named gap, "no CI/scheduled automatic runs") needed
+  `apps/worker` to call `runRoutingEval()`, but `apps/worker` has never
+  imported anything from `apps/web` — a real module boundary this
+  codebase has otherwise always respected (`apps/worker` only ever
+  depends on `packages/*`). So `CedarAgent`/`routeToAgents`
+  (`apps/web/src/lib/cedar-brain.ts`) and the eval harness itself
+  (`apps/web/src/lib/services/eval-service.ts`) moved to
+  `packages/ai/src/routing.ts` and `packages/ai/src/eval.ts`,
+  exported from `packages/ai/src/index.ts`; both original files became
+  thin re-export shims so every existing `apps/web` call site kept
+  importing from `@/lib/cedar-brain`/`@/lib/services/eval-service`
+  unchanged. **This is a real cross-app dependency boundary being
+  solved for a concrete, immediate reason — a second real consumer
+  needed this code — not a broader architectural shift.** `packages/ai`
+  still does NOT contain `callCedarBrain`, `buildSystemPrompt`,
+  `parsePerAgentSections`, `SYSTEM_PROMPT_TEMPLATE`, model selection,
+  the prompt version registry, or budget governance — those remain
+  deliberately in `apps/web` per every prior update in this log; only
+  the fully-deterministic, non-Anthropic-dependent routing/eval slice
+  moved, and only because `apps/worker` genuinely needed to call it.
+  `apps/worker/src/jobs/ai-eval.ts` runs `runRoutingEval()` daily
+  (`immediately: true` on restart, same pattern as the existing
+  `escalations`/`health-scores` jobs); no new alerting was added for a
+  failing scheduled run, since `AiEvalRun` has no `organizationId` (it
+  is deployment-wide, not tenant data) and the harness's own doc only
+  asked for scheduling. See `docs/specs/ai-eval-harness.md`.
 
 ## Context
 

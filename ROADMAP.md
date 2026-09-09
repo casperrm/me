@@ -592,8 +592,54 @@ Deliverable: brief-to-client-approval lifecycle is operational.
       Fixed with word-boundary regex matching. See
       `docs/specs/ai-eval-harness.md` for the full "why routing, not
       live-response quality" reasoning and what's explicitly deferred
-      (a live-response LLM-judge harness; scheduled/CI-triggered runs —
-      today it's on-demand only).
+      (a live-response LLM-judge harness). A follow-up slice closed this
+      module's own other explicitly-named gap: "No CI/scheduled
+      automatic runs — the harness runs on demand via the 'Run eval
+      now' button." `apps/worker/src/jobs/ai-eval.ts` now runs the same
+      `runRoutingEval()` daily (`immediately: true` on restart, mirroring
+      the existing `escalations`/`health-scores` jobs), writing the same
+      `AiEvalRun`/`AiEvalResult` rows a manual click does. Scheduling
+      this required a real extraction first: `apps/worker` has never
+      imported anything from `apps/web` (it only ever depends on
+      `packages/*`), so `CedarAgent`/`routeToAgents` and the harness
+      itself (`ROUTING_EVAL_SUITE`/`ROUTING_GOLDEN_SET`/`runRoutingEval`/
+      `getRecentEvalRuns`) moved verbatim to `packages/ai/src/routing.ts`
+      and `packages/ai/src/eval.ts` — the first real code `packages/ai`
+      has ever held, closing a placeholder open since Phase 0.
+      `apps/web/src/lib/cedar-brain.ts` and `apps/web/src/lib/services/
+      eval-service.ts` became thin re-export shims
+      (`export { routeToAgents, type CedarAgent } from "@cedar/ai"` and
+      `export * from "@cedar/ai"`, the same pattern the MFA-enforcement
+      slice used for `MFA_PRIVILEGED_ROLES`), so every existing call
+      site kept importing from `@/lib/cedar-brain`/`@/lib/services/
+      eval-service` unchanged. This deliberately does not reopen the
+      "no full Cedar Brain migration into packages/ai" decision the
+      model-catalog slice (and every Cedar Brain slice before it) made
+      on purpose — `callCedarBrain`, the prompt/model-selection/budget
+      machinery all stay in `apps/web` exactly where they were; only
+      the fully-deterministic, non-Anthropic-dependent piece a second
+      real consumer needed moved. See `docs/adr/0007-ai-provider-gateway.md`'s
+      dated log and `docs/specs/ai-eval-harness.md`'s scope-boundary
+      section for the full rationale. Test coverage moved rather than
+      being lost: `packages/ai/src/routing.test.ts` (8 tests, moved from
+      `cedar-brain.test.ts`) and `packages/ai/src/eval.integration.test.ts`
+      (3 tests, moved from `eval-service.integration.test.ts`, backed by
+      a new `packages/ai/vitest.config.ts` pinned to `cedarpoint_test`,
+      copied from `packages/auth/vitest.config.ts`'s established
+      pattern) — `apps/web`'s suite went from 571 to 560 tests (-11
+      moved out), `packages/ai`'s went from 0 to 11 (+11 moved in), full
+      monorepo total unchanged at 637. Verified live: flushed Redis,
+      started the real `apps/worker` process, confirmed a real
+      `"ai eval job complete"` log line with `totalCases: 10,
+      passedCases: 10` within seconds of startup, cross-checked via
+      `psql` that a matching `AiEvalRun` row (with exactly 10
+      `AiEvalResult` children) existed in the real dev database, then
+      confirmed through a real headless-Chromium pass on
+      `/command/supervisor` that the pre-existing "Evaluation harness"
+      card rendered that exact automatically-triggered run identically
+      to a manually-triggered one — proving the UI needed zero changes.
+      Smoke-test rows deleted afterward, both processes confirmed
+      stopped.
 - [x] AI Budget Governance (Section 33) — the specific mechanism the
       per-agent-output slice cited as missing. A real, enforced monthly
       token budget: `AiBudget` (one row per organization, created only

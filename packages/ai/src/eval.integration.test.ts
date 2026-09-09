@@ -1,9 +1,11 @@
-// Integration test for eval-service.ts (Bible Section 6.3/33 — AI
-// Evaluation Harness). No server-only/next-headers mocks needed — this
-// is a pure Prisma-writing service with no session/cookie dependency.
+// Integration test for eval.ts (Bible Section 6.3/33 — AI Evaluation
+// Harness). No server-only/next-headers mocks needed — this is a pure
+// Prisma-writing service with no session/cookie dependency. Moved here
+// from apps/web/src/lib/services/eval-service.integration.test.ts
+// alongside eval.ts itself.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@cedar/db";
-import { ROUTING_EVAL_SUITE, ROUTING_GOLDEN_SET, getRecentEvalRuns, runRoutingEval } from "./eval-service";
+import { ROUTING_EVAL_SUITE, ROUTING_GOLDEN_SET, getRecentEvalRuns, runRoutingEval } from "./eval";
 
 async function wipeDatabase() {
   await prisma.aiEvalResult.deleteMany();
@@ -40,7 +42,7 @@ describe("runRoutingEval", () => {
     // golden set) by reproducing exactly what runRoutingEval does, but
     // with one deliberately wrong expectation, proving `passed: false`
     // is computed correctly and not just always true.
-    const { routeToAgents } = await import("../cedar-brain");
+    const { routeToAgents } = await import("./routing");
     const actual = routeToAgents("Can you review this caption for typos?");
     const wrongExpectation: (typeof actual)[number][] = ["video"]; // this prompt should NOT route to video
     const passed = actual.length === wrongExpectation.length && wrongExpectation.every((a) => actual.includes(a));
