@@ -2,6 +2,11 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-06
+- **Updated:** 2026-09-09 — `POST /api/auth/login` is now rate-limited
+  (10 attempts/15 min per IP) as a first cut of Section 23.1's abuse-control
+  requirement. See `docs/specs/rate-limiting.md` for the design and its
+  residual gaps (AI/portal endpoints not yet covered, no production
+  `X-Forwarded-For` trust boundary pending ADR-010).
 
 ## Context
 

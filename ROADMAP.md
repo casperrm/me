@@ -139,6 +139,42 @@ deployment.
       lifecycle) left in place as genuine history, matching the first
       slice's own precedent. Confirmed no server process left running
       afterward.
+- [x] Rate limiting (Section 23.1) — a real gap, closed for two of the
+      four named categories. New `packages/auth/src/rate-limit.ts`:
+      `checkRateLimit(bucketKey, limit, windowSeconds)`, a Redis-backed
+      fixed-window counter (atomic `INCR`+`EXPIRE` via a Lua script, so a
+      process crash mid-check can't leave a bucket with no TTL). This is
+      `apps/web`'s first direct Redis connection — previously only
+      `apps/worker`'s BullMQ queues used `REDIS_URL`, which was already
+      required config but otherwise unconsumed outside the worker.
+      Applied to `POST /api/auth/login` (10 attempts/15 min per IP —
+      brute-force/credential-stuffing protection) and
+      `POST /api/integrations/webhooks/[id]` (120 requests/min per
+      connection — the one endpoint in the app with no session auth at
+      all, the clearest match for the "webhooks" category). Both return
+      429 with a `Retry-After` header. AI endpoints and client-portal
+      endpoints — the other two Section 23.1 categories — deliberately
+      not covered: Cedar Brain already has a more targeted control (AI
+      budget governance, spend-based not request-based) and portal
+      endpoints are session-authenticated like the rest of the app, so
+      they don't share the login/webhook endpoints' defining
+      no-prior-authentication property. See `docs/specs/rate-limiting.md`
+      for the full scope boundary, including the honest gap that
+      `X-Forwarded-For` trust depends on the eventual hosting platform
+      (ADR-010, still unresolved). New
+      `packages/auth/src/rate-limit.integration.test.ts` (4 tests, real
+      Redis); extended both routes' `route.contract.test.ts` files with a
+      dedicated 429 test each and gave the login test's four pre-existing
+      cases distinct fake IPs so they don't share a rate-limit bucket.
+      Full suite: 643 tests across 7 workspaces, all passing; monorepo
+      typecheck, lint, and production build all clean. Live-verified
+      against a real running production build and real Redis: 11 real
+      `POST`s to `/api/auth/login` from a fake IP (10 allowed, 11th real
+      429 with a real `Retry-After`); a real webhook connection created
+      through the authenticated API, then 121 real signed `POST`s to its
+      webhook URL (120 allowed, 121st real 429). All rate-limit keys, the
+      smoke-test connection, and its audit/connection-event rows deleted
+      afterward; confirmed no server process left running.
 
 ## Phase 1 — Agency Core: **complete**
 

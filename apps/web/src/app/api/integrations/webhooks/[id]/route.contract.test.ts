@@ -12,6 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }),
   headers: async () => new Map<string, string>(),
 }));
+import { resetRateLimitForTests } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { createGenericWebhookConnection } from "@/lib/services/connection-service";
 import { POST } from "./route";
@@ -43,9 +44,11 @@ beforeAll(async () => {
   const created = await createGenericWebhookConnection({ actorUserId: ownerUserId, organizationId: orgId, name: "Route test" });
   connectionId = created.connectionId;
   signingSecret = created.signingSecret;
+  await resetRateLimitForTests(`webhook:${connectionId}`);
 });
 
 afterAll(async () => {
+  await resetRateLimitForTests(`webhook:${connectionId}`);
   await wipeDatabase();
   await prisma.$disconnect();
 });
@@ -95,5 +98,21 @@ describe("POST /api/integrations/webhooks/[id]", () => {
     const payload = JSON.stringify({ type: "ping" });
     const res = await makeRequest("00000000-0000-0000-0000-000000000000", payload, sign(payload));
     expect(res.status).toBe(400);
+  });
+
+  it("returns 429 with a Retry-After header once a connection exceeds its per-minute request cap", async () => {
+    const payload = JSON.stringify({ type: "ping" });
+    const signed = sign(payload);
+    let lastRes: Response | undefined;
+    // Rate limiting is checked before signature verification, so an
+    // already-used signed payload (which would otherwise just dedupe) is
+    // fine here — the point is exhausting the per-connection counter.
+    for (let i = 0; i < 121; i++) {
+      lastRes = await makeRequest(connectionId, payload, signed);
+    }
+    expect(lastRes!.status).toBe(429);
+    expect(lastRes!.headers.get("Retry-After")).toEqual(expect.any(String));
+    const body = await lastRes!.json();
+    expect(body).toEqual({ error: expect.any(String) });
   });
 });

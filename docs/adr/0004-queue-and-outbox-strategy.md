@@ -2,6 +2,13 @@
 
 - **Status:** Accepted (interim) — expected to evolve, see Consequences
 - **Date:** 2026-09-06
+- **Updated:** 2026-09-09 — the "rate limiting" prediction in Alternatives
+  considered below is now real: `apps/web` opens its own Redis connection
+  (`packages/auth/src/rate-limit.ts`) for a fixed-window limiter on
+  `POST /api/auth/login` and the public webhook receiver (Section 23.1).
+  This is `apps/web`'s first direct Redis use — previously only
+  `apps/worker`'s BullMQ queues touched Redis. See
+  `docs/specs/rate-limiting.md`.
 
 ## Context
 

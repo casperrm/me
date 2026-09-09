@@ -4,3 +4,4 @@ export * from "./session";
 export * from "./authorize";
 export * from "./invitation";
 export * from "./mfa";
+export * from "./rate-limit";
