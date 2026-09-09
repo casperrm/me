@@ -396,7 +396,21 @@ canonical system.
       command-execution path. Verified live: searched for a real seeded
       task's title through the actual `⌘K` palette in a headless
       browser, confirmed the "Task" badge rendered and selecting it
-      navigated to the task's real project page.
+      navigated to the task's real project page. A second follow-up
+      slice (same day the Meetings module below shipped) added `Meeting`
+      as an 8th entity type for the identical reason `Task` needed one —
+      a real `title` field, unsearchable. `Meeting` scopes differently
+      from every other entity here: it carries `organizationId` directly
+      (an internal meeting has no client at all), so a scoped reader
+      only matches a meeting tied to one of their readable clients,
+      excluding internal/clientless meetings entirely (mirroring
+      `listMeetingsForOrganization`'s own identical rule) — an org-wide
+      reader matches every meeting, internal ones included. 9
+      integration tests (up from 7), 5 route-contract tests (up from 4).
+      Verified live: searched for a real meeting through the `⌘K`
+      palette, confirmed the "Meeting" badge and correct subtitle
+      (client name, or "Internal meeting") rendered, and confirmed
+      selecting it navigated to the real meeting detail page.
 - [x] Activity timeline (`ClientTimelineEvent`) now gets real writes from
       Brand DNA saves, project creation, campaign creation, asset
       uploads, creative approvals, task creation/completion, and invoice

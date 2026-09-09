@@ -15,6 +15,8 @@ async function wipeDatabase() {
   await prisma.membership.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.meetingAttendee.deleteMany();
+  await prisma.meeting.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
@@ -59,6 +61,7 @@ beforeAll(async () => {
 
   const projectA = await prisma.project.create({ data: { clientId: clientA.id, name: "Volt Launch Project" } });
   await prisma.task.create({ data: { projectId: projectA.id, title: "Volt onboarding task" } });
+  await prisma.meeting.create({ data: { organizationId: org.id, clientId: clientA.id, title: "Volt kickoff meeting" } });
 });
 
 afterAll(async () => {
@@ -118,5 +121,24 @@ describe("GET /api/search", () => {
     const scopedRes = await GET(request("onboarding"));
     const scopedBody = await scopedRes.json();
     expect(scopedBody.results.some((r: { type: string }) => r.type === "task")).toBe(true);
+  });
+
+  it("finds a real meeting and correctly scopes it to readable clients", async () => {
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId, membership: { id: "n/a" } });
+    const res = await GET(request("kickoff meeting"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const meeting = body.results.find((r: { type: string; title: string }) => r.type === "meeting");
+    expect(meeting?.title).toBe("Volt kickoff meeting");
+    expect(meeting?.url).toMatch(/^\/meetings\/.+$/);
+
+    getCurrentActor.mockResolvedValueOnce({
+      user: { id: scopedUserId },
+      organizationId: orgId,
+      membership: { id: scopedMembershipId },
+    });
+    const scopedRes = await GET(request("kickoff meeting"));
+    const scopedBody = await scopedRes.json();
+    expect(scopedBody.results.some((r: { type: string }) => r.type === "meeting")).toBe(true);
   });
 });

@@ -16,6 +16,8 @@ async function wipeDatabase() {
   await prisma.taskDependency.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.meetingAttendee.deleteMany();
+  await prisma.meeting.deleteMany();
   await prisma.client.deleteMany();
   await prisma.organization.deleteMany();
 }
@@ -52,6 +54,8 @@ beforeAll(async () => {
   });
   await prisma.shoot.create({ data: { clientId: clientAId, title: "Voltage product shoot" } });
   await prisma.task.create({ data: { projectId: projectA.id, title: "Voltage kickoff task" } });
+  await prisma.meeting.create({ data: { organizationId: orgId, clientId: clientAId, title: "Voltage strategy sync" } });
+  await prisma.meeting.create({ data: { organizationId: orgId, title: "Internal ops standup" } });
 });
 
 afterAll(async () => {
@@ -65,10 +69,10 @@ describe("searchRecords", () => {
     expect(results).toHaveLength(0);
   });
 
-  it("finds matches across clients, projects, campaigns, creatives, content, shoots, and tasks", async () => {
+  it("finds matches across clients, projects, campaigns, creatives, content, shoots, tasks, and meetings", async () => {
     const results = await searchRecords({ organizationId: orgId, query: "voltage" });
     const types = results.map((r) => r.type).sort();
-    expect(types).toEqual(["campaign", "client", "content", "project", "shoot", "task"]);
+    expect(types).toEqual(["campaign", "client", "content", "meeting", "project", "shoot", "task"]);
   });
 
   it("matches on task title and points at the task's project", async () => {
@@ -76,6 +80,26 @@ describe("searchRecords", () => {
     const task = results.find((r) => r.type === "task");
     expect(task?.title).toBe("Voltage kickoff task");
     expect(task?.url).toBe(`/clients/${clientAId}/projects/${projectAId}`);
+  });
+
+  it("matches on meeting title, distinguishing client-scoped from internal meetings", async () => {
+    const clientMeeting = (await searchRecords({ organizationId: orgId, query: "strategy sync" })).find(
+      (r) => r.type === "meeting",
+    );
+    expect(clientMeeting?.subtitle).toBe("Voltage Motors");
+
+    const internalMeeting = (await searchRecords({ organizationId: orgId, query: "ops standup" })).find(
+      (r) => r.type === "meeting",
+    );
+    expect(internalMeeting?.subtitle).toBe("Internal meeting");
+  });
+
+  it("excludes internal (clientless) meetings from a client-scoped search — Section 38 isolation", async () => {
+    const scopedToA = await searchRecords({ organizationId: orgId, clientIds: [clientAId], query: "sync" });
+    expect(scopedToA.some((r) => r.type === "meeting")).toBe(true);
+
+    const scopedToB = await searchRecords({ organizationId: orgId, clientIds: [clientBId], query: "standup" });
+    expect(scopedToB.some((r) => r.type === "meeting")).toBe(false);
   });
 
   it("is case-insensitive", async () => {

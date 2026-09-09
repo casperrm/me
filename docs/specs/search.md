@@ -7,7 +7,7 @@ actions").
 ## Purpose
 
 A `⌘K`/`Ctrl+K` command palette, reachable from anywhere in the app
-shell, that finds a Client/Project/Task/Campaign/Creative/Content
+shell, that finds a Client/Project/Task/Meeting/Campaign/Creative/Content
 Calendar item/Shoot by name and jumps straight to it — instead of
 clicking through Clients → Projects → Campaigns to find one thing.
 
@@ -27,7 +27,11 @@ navigation to a result.
 Phase 1 search slice predates Task priority/comments/attachments/
 dependencies, and a core, high-frequency record with a real `title` field
 being unsearchable was a real, conspicuous gap, not a deliberate scope
-decision. `Invoice` remains deliberately out of scope: it has no free-text
+decision. `Meeting` was added as an 8th entity type in a further
+follow-up, the same day the Meetings module itself (`docs/specs/
+meetings.md`) shipped — its `title` field had the identical gap for the
+same reason, just discovered immediately rather than after the fact.
+`Invoice` remains deliberately out of scope: it has no free-text
 name/title field to substring-match against (amount, status, and dates
 aren't the kind of thing this palette searches), so adding it would mean
 inventing a search key nobody asked for, unlike every other entity here.
@@ -42,7 +46,7 @@ inventing a search key nobody asked for, unlike every other entity here.
   This mirrors `calendar-service.ts`'s pattern and keeps the isolation
   guarantee (Section 38) in one place (`getReadableClientIds`), not
   reimplemented per search type.
-- Seven entity types are searched in parallel (`Promise.all`), each
+- Eight entity types are searched in parallel (`Promise.all`), each
   case-insensitive substring match (`ILIKE` via Prisma's
   `mode: "insensitive"`), each capped at 5 results: `Client`
   (name/companyName), `Project` (name), `Campaign` (name), `Creative`
@@ -50,9 +54,19 @@ inventing a search key nobody asked for, unlike every other entity here.
   (title, scoped through `project.client.organizationId` — a task result
   links to its project's detail page, the same place `content`/`shoot`
   results link to a list page rather than a dedicated per-item page,
-  since neither has its own standalone URL).
+  since neither has its own standalone URL), `Meeting` (title). `Meeting`
+  is the one entity here that carries `organizationId` directly rather
+  than reaching it through a client relation (an internal meeting has no
+  client at all — see `docs/specs/meetings.md`), and its `clientId`
+  scoping is asymmetric with every other entity for the same reason: a
+  scoped reader (`clientIds` is a specific array) only matches meetings
+  tied to one of their readable clients, excluding internal/clientless
+  meetings entirely — they were never part of that reader's granted
+  scope in the first place, mirroring `listMeetingsForOrganization`'s own
+  identical rule; an org-wide reader (`clientIds` undefined) matches
+  every meeting, internal ones included.
 - Queries shorter than 2 characters return nothing immediately — avoids
-  a wasteful seven-way full-table scan on every keystroke of a
+  a wasteful eight-way full-table scan on every keystroke of a
   1-character query.
 
 ## Permissions
@@ -87,25 +101,31 @@ None. Synchronous, same as every other read path in this codebase.
 - **Unauthenticated request**: 401, no query even attempted.
 - **Query under 2 characters**: empty result set, no database round-trip.
 - **Cross-organization or cross-client-scope leakage**: prevented by
-  construction — every one of the six queries filters through the
+  construction — every one of the eight queries filters through the
   organization ID and the (optional) client-ID allowlist before any
   text matching happens.
 
 ## Acceptance tests
 
-- `apps/web/src/lib/services/search.integration.test.ts` — 8 tests
+- `apps/web/src/lib/services/search.integration.test.ts` — 9 tests
   against real Postgres: sub-2-character queries return nothing,
-  a matching query finds results across all seven entity types at once,
+  a matching query finds results across all eight entity types at once,
   a dedicated test that a task title match points at its own project's
-  URL (not a nonexistent per-task page), matching is case-insensitive,
-  creative type/platform text is searchable, results are correctly
-  scoped to a given `clientIds` allowlist (Section 38 isolation), and a
+  URL (not a nonexistent per-task page), a dedicated test that a meeting
+  title match distinguishes a client-scoped meeting's subtitle (the
+  client's name) from an internal meeting's ("Internal meeting"), a
+  dedicated test that a client-scoped search includes a matching
+  client-scoped meeting but excludes a matching internal meeting
+  (Section 38 isolation, the asymmetric rule above), matching is
+  case-insensitive, creative type/platform text is searchable, results
+  are correctly scoped to a given `clientIds` allowlist, and a
   same-named record in a different organization never leaks into
   results.
 - `apps/web/src/app/api/search/route.contract.test.ts` — gained a
-  dedicated task test proving a real task is found by title over real
-  HTTP and correctly scoped to the caller's readable clients, alongside
-  the pre-existing 401/scoping coverage.
+  dedicated task test and a dedicated meeting test, each proving a real
+  record is found by title over real HTTP and correctly scoped to the
+  caller's readable clients, alongside the pre-existing 401/scoping
+  coverage.
 - Manual smoke test performed for the original slice against the real
   running server: searched for the seeded demo client by partial name
   and confirmed the result and URL, confirmed a 1-character query
@@ -120,3 +140,9 @@ None. Synchronous, same as every other read path in this codebase.
   navigated to that task's real project detail page (where the task
   itself is visible), and confirmed the search input's placeholder text
   now mentions tasks.
+- Manual smoke test performed for the Meeting follow-up slice against
+  the real running server: searched for a real meeting (created in the
+  live smoke test for the Meetings module itself) through the actual
+  `⌘K` palette, confirmed a real "Meeting" badge rendered with the
+  correct client-name subtitle, and confirmed selecting it navigated to
+  the real meeting detail page.

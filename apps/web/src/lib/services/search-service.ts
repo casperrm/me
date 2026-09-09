@@ -1,7 +1,7 @@
 import { prisma } from "@cedar/db";
 
 export interface SearchResult {
-  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot" | "task";
+  type: "client" | "project" | "campaign" | "creative" | "content" | "shoot" | "task" | "meeting";
   id: string;
   title: string;
   subtitle: string;
@@ -34,7 +34,7 @@ export async function searchRecords(params: {
   const clientScope = params.clientIds ? { id: { in: params.clientIds } } : {};
   const contains = { contains: q, mode: "insensitive" as const };
 
-  const [clients, projects, campaigns, creatives, contentItems, shoots, tasks] = await Promise.all([
+  const [clients, projects, campaigns, creatives, contentItems, shoots, tasks, meetings] = await Promise.all([
     prisma.client.findMany({
       where: { organizationId: params.organizationId, ...clientScope, OR: [{ name: contains }, { companyName: contains }] },
       take: RESULTS_PER_TYPE,
@@ -70,6 +70,24 @@ export async function searchRecords(params: {
     prisma.task.findMany({
       where: { project: { client: { organizationId: params.organizationId, ...clientScope } }, title: contains },
       include: { project: { include: { client: true } } },
+      take: RESULTS_PER_TYPE,
+    }),
+    // Meeting carries organizationId directly (not reached via a client
+    // relation, since an internal meeting has no client at all — see
+    // docs/specs/meetings.md). A scoped reader (params.clientIds is a
+    // specific array) only matches meetings tied to one of their
+    // readable clients; an internal/clientless meeting is never part of
+    // a scoped grant, so it's excluded exactly like
+    // listMeetingsForOrganization already excludes it for the same
+    // reader. An org-wide reader (params.clientIds undefined) matches
+    // every meeting, internal ones included.
+    prisma.meeting.findMany({
+      where: {
+        organizationId: params.organizationId,
+        ...(params.clientIds ? { clientId: { in: params.clientIds } } : {}),
+        title: contains,
+      },
+      include: { client: true },
       take: RESULTS_PER_TYPE,
     }),
   ]);
@@ -117,6 +135,13 @@ export async function searchRecords(params: {
       title: t.title,
       subtitle: `${t.project.name} — ${t.project.client.name}`,
       url: `/clients/${t.project.clientId}/projects/${t.projectId}`,
+    })),
+    ...meetings.map((m) => ({
+      type: "meeting" as const,
+      id: m.id,
+      title: m.title,
+      subtitle: m.client ? m.client.name : "Internal meeting",
+      url: `/meetings/${m.id}`,
     })),
   ];
 
