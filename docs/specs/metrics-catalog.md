@@ -23,12 +23,14 @@ every place that computes it. That's true for:
   now the only place the margin formula is written, imported by
   `apps/web/src/lib/services/profitability-service.ts` (previously had
   the formula inlined).
-- **`client_health_score`** and its five penalty sub-metrics —
+- **`client_health_score`** and its six penalty sub-metrics —
   `overdueTaskPenalty`, `overdueProjectPenalty`, `overdueInvoicePenalty`,
-  `approvalLatencyPenalty`, `qcFailRatePenalty`, `clampHealthScore`, all
-  now imported by `apps/worker/src/jobs/health-scores.ts` in place of
-  the previous inline magic numbers (`Math.min(count * 5, 25)`, etc.) —
-  same formula, same constants, just no longer duplicatable by accident.
+  `approvalLatencyPenalty`, `qcFailRatePenalty`, `meetingCadencePenalty`
+  (added in a follow-up slice once the Meetings module existed — see
+  `docs/specs/client-health.md`), `clampHealthScore`, all now imported
+  by `apps/worker/src/jobs/health-scores.ts` in place of the previous
+  inline magic numbers (`Math.min(count * 5, 25)`, etc.) — same formula,
+  same constants, just no longer duplicatable by accident.
 
 **Revenue, expenses, and net are catalogued but not `governedBy`-tagged**
 — they're one-line Prisma aggregation queries (`sum of Invoice.amountCents

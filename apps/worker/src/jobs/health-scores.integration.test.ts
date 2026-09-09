@@ -14,6 +14,8 @@ async function wipeDatabase() {
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.meetingAttendee.deleteMany();
+  await prisma.meeting.deleteMany();
   await prisma.client.deleteMany();
   await prisma.organization.deleteMany();
 }
@@ -41,7 +43,14 @@ describe("computeHealthScoreForClient", () => {
     expect(score).toBe(100);
     expect(factors.every((f) => f.penalty === 0)).toBe(true);
     expect(factors.map((f) => f.signal).sort()).toEqual(
-      ["approval_latency", "delivery_delays_projects", "delivery_delays_tasks", "payment_status", "unresolved_issues_qc"].sort(),
+      [
+        "approval_latency",
+        "delivery_delays_projects",
+        "delivery_delays_tasks",
+        "meeting_cadence",
+        "payment_status",
+        "unresolved_issues_qc",
+      ].sort(),
     );
   });
 
@@ -110,6 +119,62 @@ describe("computeHealthScoreForClient", () => {
     const qcFactor = factors.find((f) => f.signal === "unresolved_issues_qc")!;
     expect(qcFactor.penalty).toBe(20); // 1/1 failed * 20
     expect(score).toBe(80);
+  });
+
+  it("does not penalize a client with no meeting on record — absence isn't evidence of a gap", async () => {
+    const client = await prisma.client.create({
+      data: { organizationId: orgId, name: "No Meeting Client", companyName: "No Meeting Co", services: "[]" },
+    });
+
+    const { score, factors } = await computeHealthScoreForClient(client.id);
+    const meetingFactor = factors.find((f) => f.signal === "meeting_cadence")!;
+    expect(meetingFactor.penalty).toBe(0);
+    expect(meetingFactor.value).toBe("no meeting on record");
+    expect(score).toBe(100);
+  });
+
+  it("penalizes a stale meeting cadence but not a recent one, and ignores a future-scheduled meeting", async () => {
+    const client = await prisma.client.create({
+      data: { organizationId: orgId, name: "Stale Meeting Client", companyName: "Stale Meeting Co", services: "[]" },
+    });
+    await prisma.meeting.create({
+      data: {
+        organizationId: orgId,
+        clientId: client.id,
+        title: "Ancient sync",
+        occurredAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
+      },
+    });
+    // A future-scheduled meeting must never count as "recent" — cadence
+    // is about meetings that actually happened, not ones on the books.
+    await prisma.meeting.create({
+      data: {
+        organizationId: orgId,
+        clientId: client.id,
+        title: "Upcoming sync",
+        occurredAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const { score, factors } = await computeHealthScoreForClient(client.id);
+    const meetingFactor = factors.find((f) => f.signal === "meeting_cadence")!;
+    expect(meetingFactor.penalty).toBe(10); // > 90 days since the real (past) meeting
+    expect(score).toBe(90);
+
+    const recentClient = await prisma.client.create({
+      data: { organizationId: orgId, name: "Recent Meeting Client", companyName: "Recent Meeting Co", services: "[]" },
+    });
+    await prisma.meeting.create({
+      data: {
+        organizationId: orgId,
+        clientId: recentClient.id,
+        title: "Yesterday's sync",
+        occurredAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      },
+    });
+    const recentResult = await computeHealthScoreForClient(recentClient.id);
+    expect(recentResult.factors.find((f) => f.signal === "meeting_cadence")!.penalty).toBe(0);
+    expect(recentResult.score).toBe(100);
   });
 
   it("never lets the score go below 0", async () => {

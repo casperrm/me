@@ -701,10 +701,30 @@ them.
       projects, overdue unpaid invoices, approval latency, Quality
       Control failure rate), replacing the seeded/manual number; the
       client profile page shows the full factor breakdown, not just the
-      score. Explicit scope boundary in `docs/specs/client-health.md`:
-      campaign trends, communication gaps, satisfaction signals, and
-      renewal proximity (also named in Section 4.2) need modules that
-      don't exist yet and are never faked.
+      score. A follow-up slice added a sixth signal, `meeting_cadence`
+      — days since the client's last recorded (client-scoped,
+      already-occurred) meeting, now that the Meetings module (Section
+      13) exists to source it from: 10-point penalty beyond 90 days, 5
+      beyond 45, else 0, with a client that has no meeting on record at
+      all also scoring 0 — absence of tracked data is never treated as
+      evidence of a gap, matching how `approval_latency`/
+      `unresolved_issues_qc` already handle "no recent decisions"/"no
+      recent checks." New `meetingCadencePenalty` in `packages/metrics`
+      (4 new tests), wired into `apps/worker/src/jobs/health-scores.ts`
+      and `METRICS_CATALOG`. Explicit scope boundary in
+      `docs/specs/client-health.md`, stated honestly: this is a partial
+      cut of Section 4.2's "communication gaps" — a real meeting-cadence
+      signal, not full communication tracking, since no messaging/
+      call-log model exists; campaign trends, satisfaction signals, and
+      renewal proximity still need modules that don't exist yet and are
+      never faked. `health-scores.integration.test.ts` grew from 8 to 10
+      tests. Verified live: created a real client-scoped meeting dated
+      100 days in the past through the running server's API, re-ran the
+      real health-scores job, confirmed via `psql` the resulting
+      `ClientHealthScore` row's `factors` JSON carried a real
+      `meeting_cadence` penalty of 10 with the score reduced
+      accordingly, and confirmed the client profile page's factor
+      breakdown rendered it; test rows cleaned up afterward.
 - [x] Client-level profitability attribution (Section 4.2/16) — new
       `Expense.clientId` (optional) plus a first real write path
       (`createExpense`, gated on `finance:write`) makes cost

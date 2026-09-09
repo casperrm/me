@@ -3,6 +3,7 @@ import {
   approvalLatencyPenalty,
   clampHealthScore,
   computeMarginPct,
+  meetingCadencePenalty,
   overdueInvoicePenalty,
   overdueProjectPenalty,
   overdueTaskPenalty,
@@ -76,5 +77,26 @@ describe("clampHealthScore", () => {
     expect(clampHealthScore(-10)).toBe(0);
     expect(clampHealthScore(150)).toBe(100);
     expect(clampHealthScore(55)).toBe(55);
+  });
+});
+
+describe("meetingCadencePenalty", () => {
+  it("returns 0 when no meeting has ever been recorded — absence isn't evidence of a gap", () => {
+    expect(meetingCadencePenalty(null)).toBe(0);
+  });
+
+  it("returns 0 within the warn threshold", () => {
+    expect(meetingCadencePenalty(0)).toBe(0);
+    expect(meetingCadencePenalty(45)).toBe(0);
+  });
+
+  it("returns the warn penalty between 45 and 90 days", () => {
+    expect(meetingCadencePenalty(46)).toBe(5);
+    expect(meetingCadencePenalty(90)).toBe(5);
+  });
+
+  it("returns the critical penalty above 90 days", () => {
+    expect(meetingCadencePenalty(91)).toBe(10);
+    expect(meetingCadencePenalty(365)).toBe(10);
   });
 });

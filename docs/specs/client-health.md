@@ -15,7 +15,7 @@ person can see the reasoning behind, not a black box.
 
 ## Scope boundary — stated explicitly
 
-Section 4.2 lists eight example signal categories. Only four have real,
+Section 4.2 lists eight example signal categories. Five have real,
 already-collected data behind them in this system:
 
 | Bible signal | Built as | Real data source |
@@ -24,14 +24,25 @@ already-collected data behind them in this system:
 | Payment status | `payment_status` | `Invoice.dueAt`/`.status` |
 | Approval latency | `approval_latency` | Real `Approval.createdAt` timestamps (requested → decided) |
 | Unresolved issues | `unresolved_issues_qc` | Quality Control failures (`QualityCheckResult`) on recent creative versions — the closest real proxy this system has to "issues" |
+| Communication gaps | `meeting_cadence` | `Meeting.occurredAt` (Section 13, added in a follow-up slice once the Meetings module existed) — see the honest caveat below |
 
-**Not built, and never faked:** campaign trends (needs real performance
-metric ingestion — Phase 4), communication gaps (no messaging/call-log
-model exists), satisfaction signals (no CSAT/NPS model exists), renewal
-proximity (no contract/renewal-date model exists). A health score that
-silently invented numbers for these would be worse than not having them
-— Section 4.2 itself says "Scores are decision support, not autonomous
-truth," which only holds if every number behind it is real.
+**`meeting_cadence` is a partial, honest cut of "communication gaps,"
+not the full thing.** It measures days since the client's last recorded
+*meeting* — a real signal, not fabricated — but this system still has
+no messaging/call-log model, so anything that happens over email, chat,
+or a phone call that isn't logged as a `Meeting` is invisible to it. A
+client a team talks to constantly over email but rarely holds a formal
+meeting with would show a stale cadence here despite genuinely good
+communication. That's a real limitation, named here rather than
+glossed over — full communication tracking remains unbuilt.
+
+**Still not built, and never faked:** campaign trends (needs real
+performance metric ingestion — Phase 4), satisfaction signals (no
+CSAT/NPS model exists), renewal proximity (no contract/renewal-date
+model exists). A health score that silently invented numbers for these
+would be worse than not having them — Section 4.2 itself says "Scores
+are decision support, not autonomous truth," which only holds if every
+number behind it is real.
 
 "Configurable" (Section 4.2's own word) is also only partially true here:
 weights are fixed constants in `apps/worker/src/jobs/health-scores.ts`
@@ -55,6 +66,13 @@ Starting from 100, each signal subtracts a capped penalty:
   `qcFailRate` is the share of the client's 20 most-recently-checked
   creative versions whose latest `QualityCheckResult.overallStatus` was
   `fail`.
+- **`meeting_cadence`**: 10 if it's been more than 90 days since the
+  client's last recorded (client-scoped, already-occurred — a
+  future-scheduled meeting never counts) meeting, 5 if more than 45, else
+  0. A client with **no** meeting on record at all also scores 0 here —
+  absence of tracked data is never treated as evidence of a real gap,
+  the same convention `approval_latency` and `unresolved_issues_qc`
+  already follow for "no recent decisions"/"no recent checks."
 
 Final score is clamped to `[0, 100]`. Every signal — including ones with
 zero penalty — is always returned in `factors`, so "nothing wrong here"
@@ -114,21 +132,40 @@ the sibling `escalations` job this pattern was established with.
 
 ## Acceptance tests
 
-- `apps/worker/src/jobs/health-scores.integration.test.ts` — 8 tests
+- `apps/worker/src/jobs/health-scores.integration.test.ts` — 10 tests
   against real Postgres (new `apps/worker/vitest.config.ts`, pinned to
   `cedarpoint_test` — mirrors `apps/web`'s config): a clean client
-  scores 100 with every factor at zero penalty, overdue tasks and
-  projects are penalized correctly, an overdue unpaid invoice is
-  penalized while a paid one past its due date is not, a Quality
-  Control failure penalizes the `unresolved_issues_qc` signal, the score
-  never goes below 0 under an extreme case, `runHealthScoreJob` creates
-  exactly one new row per existing client, and re-running it preserves
-  history (inserts, never overwrites).
+  scores 100 with every factor at zero penalty (now including
+  `meeting_cadence`), overdue tasks and projects are penalized
+  correctly, an overdue unpaid invoice is penalized while a paid one
+  past its due date is not, a Quality Control failure penalizes the
+  `unresolved_issues_qc` signal, a client with no meeting on record
+  scores zero penalty for `meeting_cadence`, a client whose last real
+  meeting was 120 days ago is penalized (a future-scheduled meeting in
+  the same window is correctly ignored) while one whose last meeting
+  was yesterday is not, the score never goes below 0 under an extreme
+  case, `runHealthScoreJob` creates exactly one new row per existing
+  client, and re-running it preserves history (inserts, never
+  overwrites).
+- `packages/metrics/src/formulas.test.ts` — `meetingCadencePenalty`
+  gained 4 dedicated tests: no meeting on record returns 0, within the
+  45-day warn threshold returns 0, between 45 and 90 days returns the
+  warn penalty, beyond 90 days returns the critical penalty.
 - Manual smoke test performed for this slice: ran the actual
   `apps/worker` process against real Redis and Postgres, confirmed the
   health-scores job fired immediately on startup and correctly scored
   the seeded demo client (85 = 100 − 15 for its one overdue unpaid
-  invoice, every other factor at 0), then confirmed the client profile
-  page rendered the score and its expandable factor breakdown
-  (including the −15 penalty) correctly; dev database reset to a clean
-  seeded state and Redis flushed afterward.
+  invoice, every other factor including `meeting_cadence` at 0, since
+  the seeded client had no meeting on record), then confirmed the
+  client profile page rendered the score and its expandable factor
+  breakdown correctly; dev database reset to a clean seeded state and
+  Redis flushed afterward.
+- Manual smoke test performed for this follow-up slice: created a real
+  client-scoped meeting dated 100 days in the past through the running
+  server's API, re-ran the real health-scores job, confirmed via `psql`
+  that the resulting `ClientHealthScore` row's `factors` JSON showed a
+  real `meeting_cadence` penalty of 10 and the score reduced
+  accordingly, then confirmed the client profile page's expandable
+  factor breakdown rendered the new signal with its real explanation
+  text; the test meeting and the extra `ClientHealthScore` rows it
+  caused were deleted afterward.

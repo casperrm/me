@@ -81,8 +81,8 @@ export const METRICS_CATALOG: MetricDefinition[] = [
     category: "client_health",
     unit: "score_0_100",
     description:
-      "Explainable health score starting at 100 and reduced by real delivery, payment, approval-latency, and quality-control signals. Decision support, not autonomous truth (Section 4.2).",
-    formula: "100 − (overdue-task penalty + overdue-project penalty + overdue-invoice penalty + approval-latency penalty + QC-fail-rate penalty), clamped to [0, 100].",
+      "Explainable health score starting at 100 and reduced by real delivery, payment, approval-latency, quality-control, and meeting-cadence signals. Decision support, not autonomous truth (Section 4.2).",
+    formula: "100 − (overdue-task penalty + overdue-project penalty + overdue-invoice penalty + approval-latency penalty + QC-fail-rate penalty + meeting-cadence penalty), clamped to [0, 100].",
     computedIn: ["apps/worker/src/jobs/health-scores.ts"],
     governedBy: "clampHealthScore",
   },
@@ -135,5 +135,16 @@ export const METRICS_CATALOG: MetricDefinition[] = [
     formula: "round(QC fail rate × 20), over the most recent 20 checks.",
     computedIn: ["apps/worker/src/jobs/health-scores.ts"],
     governedBy: "qcFailRatePenalty",
+  },
+  {
+    id: "meeting_cadence_penalty",
+    label: "Meeting cadence penalty",
+    category: "client_health",
+    unit: "score_0_100",
+    description:
+      "Health score deduction from how long it's been since the client's last recorded meeting. A partial, honest proxy for Section 4.2's \"communication gaps\" signal — not full communication tracking (no messaging/call-log model exists, see docs/specs/client-health.md). A client with no meeting on record yet is never penalized for that alone; absence of tracked data isn't evidence of a real gap.",
+    formula: "10 if days since last meeting > 90, else 5 if > 45, else 0. 0 if no meeting has ever been recorded.",
+    computedIn: ["apps/worker/src/jobs/health-scores.ts"],
+    governedBy: "meetingCadencePenalty",
   },
 ];

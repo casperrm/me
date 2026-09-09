@@ -4,6 +4,7 @@ import {
   approvalLatencyPenalty,
   clampHealthScore,
   HEALTH_SCORE_BASE,
+  meetingCadencePenalty,
   overdueInvoicePenalty,
   overdueProjectPenalty,
   overdueTaskPenalty,
@@ -28,15 +29,18 @@ const APPROVAL_LATENCY_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
  * Explicit scope boundary (see docs/specs/client-health.md): only the
  * signals with real, already-collected data behind them are computed —
  * delivery delays (overdue tasks/projects), payment status (overdue
- * unpaid invoices), approval latency (real Approval timestamps), and
+ * unpaid invoices), approval latency (real Approval timestamps),
  * unresolved issues (Quality Control failures on recent creative
- * versions — the closest real proxy this system has to "issues").
- * Campaign trends, communication gaps, satisfaction signals, and renewal
- * proximity all need modules that don't exist yet (real performance
- * metric ingestion, a messaging/CSAT model, contract/renewal dates) and
- * are never faked here. "Configurable" weights are fixed constants in
- * this file for now — a per-org configuration surface is a reasonable
- * later increment, not built yet.
+ * versions — the closest real proxy this system has to "issues"), and
+ * — since the Meetings module (Section 13) shipped — meeting cadence, a
+ * partial, honest proxy for "communication gaps": days since the
+ * client's last recorded meeting, not full communication tracking (no
+ * messaging/call-log model exists). Campaign trends, satisfaction
+ * signals, and renewal proximity all still need modules that don't
+ * exist yet (real performance metric ingestion, a CSAT model, contract/
+ * renewal dates) and are never faked here. "Configurable" weights are
+ * fixed constants in this file for now — a per-org configuration
+ * surface is a reasonable later increment, not built yet.
  */
 export async function computeHealthScoreForClient(clientId: string): Promise<{ score: number; factors: HealthFactor[] }> {
   const factors: HealthFactor[] = [];
@@ -118,6 +122,23 @@ export async function computeHealthScoreForClient(clientId: string): Promise<{ s
     value: recentQcResults.length > 0 ? `${qcFailCount}/${recentQcResults.length} recent Quality Control checks failed` : "no recent checks",
     penalty: qcPenalty,
     explanation: "Share of recent creative versions whose automatic Quality Control check failed.",
+  });
+
+  const lastMeeting = await prisma.meeting.findFirst({
+    where: { clientId, occurredAt: { lte: new Date() } },
+    orderBy: { occurredAt: "desc" },
+    select: { occurredAt: true },
+  });
+  const daysSinceLastMeeting = lastMeeting
+    ? Math.floor((Date.now() - lastMeeting.occurredAt.getTime()) / (24 * 60 * 60 * 1000))
+    : null;
+  const meetingPenalty = meetingCadencePenalty(daysSinceLastMeeting);
+  score -= meetingPenalty;
+  factors.push({
+    signal: "meeting_cadence",
+    value: daysSinceLastMeeting === null ? "no meeting on record" : `${daysSinceLastMeeting} day(s) since last meeting`,
+    penalty: meetingPenalty,
+    explanation: "Days since the client's last recorded meeting — a partial proxy for communication gaps.",
   });
 
   return { score: clampHealthScore(score), factors };

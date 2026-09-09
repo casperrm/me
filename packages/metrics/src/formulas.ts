@@ -60,3 +60,26 @@ export function qcFailRatePenalty(failRate: number): number {
 export function clampHealthScore(score: number): number {
   return Math.max(0, Math.min(100, score));
 }
+
+export const MEETING_GAP_WARN_DAYS = 45;
+export const MEETING_GAP_WARN_PENALTY = 5;
+export const MEETING_GAP_CRITICAL_DAYS = 90;
+export const MEETING_GAP_CRITICAL_PENALTY = 10;
+
+/**
+ * `null` means no client-scoped meeting has ever been recorded — treated
+ * as no penalty (0), not the worst case. This matches this file's own
+ * existing convention (see `approvalLatencyPenalty`/`qcFailRatePenalty`'s
+ * callers in apps/worker/src/jobs/health-scores.ts: zero recent decisions
+ * or zero recent QC checks are never treated as evidence of a problem)
+ * — absence of tracked data isn't evidence of a real gap, and a client
+ * onboarded before the Meetings module existed, or one this system
+ * simply hasn't logged a meeting for yet, shouldn't be penalized for
+ * that alone.
+ */
+export function meetingCadencePenalty(daysSinceLastMeeting: number | null): number {
+  if (daysSinceLastMeeting === null) return 0;
+  if (daysSinceLastMeeting > MEETING_GAP_CRITICAL_DAYS) return MEETING_GAP_CRITICAL_PENALTY;
+  if (daysSinceLastMeeting > MEETING_GAP_WARN_DAYS) return MEETING_GAP_WARN_PENALTY;
+  return 0;
+}
