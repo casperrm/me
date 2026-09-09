@@ -72,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/dashboard", label: "Dashboard", badge: 0 },
     { href: "/clients", label: "Clients", badge: 0 },
     { href: "/calendar", label: "Calendar", badge: 0 },
+    { href: "/meetings", label: "Meetings", badge: 0 },
     { href: "/notifications", label: "Notifications", badge: unreadCount },
     { href: "/command", label: "Cedar Command Center", badge: 0 },
     ...(canSeeAiSupervisor ? [{ href: "/command/supervisor", label: "AI Supervisor", badge: 0 }] : []),

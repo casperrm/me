@@ -27,3 +27,26 @@ export async function getReadableClientIds(actor: Actor): Promise<string[] | und
   });
   return grants.map((g) => g.clientId as string);
 }
+
+/**
+ * The write-side mirror of `getReadableClientIds` above — same contract
+ * (`undefined` = every client in the org, an array = exactly those
+ * clients), but for `clients:write`. Used by pages that need to build a
+ * "which clients can I create/edit records for" picker across the whole
+ * organization rather than one client already in scope (e.g. the
+ * `/meetings` page's "+ New meeting" client select).
+ */
+export async function getWritableClientIds(actor: Actor): Promise<string[] | undefined> {
+  const canWriteAll = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "clients:write",
+  });
+  if (canWriteAll) return undefined;
+
+  const grants = await prisma.scopedGrant.findMany({
+    where: { membershipId: actor.membership.id, permission: "clients:write", clientId: { not: null } },
+    select: { clientId: true },
+  });
+  return grants.map((g) => g.clientId as string);
+}

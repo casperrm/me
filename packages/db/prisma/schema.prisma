@@ -67,6 +67,7 @@ model Organization {
   connections      Connection[]
   aiBudget         AiBudget?
   projectTemplates ProjectTemplate[]
+  meetings         Meeting[]
 
   @@map("organizations")
 }
@@ -91,7 +92,6 @@ model User {
 
   memberships      Membership[]
   sessions         Session[]
-  meetings         MeetingAttendee[]
   mfaRecoveryCodes MfaRecoveryCode[]
   pendingMfaLogins PendingMfaLogin[]
 
@@ -158,6 +158,7 @@ model Membership {
   notifications             Notification[]
   flaggedCedarBrainRequests CedarBrainRequest[]
   createdConnections        Connection[]
+  meetingAttendances        MeetingAttendee[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
@@ -876,27 +877,47 @@ model Expense {
 // Meetings (Section 13)
 // ---------------------------------------------------------------------------
 
+// Section 13 "Meetings AI and Decision Capture" — the record-keeping half
+// (see docs/specs/meetings.md for the full scope boundary: no transcript
+// capture, no AI-generated summary, decisions are simple user-entered
+// records rather than a separate approval workflow, and "promoted into
+// memory" isn't built since Agency Memory itself doesn't exist yet —
+// the one real promotion this module supports is a follow-up becoming a
+// real Task). `clientId` is optional because an internal, non-client
+// meeting is a real case (an agency has internal team meetings too), so
+// `organizationId` is carried directly rather than derived through
+// `client` — every tenant-scoped table in this schema does the same
+// (Section 27.1), and a clientless Meeting with no organizationId of its
+// own would have no tenant scope at all.
 model Meeting {
-  id         String   @id @default(uuid())
-  clientId   String?
-  client     Client?  @relation(fields: [clientId], references: [id])
-  title      String
-  notes      String?
-  decisions  String? // JSON
-  followUps  String? // JSON
-  occurredAt DateTime @default(now())
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  clientId       String?
+  client         Client?      @relation(fields: [clientId], references: [id])
+  title          String
+  notes          String?
+  decisions      String? // JSON array: { id, text, rationale, createdAt }[]
+  followUps      String? // JSON array: { id, text, ownerMembershipId, dueDate, promotedTaskId }[]
+  occurredAt     DateTime     @default(now())
 
   attendees MeetingAttendee[]
 
+  @@index([organizationId])
   @@map("meetings")
 }
 
+// `membershipId` (not `userId`) — every other "who did this" relation in
+// this schema (Task.assigneeId, TaskComment.membershipId, Asset.uploadedBy)
+// points at Membership, the org-specific role/identity, never at the bare
+// global User (a User can belong to multiple organizations later per its
+// own doc comment, so a bare userId here would carry no org context).
 model MeetingAttendee {
-  id        String  @id @default(uuid())
-  meetingId String
-  meeting   Meeting @relation(fields: [meetingId], references: [id])
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
+  id           String     @id @default(uuid())
+  meetingId    String
+  meeting      Meeting    @relation(fields: [meetingId], references: [id])
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id])
 
   @@map("meeting_attendees")
 }

@@ -264,6 +264,106 @@ canonical system.
       dates, scoped to what the actor can read. Meetings/shoots/campaign
       launches will join the same query once those modules exist
       (Phase 2/4) rather than becoming a parallel calendar.
+- [x] Meetings and Decision Capture (Section 13) — closes a real gap
+      this file never named as built: `Meeting`/`MeetingAttendee` were
+      scaffolded early alongside the core domain models, but had no
+      service, API route, UI, or test anywhere in the codebase
+      referencing them. Section 13's own text is a large, partly
+      AI-dependent, partly speculative vision (transcript capture,
+      AI-generated summaries, decisions with "approver ... and
+      evidence," promotion into memory); this slice builds the smallest
+      real cut on top of the real (dead) schema rather than inventing a
+      feature from scratch, and Section 36's phase list only mentions
+      "Meetings" in passing as a future Cedar Brain AI capability — the
+      record-keeping half built here is squarely Phase 1 agency-core
+      work, not an AI feature, so it's placed here alongside Section
+      12's Projects/Tasks/Calendar rather than under Phase 3. Two real,
+      pre-existing schema bugs were fixed in one migration first (zero
+      rows in either table in both the dev and test databases, confirmed
+      via `psql` before touching anything — safe to restructure with no
+      data-migration risk): `Meeting` had no `organizationId`, so a
+      clientless internal meeting (a real case — an agency has internal
+      team meetings too) would have had no tenant scope at all (a real
+      Section 38 gap); `MeetingAttendee.userId` pointed at the bare
+      global `User` instead of `Membership`, inconsistent with every
+      other actor-reference in this schema
+      (`Task.assigneeId`/`TaskComment.membershipId`/`Asset.uploadedBy`).
+      New `meeting-service.ts`: `createMeeting`/`updateMeetingNotes`/
+      `addMeetingDecision`/`addMeetingFollowUp`/`getMeeting`/
+      `listMeetingsForClient`/`listMeetingsForOrganization` (the last
+      following `calendar-service.ts`/`search-service.ts`'s established
+      already-resolved-`clientIds` contract exactly, no
+      `requirePermission` inside it), and `promoteFollowUpToTask` — the
+      standout feature, turning a follow-up into a real `Task` by
+      reusing the existing `createTask` (Section 12) rather than
+      reimplementing task creation, the concrete buildable half of
+      Section 13's "approved meeting decisions update relevant
+      client/project context" (Agency Memory itself doesn't exist yet —
+      `docs/specs/client-memory.md` already documents that gap — so
+      "promoted into memory" stays unbuilt). No new permission: reuses
+      `clients:write`/`clients:read`, gated by the meeting's own scope
+      (its `clientId`, or org-wide when internal) exactly the way
+      `project-template-service.ts`'s template-management functions
+      already precedent this "sometimes client-scoped, sometimes
+      org-wide" shape. Decisions are deliberately simple user-entered
+      records (`text`, optional `rationale`) rather than a second
+      approval workflow with an approver/evidence model, which would
+      duplicate Section 15.1's existing Approval engine for a different
+      resource type. Five new routes under `/api/meetings/**`; a new
+      `/meetings` list page (ungated nav item like `/metrics`, computing
+      `clientIds` via `getReadableClientIds` the same way `/calendar`'s
+      page does, plus a new `getWritableClientIds` — the write-side
+      mirror of that helper — for the "+ New meeting" client picker) and
+      `/meetings/[meetingId]` detail page (notes textarea with an
+      explicit "Save" button matching `TaskEstimateForm.tsx`'s
+      explicit-save pattern, a Decisions list, and a Follow-ups list
+      with a "Promote to task →" control that becomes a "✓ Task
+      created" link once promoted); the client 360 page gained a
+      compact "Meetings" card mirroring the Invoices/Expenses cards'
+      shape. New coverage: `meeting-service.integration.test.ts` (26
+      tests, including a dedicated org-wide-vs-per-client permission
+      boundary test — same shape as the one added for project template
+      management — proving a per-client-only `ScopedGrant` holder can
+      create/read that client's meetings but not an internal one, even
+      one that already exists) plus five `*.route.contract.test.ts`
+      files (28 tests). Full suite: 625 tests across 6 workspaces with
+      any tests (up from 571), all passing; clean typecheck/lint/build.
+      Verified live against the real running server and seeded dev
+      database with a real headless-Chromium pass: created a real
+      client-scoped meeting for the seeded "Volt Mobile" client with a
+      real attendee through the actual `/meetings` UI, confirmed it
+      appeared both on `/meetings` and on that client's 360 page's new
+      Meetings card; opened its detail page, saved a real note through
+      the UI, reloaded, and confirmed it persisted (cross-checked via
+      `psql` against the real dev database); added a real decision and a
+      real follow-up (with an owner and a due date), confirmed both
+      rendered; promoted the follow-up to a task against the seeded
+      "FastCharge Launch" project, confirmed the UI switched to "✓ Task
+      created," and confirmed via `psql` that a real `Task` row existed
+      with the right title/assignee/due date and the meeting's
+      `followUps` JSON had `promotedTaskId` set correctly; confirmed the
+      promote button was correctly gone from the UI for the
+      now-promoted follow-up, then proved the server-side guard
+      directly via a real authenticated `curl` request repeating the
+      same promotion and got back a real 400 "This follow-up has
+      already been promoted to a task."; created a second, real internal
+      meeting (no client) through the UI, confirmed it appeared on
+      `/meetings` labeled "Internal" but never appeared on the client
+      360 page. A screenshot of the meeting detail page (its Follow-ups
+      card in particular — owner/due-date/promote-button sharing one
+      row, a layout shape this session has gotten wrong before) was
+      visually inspected and showed a clean layout with no overlapping
+      or unclickable controls. Cleaned up every row this pass created
+      (both meetings, their attendee row, the promoted task, and the 7
+      tied audit/timeline events) and cross-checked via `psql` that dev
+      database row counts matched their exact pre-test values, leaving
+      only the 2 real login audit events the pass legitimately
+      generated as genuine history (same precedent as every prior live
+      smoke test this session). Confirmed no server process was left
+      running afterward. See `docs/specs/meetings.md` for the full
+      design, the schema-fix rationale, and the explicit scope
+      boundary (no transcript capture/AI summary, decisions are not an
+      approval workflow, no memory promotion).
 - [x] Files/assets — upload, download, delete with real validation,
       checksums, and signed URLs on a dev-grade local storage backend
       (see `docs/specs/files-and-assets.md`, ADR-005). Virus/malware

@@ -16,6 +16,8 @@ import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-retrieval-service";
 import { listProjectTemplates } from "@/lib/services/project-template-service";
+import { listMeetingsForClient } from "@/lib/services/meeting-service";
+import { NewMeetingForm } from "../../meetings/NewMeetingForm";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +120,21 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     orderBy: { name: "asc" },
     take: 100,
   });
+  // Section 13's Meetings card — a compact preview matching the
+  // Invoices/Expenses cards' shape, plus an inline "+ New meeting"
+  // shortcut pre-locked to this client (see NewMeetingForm's `lockClient`).
+  const clientMeetings = await listMeetingsForClient({
+    actorUserId: actor.user.id,
+    organizationId: actor.organizationId,
+    clientId: client.id,
+  });
+  const orgMembers = canWrite
+    ? await prisma.membership.findMany({
+        where: { organizationId: actor.organizationId, status: "ACTIVE" },
+        include: { user: true },
+        orderBy: { user: { name: "asc" } },
+      })
+    : [];
 
   return (
     <div className="space-y-8">
@@ -440,6 +457,39 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
                 <li key={n.id}>{n.body}</li>
               ))}
             </ul>
+          )}
+        </Card>
+
+        <Card
+          title="Meetings"
+          action={
+            <Link href="/meetings" className="text-xs text-cedar-700 hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {clientMeetings.length === 0 ? (
+            <p className="mb-3 text-sm text-neutral-400">No meetings logged yet.</p>
+          ) : (
+            <ul className="mb-3 space-y-2 text-sm">
+              {clientMeetings.slice(0, 5).map((m) => (
+                <li key={m.id} className="flex items-center justify-between gap-2">
+                  <Link href={`/meetings/${m.id}`} className="hover:text-cedar-700 hover:underline">
+                    {m.title}
+                  </Link>
+                  <span className="text-xs text-neutral-400">{m.occurredAt.toLocaleDateString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {canWrite && (
+            <NewMeetingForm
+              clients={[{ id: client.id, name: client.name }]}
+              canCreateInternal={false}
+              lockClient
+              defaultClientId={client.id}
+              members={orgMembers.map((m) => ({ id: m.id, name: m.user.name }))}
+            />
           )}
         </Card>
 
