@@ -213,6 +213,16 @@ export async function deleteAsset(params: { actorUserId: string; organizationId:
     clientId: asset.clientId ?? undefined,
   });
 
+  // Section 14: "Prevent orphaned assets through reference tracking."
+  // creative_versions.assetId is ON DELETE SET NULL (migration
+  // 20260906180500), so without this check the delete would succeed but
+  // silently null out a creative version's deliverable with no warning
+  // and no audit trail explaining why it disappeared.
+  const referencingVersion = await prisma.creativeVersion.findFirst({ where: { assetId: asset.id } });
+  if (referencingVersion) {
+    throw new AssetValidationError("This file is attached to a creative version and can't be deleted while it's in use.");
+  }
+
   await storageAdapter.delete(asset.storageKey);
   await prisma.asset.delete({ where: { id: asset.id } });
 

@@ -69,21 +69,51 @@ None instrumented yet.
   the download path's token is bound to one specific `assetId` at
   signing time, so a token for one asset can't be replayed against
   another.
+- **Deleting an asset still attached to a creative version:** rejected
+  with a 409 (`AssetValidationError`), not a silent success. Section 14
+  asks for "prevent orphaned assets through reference tracking" —
+  `creative_versions.assetId` is `ON DELETE SET NULL` at the database
+  level (migration `20260906180500`), so without this check `deleteAsset`
+  would succeed while silently nulling out a creative version's
+  deliverable, with no warning to the caller and no audit trail
+  explaining why it disappeared. `deleteAsset` now checks for a
+  referencing `CreativeVersion` first and refuses with a clear message
+  instead. This covers the concrete, demonstrable failure this codebase
+  actually has (a referenced file silently going missing); it does not
+  cover the inverse — a job that finds and cleans up assets that were
+  uploaded but never referenced anywhere, which needs a real storage
+  lifecycle policy decision (retention window? never delete? archive to
+  cold storage?) that this slice doesn't invent.
 
 ## Acceptance tests
 
-- `apps/web/src/lib/services/asset-service.integration.test.ts` — 6 tests
-  against a real Postgres database and a real (temp-directory) local
-  filesystem adapter: content-type rejection, empty-file rejection, a
-  successful upload with checksum verified against the actual bytes
-  written to disk, permission rejection for a role without
-  `clients:write`, deletion removing both the row and the file, and
-  cross-organization delete rejection.
+- `apps/web/src/lib/services/asset-service.integration.test.ts` — against
+  a real Postgres database and a real (temp-directory) local filesystem
+  adapter: content-type rejection, empty-file rejection, a successful
+  upload with checksum verified against the actual bytes written to disk,
+  permission rejection for a role without `clients:write`, deletion
+  removing both the row and the file, cross-organization delete
+  rejection, and (added for the orphaned-asset-prevention slice) deletion
+  refused while a real `CreativeVersion` references the asset, then
+  succeeding once the reference is cleared.
+- `apps/web/src/app/api/assets/[id]/route.contract.test.ts` — the HTTP
+  layer, including a dedicated 409 case for the same in-use scenario.
 - `apps/web/src/lib/storage/signed-url.test.ts` — 4 fast unit tests
   (fake timers, no I/O) covering token issuance/verification, rejection
   when the token is presented for a different asset id, expiry after the
   requested window, and rejection of malformed/tampered tokens.
-- Manual smoke test performed for this slice: uploaded a `.txt` file
-  (rejected), uploaded a real PNG (accepted), confirmed it appeared on
-  the client page, downloaded it via the signed URL and byte-diffed it
-  against the original, confirmed a forged token returns 403.
+- Manual smoke test performed for the original upload/download slice:
+  uploaded a `.txt` file (rejected), uploaded a real PNG (accepted),
+  confirmed it appeared on the client page, downloaded it via the signed
+  URL and byte-diffed it against the original, confirmed a forged token
+  returns 403.
+- Manual smoke test performed for the orphaned-asset-prevention slice,
+  against a real running production build and the seeded dev database:
+  uploaded a real file via the authenticated API, created a real
+  project/campaign/creative chain, attached the uploaded asset to the
+  creative's version, confirmed `DELETE /api/assets/[id]` returned a real
+  409 with the asset row still present, cleared the reference, confirmed
+  the same request then returned 200 and actually deleted the row. All
+  smoke-test rows (project, campaign, creative, creative version, asset,
+  their audit events, and the upload's timeline event) deleted
+  afterward.

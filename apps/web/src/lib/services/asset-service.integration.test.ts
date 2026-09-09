@@ -22,7 +22,10 @@ import { AuthError } from "./auth-service";
 async function wipeDatabase() {
   await prisma.auditEvent.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
+  await prisma.creativeVersion.deleteMany();
   await prisma.asset.deleteMany();
+  await prisma.creative.deleteMany();
+  await prisma.campaign.deleteMany();
   await prisma.task.deleteMany();
   await prisma.project.deleteMany();
   await prisma.membership.deleteMany();
@@ -154,6 +157,38 @@ describe("uploadAsset / deleteAsset", () => {
 
     expect(await prisma.asset.findUnique({ where: { id: asset.id } })).toBeNull();
     await expect(readFile(path.join(testStorageDir, ".storage", asset.storageKey))).rejects.toThrow();
+  });
+
+  it("refuses to delete an asset still referenced by a creative version", async () => {
+    const { uploadAsset, deleteAsset, AssetValidationError } = await import("./asset-service");
+    const { createCampaign, createCreative } = await import("./creative-service");
+
+    const asset = await uploadAsset({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      clientId,
+      filename: "in-use.png",
+      contentType: "image/png",
+      data: Buffer.from("in-use"),
+    });
+
+    const project = await prisma.project.create({ data: { clientId, name: "Asset Reference Project" } });
+    const campaign = await createCampaign({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "Reference Campaign" });
+    const creative = await createCreative({ actorUserId: ownerUserId, organizationId: orgId, campaignId: campaign.id, type: "image" });
+    const version = await prisma.creativeVersion.findFirstOrThrow({ where: { creativeId: creative.id } });
+    await prisma.creativeVersion.update({ where: { id: version.id }, data: { assetId: asset.id } });
+
+    await expect(
+      deleteAsset({ actorUserId: ownerUserId, organizationId: orgId, assetId: asset.id }),
+    ).rejects.toThrow(AssetValidationError);
+
+    expect(await prisma.asset.findUnique({ where: { id: asset.id } })).not.toBeNull();
+
+    // Detaching the reference (as if the version were re-pointed at a
+    // different file) makes the asset deletable again.
+    await prisma.creativeVersion.update({ where: { id: version.id }, data: { assetId: null } });
+    await deleteAsset({ actorUserId: ownerUserId, organizationId: orgId, assetId: asset.id });
+    expect(await prisma.asset.findUnique({ where: { id: asset.id } })).toBeNull();
   });
 
   it("rejects deleting an asset from a different organization", async () => {

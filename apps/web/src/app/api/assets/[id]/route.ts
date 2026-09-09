@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { AuthorizationError, MfaRequiredError } from "@cedar/auth";
 import { getCurrentActor } from "@/lib/current-actor";
-import { deleteAsset } from "@/lib/services/asset-service";
+import { AssetValidationError, deleteAsset } from "@/lib/services/asset-service";
 import { AuthError } from "@/lib/services/auth-service";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +22,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
         { status: 403 },
       );
     }
+    if (err instanceof AssetValidationError) return NextResponse.json({ error: err.message }, { status: 409 });
     if (err instanceof AuthError) return NextResponse.json({ error: err.message }, { status: 404 });
     throw err;
   }

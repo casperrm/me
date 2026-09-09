@@ -422,7 +422,34 @@ canonical system.
 - [x] Files/assets — upload, download, delete with real validation,
       checksums, and signed URLs on a dev-grade local storage backend
       (see `docs/specs/files-and-assets.md`, ADR-005). Virus/malware
-      scanning is the one explicitly unbuilt piece.
+      scanning is the one explicitly unbuilt piece. Follow-up slice
+      closed a real Section 14 gap found by cross-checking the schema
+      against the service layer: `creative_versions.assetId` is
+      `ON DELETE SET NULL`, so `deleteAsset` previously let a file still
+      attached to a creative version be deleted, silently nulling out
+      that version's deliverable with no warning or audit trail —
+      exactly the "orphaned asset" Section 14's "prevent orphaned assets
+      through reference tracking" asks not to happen. `deleteAsset` now
+      checks for a referencing `CreativeVersion` first and refuses with a
+      409 (a new `AssetValidationError` case, mapped in
+      `/api/assets/[id]/route.ts` before the generic 404
+      `AuthError` branch). The client page's `AssetsList.tsx` "Remove"
+      button previously ignored the fetch response entirely — since a
+      delete could now fail, it gained real error handling (checks
+      `res.ok`, shows the server's message) matching this app's existing
+      inline-error pattern elsewhere. New coverage: extended
+      `asset-service.integration.test.ts` (attach an asset to a real
+      creative version, confirm deletion is refused, detach, confirm it
+      then succeeds) and `route.contract.test.ts` (409 at the HTTP
+      layer). Live-verified against a real running production build:
+      uploaded a real file via the authenticated API, attached it to a
+      real creative version, got a real 409 from a real `DELETE` request
+      with the asset row still present, cleared the reference, got a
+      real 200 with the row actually gone. All smoke-test rows cleaned
+      up. Explicitly not built: the inverse cleanup job (assets uploaded
+      but never referenced anywhere accumulating in storage) — that
+      needs a real lifecycle-policy decision, not just a guard on
+      deletion.
 - [x] Notifications (Section 30) — in-app notification center
       (severity/category/client/resource/action/read-acknowledged
       state), a real fan-out (`notifyClientWriters`) wired into approval

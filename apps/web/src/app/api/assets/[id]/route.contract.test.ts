@@ -138,6 +138,24 @@ describe("DELETE /api/assets/[id]", () => {
     await expect(readFile(path.join(testStorageDir, ".storage", asset.storageKey))).rejects.toThrow();
   });
 
+  it("returns 409 for an asset still attached to a creative version, and doesn't delete it", async () => {
+    const { createCampaign, createCreative } = await import("@/lib/services/creative-service");
+    const asset = await createRealAsset("in-use.png");
+    const project = await prisma.project.create({ data: { clientId, name: "Route Test Reference Project" } });
+    const campaign = await createCampaign({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, name: "Route Test Campaign" });
+    const creative = await createCreative({ actorUserId: ownerUserId, organizationId: orgId, campaignId: campaign.id, type: "image" });
+    const version = await prisma.creativeVersion.findFirstOrThrow({ where: { creativeId: creative.id } });
+    await prisma.creativeVersion.update({ where: { id: version.id }, data: { assetId: asset.id } });
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: ownerUserId }, organizationId: orgId });
+    const res = await DELETE(request(), { params: Promise.resolve({ id: asset.id }) });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body).toEqual({ error: expect.any(String) });
+
+    expect(await prisma.asset.findUnique({ where: { id: asset.id } })).not.toBeNull();
+  });
+
   it("returns 404 for an asset from a different organization", async () => {
     const otherOrg = await prisma.organization.create({ data: { name: "Other Org" } });
     const otherClient = await prisma.client.create({ data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" } });
