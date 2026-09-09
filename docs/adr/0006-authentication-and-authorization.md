@@ -37,9 +37,16 @@ the minimum audit event schema.
   MFA-enabled account on password alone — it returns a short-lived
   (`PendingMfaLogin`, 5 min TTL) pending-login token instead, and only
   `completeMfaLogin` (TOTP or a recovery code) issues the real session.
-  This is per-user opt-in, not yet enforced as mandatory for
-  OWNER/ADMIN roles specifically — see `docs/specs/mfa.md` for that
-  and other residual gaps (WebAuthn, admin-forced enrollment).
+  Enrollment itself is per-user opt-in; two follow-up slices (this
+  session, after this ADR's original date above) added the enforcement
+  half — `Organization.mfaRequiredForPrivilegedRoles` lets an owner/admin
+  make it mandatory for OWNER/ADMIN members, gated both at page
+  navigation (`(app)/layout.tsx` redirect) and, since the second
+  follow-up, at the real API/server-action authorization choke point
+  (`packages/auth`'s `requirePermission`/`requireAnyPermission`, via a
+  new `MfaRequiredError`) — see `docs/specs/mfa.md` for the full design
+  and its own residual gaps (WebAuthn, a per-role-configurable policy
+  beyond the current single org-wide boolean).
 
 **Authorization:**
 - `packages/domain`'s `can()` is the single, pure, framework-free decision
