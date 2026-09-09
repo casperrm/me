@@ -116,3 +116,72 @@ export async function logout() {
   }
   await clearSessionCookie();
 }
+
+/**
+ * Section 23.1: "secure session lifecycle, and device/session revocation."
+ * The `Session` model and packages/auth's revokeSession already existed,
+ * but nothing besides self-logout ever called them — a user had no way to
+ * see what's signed in as them or kick out a device that isn't theirs
+ * anymore. Self-scoped only (every user manages their own sessions), so
+ * no requirePermission/organization check applies here, matching the MFA
+ * setup/disable routes' own established shape for account-security
+ * actions.
+ */
+export async function listMySessions(userId: string, currentSessionId: string) {
+  const sessions = await prisma.session.findMany({
+    where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, ipAddress: true, userAgent: true, createdAt: true, expiresAt: true },
+  });
+
+  return sessions.map((s) => ({ ...s, isCurrent: s.id === currentSessionId }));
+}
+
+export async function revokeMySession(params: { userId: string; membershipId: string; organizationId: string; sessionId: string }) {
+  const session = await prisma.session.findUnique({ where: { id: params.sessionId } });
+  if (!session || session.userId !== params.userId) {
+    throw new AuthError("Session not found.");
+  }
+  if (session.revokedAt) return;
+
+  await revokeSession(params.sessionId);
+
+  await emitAuditEvent({
+    organizationId: params.organizationId,
+    actorType: "USER",
+    actorId: params.membershipId,
+    action: "session.revoked",
+    resourceType: "Session",
+    resourceId: params.sessionId,
+    result: "SUCCESS",
+  });
+}
+
+/**
+ * Excludes the caller's own current session deliberately — unlike
+ * packages/auth's revokeAllSessionsForUser (which revokes everything,
+ * intended for a future forced-logout-everywhere/incident-response use),
+ * this is the self-service "log out my other devices" action and
+ * shouldn't sign the user out of the very session performing it.
+ */
+export async function revokeAllOtherSessions(params: { userId: string; membershipId: string; organizationId: string; currentSessionId: string }) {
+  const { count } = await prisma.session.updateMany({
+    where: { userId: params.userId, revokedAt: null, id: { not: params.currentSessionId } },
+    data: { revokedAt: new Date() },
+  });
+
+  if (count > 0) {
+    await emitAuditEvent({
+      organizationId: params.organizationId,
+      actorType: "USER",
+      actorId: params.membershipId,
+      action: "session.revoked_all_others",
+      resourceType: "User",
+      resourceId: params.userId,
+      result: "SUCCESS",
+      changeSet: { count },
+    });
+  }
+
+  return count;
+}

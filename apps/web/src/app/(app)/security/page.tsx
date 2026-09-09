@@ -2,8 +2,10 @@ import { Card } from "@/components/Card";
 import { requireActor } from "@/lib/guards";
 import { prisma } from "@cedar/db";
 import { isMfaEnrollmentRequired } from "@/lib/services/mfa-policy-service";
+import { listMySessions } from "@/lib/services/auth-service";
 import { MfaEnrollment } from "./MfaEnrollment";
 import { DisableMfaForm } from "./DisableMfaForm";
+import { ActiveSessions } from "./ActiveSessions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function SecurityPage() {
   // redirect adds — this banner has to be correct for a direct visit or
   // bookmark too, not just the redirect path.
   const mfaRequired = await isMfaEnrollmentRequired({ ...actor, user: { mfaEnabled: user.mfaEnabled } });
+  const sessions = await listMySessions(actor.user.id, actor.session.id);
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -29,6 +32,17 @@ export default async function SecurityPage() {
       )}
       <Card title="Two-factor authentication">
         {user.mfaEnabled ? <DisableMfaForm /> : <MfaEnrollment />}
+      </Card>
+      <Card title="Active sessions">
+        <ActiveSessions
+          sessions={sessions.map((s) => ({
+            id: s.id,
+            ipAddress: s.ipAddress,
+            userAgent: s.userAgent,
+            createdAt: s.createdAt.toISOString(),
+            isCurrent: s.isCurrent,
+          }))}
+        />
       </Card>
     </div>
   );

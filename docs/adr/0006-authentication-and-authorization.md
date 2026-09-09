@@ -7,6 +7,10 @@
   requirement. See `docs/specs/rate-limiting.md` for the design and its
   residual gaps (AI/portal endpoints not yet covered, no production
   `X-Forwarded-For` trust boundary pending ADR-010).
+- **Updated:** 2026-09-09 — Section 23.1's "device/session revocation"
+  is now real, not just schema-ready: `/security` gained an "Active
+  sessions" card backed by `listMySessions`/`revokeMySession`/
+  `revokeAllOtherSessions`. See `docs/specs/session-management.md`.
 
 ## Context
 

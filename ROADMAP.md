@@ -175,6 +175,44 @@ deployment.
       webhook URL (120 allowed, 121st real 429). All rate-limit keys, the
       smoke-test connection, and its audit/connection-event rows deleted
       afterward; confirmed no server process left running.
+- [x] Session/device management (Section 23.1) — "secure session
+      lifecycle, and device/session revocation" was schema-ready
+      (`Session.revokedAt`/`ipAddress`/`userAgent`, and
+      `packages/auth`'s `revokeSession`/`revokeAllSessionsForUser`) but
+      not reachable by a user: `revokeSession` was only ever called from
+      `logout()`, and `revokeAllSessionsForUser` had zero callers
+      anywhere. New `listMySessions`/`revokeMySession`/
+      `revokeAllOtherSessions` in `apps/web/src/lib/services/auth-service.ts`
+      — the ownership check inside `revokeMySession` (refusing to revoke a
+      session that isn't the caller's own, 404 not silently ignored) is
+      the one real security boundary in this slice, not just a
+      convenience feature. `revokeAllOtherSessions` is a distinct
+      function from `revokeAllSessionsForUser`, deliberately excluding
+      the caller's own current session so the self-service "log out other
+      devices" action can't sign the user out of the device performing
+      it. Three new API routes under `/api/security/sessions/**`
+      (self-scoped account-security actions, same no-`requirePermission`
+      shape as the existing MFA setup/disable routes) and a new "Active
+      sessions" card on `/security` (`ActiveSessions.tsx`) showing
+      device/IP/sign-in-time with a per-session "Sign out" and a
+      "Sign out all N other device(s)" bulk action. New coverage: 4 tests
+      in `identity.integration.test.ts`, 7 in a new
+      `sessions.route.contract.test.ts`. Full suite: 656 tests across 7
+      workspaces; typecheck/lint/build clean. Live-verified against a
+      real running production build with three simultaneous real browser
+      logins (Playwright/Chromium): confirmed the "this device" label,
+      confirmed a single "Sign out" click really logged out exactly one
+      of the two other real sessions (its next navigation redirected to
+      `/login`), confirmed "Sign out all other devices" then logged out
+      the last one, confirmed the device performing the actions stayed
+      signed in throughout. The live test also surfaced a real, honest
+      finding: this dev database's seeded account has accumulated
+      roughly 90 active sessions from this project's own extensive
+      smoke-testing history, rendered with no pagination — documented in
+      `docs/specs/session-management.md` as a known, deliberately
+      unaddressed gap (a real user's session count stays naturally small;
+      building pagination for a dev-sandbox artifact would be solving the
+      wrong problem).
 
 ## Phase 1 — Agency Core: **complete**
 

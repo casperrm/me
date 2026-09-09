@@ -33,8 +33,8 @@ vi.mock("next/headers", () => {
 });
 
 import { prisma } from "@cedar/db";
-import { isAuthorized } from "@cedar/auth";
-import { AuthError, bootstrapOrganization, login } from "./auth-service";
+import { createSession, isAuthorized, verifySessionToken } from "@cedar/auth";
+import { AuthError, bootstrapOrganization, listMySessions, login, revokeAllOtherSessions, revokeMySession } from "./auth-service";
 import { acceptInvitationFlow, changeMemberRole, createInvitation, grantClientScope, revokeMembership } from "./membership-service";
 import { getSessionToken } from "../session-cookie";
 
@@ -111,6 +111,92 @@ describe("login", () => {
     await login({ email: "owner@test.example", password: "correct-horse-battery" });
     const after = await prisma.auditEvent.count({ where: { action: "session.created" } });
     expect(after).toBe(before + 1);
+  });
+});
+
+describe("session management", () => {
+  it("lists active sessions for a user, flagging which one is current", async () => {
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@test.example" } });
+    const currentToken = await getSessionToken();
+    const currentSession = await verifySessionToken(currentToken!);
+    const { session: otherSession } = await createSession(owner.id, { ipAddress: "10.0.0.5", userAgent: "Other Device" });
+
+    const sessions = await listMySessions(owner.id, currentSession!.id);
+
+    const current = sessions.find((s) => s.id === currentSession!.id);
+    const other = sessions.find((s) => s.id === otherSession.id);
+    expect(current?.isCurrent).toBe(true);
+    expect(other?.isCurrent).toBe(false);
+    expect(other?.ipAddress).toBe("10.0.0.5");
+
+    await prisma.session.delete({ where: { id: otherSession.id } });
+  });
+
+  it("refuses to revoke a session belonging to a different user", async () => {
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@test.example" } });
+    const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { userId: owner.id } });
+    const otherUser = await prisma.user.create({
+      data: { email: "session-victim@test.example", name: "Victim", passwordHash: "irrelevant" },
+    });
+    const { session: victimSession } = await createSession(otherUser.id, {});
+
+    await expect(
+      revokeMySession({
+        userId: owner.id,
+        membershipId: ownerMembership.id,
+        organizationId: ownerMembership.organizationId,
+        sessionId: victimSession.id,
+      }),
+    ).rejects.toThrow(AuthError);
+
+    const reloaded = await prisma.session.findUniqueOrThrow({ where: { id: victimSession.id } });
+    expect(reloaded.revokedAt).toBeNull();
+
+    await prisma.session.delete({ where: { id: victimSession.id } });
+    await prisma.user.delete({ where: { id: otherUser.id } });
+  });
+
+  it("revokes a specific session and records an audit event", async () => {
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@test.example" } });
+    const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { userId: owner.id } });
+    const { session } = await createSession(owner.id, {});
+
+    await revokeMySession({
+      userId: owner.id,
+      membershipId: ownerMembership.id,
+      organizationId: ownerMembership.organizationId,
+      sessionId: session.id,
+    });
+
+    const reloaded = await prisma.session.findUniqueOrThrow({ where: { id: session.id } });
+    expect(reloaded.revokedAt).not.toBeNull();
+
+    const audit = await prisma.auditEvent.findFirst({ where: { action: "session.revoked", resourceId: session.id } });
+    expect(audit).toBeTruthy();
+  });
+
+  it("revokes every session except the current one", async () => {
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@test.example" } });
+    const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { userId: owner.id } });
+    const currentToken = await getSessionToken();
+    const currentSession = await verifySessionToken(currentToken!);
+    await createSession(owner.id, {});
+    await createSession(owner.id, {});
+
+    const count = await revokeAllOtherSessions({
+      userId: owner.id,
+      membershipId: ownerMembership.id,
+      organizationId: ownerMembership.organizationId,
+      currentSessionId: currentSession!.id,
+    });
+    expect(count).toBeGreaterThanOrEqual(2);
+
+    const remaining = await listMySessions(owner.id, currentSession!.id);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].isCurrent).toBe(true);
+
+    const audit = await prisma.auditEvent.findFirst({ where: { action: "session.revoked_all_others", resourceId: owner.id } });
+    expect(audit).toBeTruthy();
   });
 });
 
