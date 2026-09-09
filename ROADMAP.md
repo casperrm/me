@@ -261,9 +261,28 @@ canonical system.
       instantiate form's own "Create" button unclickable, fixed by
       moving the form into the card body and adding `flex-wrap`.
 - [x] Calendar — `/calendar` unifies task/project/invoice/milestone due
-      dates, scoped to what the actor can read. Meetings/shoots/campaign
-      launches will join the same query once those modules exist
-      (Phase 2/4) rather than becoming a parallel calendar.
+      dates, scoped to what the actor can read. A follow-up slice
+      finally joined `Shoot.scheduledAt` and client-scoped
+      `Meeting.occurredAt` — this bullet's own prior wording named both
+      as pending "once those modules exist," and both now do. An
+      internal (clientless) meeting is deliberately excluded: every
+      other event type here has exactly one client, and the calendar is
+      inherently client-centric, so there's no client thread for one to
+      hang off of — it stays visible on `/meetings` instead. Campaign
+      launches remain the one still-pending item (Phase 4, blocked on
+      real ad-platform connectors this environment can't obtain OAuth
+      credentials for). Extended
+      `project-and-calendar.integration.test.ts`'s existing
+      `getUpcomingEvents` tests with a real scheduled shoot and a
+      client-scoped meeting (both asserted present and correctly
+      client-scoped) plus a real internal meeting in the same window
+      (asserted absent from every result, scoped or org-wide) — still 29
+      tests total, since these extend existing assertions rather than
+      adding new cases. Verified live: created a real shoot and a real
+      client-scoped meeting through the running server, confirmed both
+      rendered on `/calendar` with the correct new "Shoot"/"Meeting"
+      badges and client names, then confirmed a real internal meeting
+      created the same way never appeared there.
 - [x] Meetings and Decision Capture (Section 13) — closes a real gap
       this file never named as built: `Meeting`/`MeetingAttendee` were
       scaffolded early alongside the core domain models, but had no

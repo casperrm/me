@@ -40,6 +40,9 @@ async function wipeDatabase() {
   await prisma.taskDependency.deleteMany();
   await prisma.task.deleteMany();
   await prisma.milestone.deleteMany();
+  await prisma.shoot.deleteMany();
+  await prisma.meetingAttendee.deleteMany();
+  await prisma.meeting.deleteMany();
   await prisma.project.deleteMany();
   await prisma.invoice.deleteMany();
   await prisma.scopedGrant.deleteMany();
@@ -534,18 +537,45 @@ describe("getUpcomingEvents", () => {
       dueDate: new Date("2030-06-18"),
     });
 
+    await prisma.shoot.create({
+      data: { clientId: clientAId, title: "Product shoot", scheduledAt: new Date("2030-06-14") },
+    });
+
+    await prisma.meeting.create({
+      data: { organizationId: orgId, clientId: clientAId, title: "Client sync", occurredAt: new Date("2030-06-16") },
+    });
+    // Internal (clientless) meeting in the same window — must never
+    // appear in getUpcomingEvents at all, org-wide or scoped, since the
+    // calendar is inherently client-centric (see calendar-service.ts's
+    // doc comment).
+    await prisma.meeting.create({
+      data: { organizationId: orgId, title: "Internal standup", occurredAt: new Date("2030-06-17") },
+    });
+
     const from = new Date("2030-06-01");
     const to = new Date("2030-06-30");
 
     const allEvents = await getUpcomingEvents({ organizationId: orgId, from, to });
     const types = allEvents.map((e) => e.type).sort();
-    expect(types).toEqual(["content_due", "content_publish", "invoice_due", "milestone_due", "project_due", "task_due"]);
+    expect(types).toEqual([
+      "content_due",
+      "content_publish",
+      "invoice_due",
+      "meeting_occurred",
+      "milestone_due",
+      "project_due",
+      "shoot_scheduled",
+      "task_due",
+    ]);
+    expect(allEvents.some((e) => e.title === "Internal standup")).toBe(false);
     // Sorted chronologically.
     expect(allEvents[0].date.getTime()).toBeLessThanOrEqual(allEvents[allEvents.length - 1].date.getTime());
 
     const scopedToA = await getUpcomingEvents({ organizationId: orgId, clientIds: [clientAId], from, to });
     expect(scopedToA.every((e) => e.clientId === clientAId)).toBe(true);
     expect(scopedToA.some((e) => e.title === projectB.name)).toBe(false);
+    expect(scopedToA.some((e) => e.title === "Product shoot")).toBe(true);
+    expect(scopedToA.some((e) => e.title === "Client sync")).toBe(true);
   });
 
   it("flags a milestone as overdue only when it's past due and not done", async () => {

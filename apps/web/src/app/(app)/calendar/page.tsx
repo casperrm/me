@@ -13,6 +13,8 @@ const TYPE_LABEL: Record<string, string> = {
   content_due: "Content",
   content_publish: "Publish",
   milestone_due: "Milestone",
+  shoot_scheduled: "Shoot",
+  meeting_occurred: "Meeting",
 };
 
 const TYPE_STYLE: Record<string, string> = {
@@ -22,6 +24,8 @@ const TYPE_STYLE: Record<string, string> = {
   content_due: "bg-purple-50 text-purple-700",
   content_publish: "bg-purple-100 text-purple-800",
   milestone_due: "bg-emerald-50 text-emerald-700",
+  shoot_scheduled: "bg-sky-50 text-sky-700",
+  meeting_occurred: "bg-rose-50 text-rose-700",
 };
 
 export default async function CalendarPage() {
@@ -47,7 +51,8 @@ export default async function CalendarPage() {
       <div>
         <h1 className="text-2xl font-semibold">Calendar</h1>
         <p className="text-sm text-neutral-500">
-          Deadlines, invoice due dates, and project milestones over the next 60 days (Section 12).
+          Deadlines, invoice due dates, project milestones, scheduled shoots, and client meetings over the next 60
+          days (Section 12).
         </p>
       </div>
 

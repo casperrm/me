@@ -71,7 +71,16 @@ writer can type "2.5" directly; `null` means "no estimate", not zero.
 
 No new tables for calendar — `getUpcomingEvents` is a read-only query
 across existing tables, per Section 12's "Calendar unifies deadlines..."
-rather than a calendar being its own data store.
+rather than a calendar being its own data store. A follow-up slice
+finally joined `Shoot.scheduledAt` and client-scoped `Meeting.occurredAt`
+into the same query — `calendar-service.ts`'s own doc comment had named
+both as pending "once those modules exist" since the original slice;
+both now do (Shoots had existed for a while, Meetings shipped the same
+day this joined them). An internal (clientless) `Meeting` is
+deliberately excluded from the calendar — every other event type here
+has exactly one client, and the calendar is inherently client-centric,
+so there's no client thread for an internal meeting to hang off of; it
+stays visible on its own `/meetings` list instead.
 
 ## Permissions
 
@@ -422,9 +431,12 @@ feeding the future Client Health Score (Section 4.2).
   cross-organization project rejection, task creation/assignment/status
   transition (asserting the `medium` default priority), invalid-assignee
   rejection, permission rejection for a role without `clients:write`,
-  `getUpcomingEvents` unifying task/project/invoice/milestone due dates
-  within a window with correct client-scoping and chronological
-  ordering (now asserting `milestone_due` is among the returned types),
+  `getUpcomingEvents` unifying task/project/invoice/milestone due dates,
+  scheduled shoots, and client-scoped meetings within a window with
+  correct client-scoping and chronological ordering (asserting all eight
+  event types are among the returned types, and that a real internal
+  (clientless) meeting in the same window never appears at all — see
+  the Calendar section above for why),
   a checklist block (items append in order with the correct `position`,
   a real toggle flips `done` and flips back, delete actually removes the
   row and leaves the others intact, an empty-text add is rejected, a
