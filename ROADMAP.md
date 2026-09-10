@@ -697,6 +697,31 @@ deployment.
       `/memory` with the right client and promoter names, screenshot-
       verified; every fixture row was deleted afterward and counts
       confirmed back to baseline. See `docs/specs/agency-memory.md`.
+- [x] Wired Agency Memory into Cedar Brain's own governed context
+      retrieval (Section 19.2 follow-up). The Knowledge Promotion slice
+      above explicitly left this open — `AgencyMemoryEntry` rows existed
+      but Cedar Brain never read them back. `buildGovernedContext` now
+      also queries the 5 most recent entries **org-wide** (not scoped to
+      the client the context is being built for) and adds an "Agency
+      Memory (curated lessons)" section with a real source count. The
+      org-wide scope is deliberate: Section 6.6 already distinguishes
+      Client Memory (client-specific) from Agency Memory (cross-client,
+      curated), and the explicit-curation step promotion requires is
+      exactly what makes a lesson from one client's meeting safe to
+      surface while building another client's context. 2 new/updated
+      tests in `context-retrieval.integration.test.ts` (11 total, up from
+      9) — including one proving a decision promoted from Client A's own
+      meeting appears in Client B's context even though Client B has no
+      meetings of its own. ADR-008 updated: still no semantic/vector
+      retrieval (structured `findMany` ordered by `promotedAt`, not
+      similarity ranking) — only Section 19.2's promoted-knowledge layer
+      became reachable. Live-verified against a real running production
+      build: promoted a real decision via the real UI, then called the
+      real `POST /api/cedar-brain` endpoint (same session, via
+      Playwright's request context) and confirmed `contextSources`
+      included the real Agency Memory entry; every fixture row (including
+      the `CedarBrainRequest` the API call itself created) was deleted
+      afterward. See `docs/specs/agency-memory.md`'s "Follow-up" section.
 
 ## Phase 1 — Agency Core: **complete**
 

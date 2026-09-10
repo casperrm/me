@@ -1,8 +1,10 @@
 # Cedar Knowledge Promotion v1: Meeting Decision → Agency Memory
 
-- **Status:** Implemented (first cut)
+- **Status:** Implemented (first cut, now including retrieval)
 - **Bible sections:** 19.2 (Knowledge Promotion), 6.6 (Memory Layers —
-  Agency Memory row), 13 (Meetings AI and Decision Capture)
+  Agency Memory row), 13 (Meetings AI and Decision Capture), 19.1
+  (Retrieval Architecture — the follow-up documented at the bottom of
+  this file)
 - **Date:** 2026-09-10
 
 ## What Section 19.2 asks for
@@ -89,6 +91,57 @@ per decision, mirroring `Meeting.followUps`' pre-existing
   source meeting. Its own copy states directly why there's no reset/
   override control: nothing is learned or cached here, so there's nothing
   to reset.
+
+## Follow-up: wired into Cedar Brain's own retrieval
+
+The first cut above built the promotion mechanism but left it
+disconnected from Cedar Brain — `docs/adr/0008-semantic-search-and-vector-implementation.md`'s
+dated log explicitly named this as still open. This follow-up closes it:
+`buildGovernedContext` (`context-retrieval-service.ts`) now also queries
+the 5 most recent `AgencyMemoryEntry` rows **org-wide** (not filtered to
+the client the context is being built for) and adds an "Agency Memory
+(curated lessons)" section plus a `"N Agency Memory entry/entries"`
+source.
+
+The org-wide scope is deliberate, not a bug: Section 6.6's own Memory
+Layers table already distinguishes Client Memory (client-specific) from
+Agency Memory (cross-client, curated). The explicit-curation step
+promotion already requires is exactly what makes it safe to surface a
+lesson originally captured for one client while building context for a
+different one — a human already judged it generalizable at the moment
+they clicked "Promote."
+
+### Tests
+
+`context-retrieval.integration.test.ts` gained a fixture proving this
+concretely: a decision is promoted from **Client A's** own meeting, and a
+new test confirms it appears in **Client B's** governed context — a
+client with no meetings or decisions of its own — while correctly *not*
+counting toward Client B's own "recent meeting decision" source. The
+existing "omits sections with no real data" test for Client B was updated
+to expect the real org-wide Agency Memory source alongside "Client
+record," since that's now genuinely real data for every client. 2 new/
+updated tests; 11 total in the file (up from 9).
+
+### Verification performed
+
+- `npx tsc --noEmit` on `apps/web` and every workspace: clean.
+- `npx eslint`: clean.
+- Full `apps/web` vitest suite: 618/618 passed (95 files).
+- Full monorepo `npm run typecheck --workspaces`: clean on all 15
+  packages.
+- Production build (`next build`): succeeded.
+- Live smoke test against a real running production build: created a
+  real meeting and decision via the real UI, promoted it via the real
+  "Promote to Agency Memory" button, then called the real
+  `POST /api/cedar-brain` endpoint (same authenticated session, via
+  Playwright's request context) for that client with a real prompt.
+  Confirmed the response's `contextSources` included `"1 Agency Memory
+  entry"` alongside the client's other real sources (Client record, Brand
+  DNA, Client Health Score, timeline, the raw meeting decision). All
+  fixture rows — the meeting, its audit events and timeline event, the
+  memory entry, and the `CedarBrainRequest` row the API call itself
+  created — were deleted afterward, with counts confirmed back to zero.
 
 ## New API route
 

@@ -15,6 +15,7 @@ import { buildGovernedContext, getRecentCedarBrainActivityForClient } from "./co
 
 async function wipeDatabase() {
   await prisma.cedarBrainRequest.deleteMany();
+  await prisma.agencyMemoryEntry.deleteMany();
   await prisma.meetingAttendee.deleteMany();
   await prisma.meeting.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
@@ -44,7 +45,9 @@ beforeAll(async () => {
     data: { email: "ctx-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
   });
   ownerUserId = owner.id;
-  await prisma.membership.create({ data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" } });
+  const ownerMembership = await prisma.membership.create({
+    data: { organizationId: org.id, userId: owner.id, role: "OWNER", status: "ACTIVE" },
+  });
 
   const clientA = await prisma.client.create({
     data: { organizationId: org.id, name: "Client A", companyName: "A Inc", services: JSON.stringify(["social"]) },
@@ -77,16 +80,42 @@ beforeAll(async () => {
   // Decision. One meeting with a real decision (must appear in context),
   // one with none (must contribute nothing — no fabricated "no decisions"
   // line for it).
-  await prisma.meeting.create({
+  const q1KickoffMeeting = await prisma.meeting.create({
     data: {
       organizationId: org.id,
       clientId: clientAId,
       title: "Q1 kickoff",
-      decisions: JSON.stringify([{ id: "d1", text: "Launch on the 15th, not the 1st.", rationale: null, createdAt: new Date().toISOString() }]),
+      decisions: JSON.stringify([
+        { id: "d1", text: "Launch on the 15th, not the 1st.", rationale: null, createdAt: new Date().toISOString(), promotedToMemoryId: null },
+      ]),
     },
   });
   await prisma.meeting.create({
     data: { organizationId: org.id, clientId: clientAId, title: "Status check-in, no decisions made" },
+  });
+
+  // Section 19.2's Knowledge Promotion, closing the loop into retrieval: a
+  // lesson explicitly curated from CLIENT A's own meeting decision must
+  // still appear in CLIENT B's governed context, even though Client B has
+  // no meetings/decisions of its own — Agency Memory is org-wide by
+  // design, unlike the client-specific decisions/timeline sections above.
+  const promotedEntry = await prisma.agencyMemoryEntry.create({
+    data: {
+      organizationId: org.id,
+      content: "Launch on the 15th, not the 1st.",
+      sourceMeetingId: q1KickoffMeeting.id,
+      sourceDecisionId: "d1",
+      clientId: clientAId,
+      promotedByMembershipId: ownerMembership.id,
+    },
+  });
+  await prisma.meeting.update({
+    where: { id: q1KickoffMeeting.id },
+    data: {
+      decisions: JSON.stringify([
+        { id: "d1", text: "Launch on the 15th, not the 1st.", rationale: null, createdAt: new Date().toISOString(), promotedToMemoryId: promotedEntry.id },
+      ]),
+    },
   });
 
   // A prior successful Cedar Brain request for Client A — real material
@@ -179,6 +208,11 @@ describe("buildGovernedContext", () => {
     expect(context.sources.some((s) => s.includes("timeline event"))).toBe(true);
     expect(context.sources.some((s) => s.includes("prior Cedar Brain answer"))).toBe(true);
     expect(context.sources).toContain("1 recent meeting decision(s)");
+    // Section 19.2: the curated Agency Memory entry is a distinct source
+    // from the raw meeting decision above, even though its content is the
+    // same real decision text.
+    expect(context.text).toContain("Agency Memory (curated lessons):");
+    expect(context.sources).toContain("1 Agency Memory entry");
   });
 
   it("includes a decision from every meeting that recorded one, but contributes nothing for a meeting with none", async () => {
@@ -207,7 +241,23 @@ describe("buildGovernedContext", () => {
     const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientBId });
     expect(context.text).toContain("Client B");
     expect(context.text).not.toContain("Brand DNA");
-    expect(context.sources).toEqual(["Client record"]);
+    // Client B genuinely has no health score, timeline, meetings, or prior
+    // Cedar Brain activity of its own — only "Client record" and the
+    // org-wide Agency Memory entry (proven separately below) are real.
+    expect(context.sources).toEqual(["Client record", "1 Agency Memory entry"]);
+  });
+
+  it("surfaces a curated Agency Memory entry across client boundaries, even for a client with no meetings of its own", async () => {
+    const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientBId });
+    // This entry was promoted from CLIENT A's own meeting decision — its
+    // appearance here proves Agency Memory reads org-wide, not scoped to
+    // the client the context is being built for.
+    expect(context.text).toContain("Agency Memory (curated lessons):");
+    expect(context.text).toContain("Launch on the 15th, not the 1st.");
+    expect(context.sources).toContain("1 Agency Memory entry");
+    // Client B has no meetings of its own, so this must NOT also appear
+    // as a "recent meeting decision" source for Client B's own context.
+    expect(context.sources.some((s) => s.includes("recent meeting decision"))).toBe(false);
   });
 
   it("denies retrieval for a client the actor cannot read", async () => {

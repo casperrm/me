@@ -6,6 +6,7 @@ import type { MeetingDecision } from "./meeting-service";
 const RECENT_TIMELINE_LIMIT = 3;
 const RECENT_MEETINGS_LIMIT = 3;
 const RECENT_CEDAR_BRAIN_LIMIT = 3;
+const RECENT_AGENCY_MEMORY_LIMIT = 5;
 const SUMMARY_EXCERPT_LENGTH = 150;
 const MAX_CONTEXT_CHARS = 2000; // bounded, per Section 34's "bounded metadata" principle
 
@@ -106,6 +107,13 @@ export async function getRecentCedarBrainActivityForClient(
  * bounded relational hop through data that already exists, the same
  * pattern as every other section below.
  *
+ * Also Section 19.2's Knowledge Promotion, closing the gap
+ * `docs/adr/0008-semantic-search-and-vector-implementation.md` named as
+ * still open when `AgencyMemoryEntry` first landed: promoted entries are
+ * now retrieved here too, org-wide (not scoped to `params.clientId`) —
+ * see the inline comment below for why that scope is deliberate, not a
+ * bug.
+ *
  * Authorization happens BEFORE any data is touched, matching the lifecycle
  * order verbatim: an actor who can't read this client gets AuthError, not
  * a context string that happens to omit sensitive fields.
@@ -181,6 +189,26 @@ export async function buildGovernedContext(params: {
   if (decisionLines.length > 0) {
     sections.push(`Recent decisions from meetings:\n${decisionLines.join("\n")}`);
     sources.push(`${decisionLines.length} recent meeting decision(s)`);
+  }
+
+  // Section 19.2/6.6's Agency Memory: curated, cross-client institutional
+  // knowledge. Org-wide, not scoped to this client, by design — the whole
+  // point of promoting a decision to Agency Memory (see
+  // docs/specs/agency-memory.md) is that a human already explicitly
+  // judged it generalizable beyond the client it originated from, unlike
+  // the client-specific decisions/timeline sections above. That same
+  // explicit-curation step is also what makes it safe to surface across
+  // client boundaries — nothing here was written automatically.
+  const agencyMemoryEntries = await prisma.agencyMemoryEntry.findMany({
+    where: { organizationId: params.organizationId },
+    orderBy: { promotedAt: "desc" },
+    take: RECENT_AGENCY_MEMORY_LIMIT,
+    select: { content: true },
+  });
+  if (agencyMemoryEntries.length > 0) {
+    const memoryLines = agencyMemoryEntries.map((e) => `- ${e.content}`);
+    sections.push(`Agency Memory (curated lessons):\n${memoryLines.join("\n")}`);
+    sources.push(`${agencyMemoryEntries.length} Agency Memory entr${agencyMemoryEntries.length === 1 ? "y" : "ies"}`);
   }
 
   // Only successful, never-flagged prior answers are worth feeding back

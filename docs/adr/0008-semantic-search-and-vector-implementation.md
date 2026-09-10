@@ -21,6 +21,15 @@
   see promoted knowledge; that wiring, plus real semantic/vector
   retrieval, both remain future work this decision still defers. See
   `docs/specs/agency-memory.md`.
+- **Updated:** 2026-09-10 — the retrieval gap the entry immediately above
+  named is now closed: `buildGovernedContext` queries the 5 most recent
+  `AgencyMemoryEntry` rows org-wide and adds them as a real, sourced
+  context section. Still structured queries only (a `findMany` ordered by
+  `promotedAt`, not a similarity/relevance ranking) — this decision's core
+  scope (no semantic/vector retrieval, no graph expansion) is still
+  unchanged; only Section 19.2's own promoted-knowledge layer is now
+  actually reachable by Cedar Brain. See
+  `docs/specs/agency-memory.md`'s "Follow-up" section.
 
 ## Context
 
