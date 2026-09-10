@@ -11,6 +11,7 @@ import {
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
 import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { getPromptSnapshots } from "@/lib/services/prompt-registry-service";
+import { getInnovationBacklog } from "@/lib/services/innovation-lab-service";
 import { MODEL_CATALOG } from "@/lib/model-catalog";
 import { RunEvalButton } from "./RunEvalButton";
 import { SetAiBudgetForm } from "./SetAiBudgetForm";
@@ -25,7 +26,7 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage, workerJobFailures, workflowRuns] =
+  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage, workerJobFailures, workflowRuns, innovationBacklog] =
     await Promise.all([
       getAiSupervisorSummary(actor.organizationId),
       getRecentEvalRuns(),
@@ -35,6 +36,7 @@ export default async function AiSupervisorPage() {
       getModelUsageBreakdown(actor.organizationId),
       listRecentWorkerJobFailures(),
       listRecentWorkflowRuns(),
+      getInnovationBacklog(actor.organizationId),
     ]);
   const latestEvalRun = evalRuns[0];
 
@@ -49,6 +51,48 @@ export default async function AiSupervisorPage() {
           exists yet to count.
         </p>
       </div>
+
+      <Card
+        title="Improvement backlog"
+        action={<span className="text-xs text-neutral-400">Cedar Innovation Lab (Section 21) / Cedar Intelligence (Section 6.4)</span>}
+      >
+        <p className="mb-3 text-xs text-neutral-500">
+          Real telemetry from every card below, synthesized into a prioritized list — same evidence Section 20&apos;s
+          own &quot;System improvement&quot; decision type names: usage telemetry, error rate, agent evaluation, and
+          user friction. No effort, dependency, or experiment fields — this system has no real source for any of
+          those yet, so none are fabricated. No self-deployment: nothing here acts automatically.
+        </p>
+        {innovationBacklog.length === 0 ? (
+          <p className="text-sm text-neutral-400">No improvement candidates identified from current telemetry.</p>
+        ) : (
+          <ul className="space-y-2">
+            {innovationBacklog.map((item) => (
+              <li key={item.title} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{item.title}</span>
+                  <span
+                    className={
+                      item.severity === "high"
+                        ? "rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                        : item.severity === "medium"
+                          ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                          : "rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600"
+                    }
+                  >
+                    {item.severity}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-neutral-400">{item.affectedModule}</div>
+                <ul className="mt-2 space-y-1 text-xs text-neutral-600">
+                  {item.evidence.map((line) => (
+                    <li key={line}>- {line}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Total requests" value={String(summary.totalRequests)} />

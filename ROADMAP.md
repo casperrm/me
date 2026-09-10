@@ -603,6 +603,34 @@ deployment.
       confirmed the correct "At risk" badge and real evidence/risk lines
       rendered, screenshot-verified. See
       `docs/specs/cedar-decision-engine.md`.
+- [x] Cedar Innovation Lab v1: telemetry-driven improvement backlog
+      (Section 21 / 6.4, and Section 20's "System improvement" decision
+      type). Every signal Section 21/6.4 ask a system-level advisory layer
+      to monitor — usage telemetry, error rate, agent evaluation, user
+      friction — already existed as real recorded data (AI Supervisor
+      telemetry, the AI Eval Harness, WorkerJobFailure) and was already
+      individually visible as separate cards on `/command/supervisor`;
+      nothing combined them into the prioritized backlog Section 21 names.
+      New `getInnovationBacklog()` turns four real thresholds (Cedar Brain
+      success rate, the latest eval run's regressions, the
+      flagged-incorrect rate, and a job failing repeatedly within a 7-day
+      window) into severity-ranked `{ title, affectedModule, severity,
+      evidence }` items, empty when nothing is concerning. Explicitly not
+      built: Section 21's `impact`/`effort`/`dependencies`/`suggested
+      experiment` fields — no real data source exists for any of those,
+      so none are fabricated, same discipline as the Decision Engine's own
+      omitted "alternatives"/"expected impact." No self-deployment is
+      structural: no write path exists from a backlog item to any change.
+      New "Improvement backlog" card on `/command/supervisor`, placed
+      first as the actionable summary above the raw telemetry cards it
+      reads. New `innovation-lab.integration.test.ts` (7 tests) against
+      real Postgres. Live-verified against a real running production
+      build: confirmed the honest empty state first against the real dev
+      database's zero telemetry rows, then inserted realistic fixture
+      telemetry directly via Postgres and confirmed the correct
+      high/medium-severity items rendered with real evidence,
+      screenshot-verified; fixture rows deleted and counts confirmed back
+      to zero afterward. See `docs/specs/cedar-innovation-lab.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
