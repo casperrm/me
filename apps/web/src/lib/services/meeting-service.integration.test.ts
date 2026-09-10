@@ -187,6 +187,20 @@ describe("updateMeetingNotes", () => {
     expect(audit).toBeTruthy();
   });
 
+  it("bumps updatedAt on a real notes edit (Section 27.1)", async () => {
+    const meeting = await createMeeting({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientAId, title: "updatedAt meeting" });
+    const initialUpdatedAt = meeting.updatedAt.getTime();
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const updated = await updateMeetingNotes({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      meetingId: meeting.id,
+      notes: "A real edit.",
+    });
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(initialUpdatedAt);
+  });
+
   it("rejects a meeting from a different organization", async () => {
     const otherOrg = await prisma.organization.create({ data: { name: "Meeting Other Org (notes)" } });
     const otherOwner = await prisma.user.create({

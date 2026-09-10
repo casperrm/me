@@ -292,6 +292,42 @@ deployment.
       color-contrast/screen-reader-output review — see
       `docs/specs/command-palette-accessibility.md` for the full scope
       boundary.
+- [x] `updatedAt` on collaboratively-edited records (Section 27.1:
+      "created_at, updated_at... where meaningful"). A survey of all 46
+      models in `packages/db/prisma/schema.prisma` found only 10 had
+      `updatedAt` at all. Added it to the 3 that are genuinely mutated in
+      place by multiple team members with previously no way to know
+      when: `Task` (status/priority/assignee/due date), `Creative`
+      (approval-lifecycle status transitions), `Meeting` (notes edited
+      in place). Deliberately did NOT add it to the other 33 —
+      append-only audit/telemetry rows, version-history records (a new
+      row is created rather than an old one edited), and short-lived
+      security artifacts that already track their own specific
+      lifecycle transitions explicitly are all correctly immutable-or-
+      already-tracked, not gaps; genuinely-immutable-once-created
+      records with no edit feature (`TaskComment`, `Note`, `Expense`)
+      were deliberately skipped too, to avoid repeating a real mistake
+      caught while scoping this slice: `Invoice.currency` is a field
+      that's set once and never read anywhere in the app (confirmed via
+      grep) — a write-only column nobody benefits from. Surfaced in the
+      UI so this field is provably real: "Last updated" text on the
+      Creative and Meeting detail pages, a `title` tooltip on task rows
+      (chosen to avoid cluttering an already-dense list). Migration
+      backfills existing rows to migration time (their real prior update
+      time isn't recoverable) via a temporary DB default, immediately
+      dropped in a follow-up migration to match Prisma's own
+      `@updatedAt` semantics. New coverage: one test each in
+      `project-and-calendar.integration.test.ts`,
+      `creative-service.integration.test.ts`, and
+      `meeting-service.integration.test.ts`, each capturing the
+      post-creation timestamp and asserting a real mutation bumps it.
+      Full suite: 667 tests across 7 workspaces, all passing.
+      Live-verified against a real running production build: changed a
+      real task's status through the actual UI dropdown, confirmed via
+      `psql` that both `status` and `updatedAt` changed, confirmed via a
+      real headless-Chromium check that the task row's tooltip reflected
+      the new, real timestamp. All smoke-test rows cleaned up. See
+      `docs/specs/data-model-timestamps.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

@@ -159,7 +159,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <li key={task.id} className="border-b border-neutral-50 pb-2 text-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className={task.status === "done" ? "text-neutral-400 line-through" : ""}>{task.title}</span>
+                    <span
+                      className={task.status === "done" ? "text-neutral-400 line-through" : ""}
+                      title={`Last updated ${task.updatedAt.toLocaleString()}`}
+                    >
+                      {task.title}
+                    </span>
                     {task.assignee && <span className="ml-2 text-xs text-neutral-400">— {task.assignee.user.name}</span>}
                     {task.dueDate && <span className="ml-2 text-xs text-neutral-400">due {task.dueDate.toLocaleDateString()}</span>}
                   </div>

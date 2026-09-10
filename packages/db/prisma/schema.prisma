@@ -444,6 +444,17 @@ model Milestone {
   @@map("milestones")
 }
 
+// updatedAt added here (and on Creative, Meeting) per Section 27.1
+// ("created_at, updated_at... where meaningful") — these three are
+// genuinely mutated in place by multiple team members (status/assignee/
+// priority changes, approval-status transitions, notes edits) with
+// previously no way to know when. Most other models in this schema
+// deliberately don't have it: append-only audit/telemetry rows
+// (AuditEvent, CedarBrainRequest, WorkerJobFailure), version-history
+// records where a new row is created rather than an old one edited
+// (CreativeVersion, BrandProfileVersion), and short-lived security
+// artifacts (Session, Invitation) are all correctly immutable-or-
+// state-tracked-explicitly already, not gaps.
 model Task {
   id            String      @id @default(uuid())
   projectId     String
@@ -456,6 +467,7 @@ model Task {
   dueDate       DateTime?
   estimateHours Float?
   createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   checklistItems TaskChecklistItem[]
   comments       TaskComment[]
@@ -587,6 +599,7 @@ model Creative {
   status         String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED
   currentVersion Int      @default(1)
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   versions             CreativeVersion[]
   assets               Asset[]
@@ -900,6 +913,7 @@ model Meeting {
   decisions      String? // JSON array: { id, text, rationale, createdAt }[]
   followUps      String? // JSON array: { id, text, ownerMembershipId, dueDate, promotedTaskId }[]
   occurredAt     DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   attendees MeetingAttendee[]
 

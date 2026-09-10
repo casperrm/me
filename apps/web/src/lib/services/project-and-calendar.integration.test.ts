@@ -130,6 +130,16 @@ describe("createProject / createTask / setTaskStatus", () => {
     expect(completedEventCount).toBe(1);
   });
 
+  it("bumps updatedAt on a real status transition (Section 27.1)", async () => {
+    const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
+    const task = await createTask({ actorUserId: ownerUserId, organizationId: orgId, projectId: project.id, title: "Track updatedAt" });
+    const createdUpdatedAt = task.updatedAt.getTime();
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const updated = await setTaskStatus({ actorUserId: ownerUserId, organizationId: orgId, taskId: task.id, status: "in_progress" });
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(createdUpdatedAt);
+  });
+
   it("creates a task with an explicit priority and allows changing it", async () => {
     const project = await prisma.project.findFirstOrThrow({ where: { clientId: clientAId } });
     const task = await createTask({

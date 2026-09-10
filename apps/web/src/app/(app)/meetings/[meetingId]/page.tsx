@@ -132,6 +132,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
             <>Internal meeting · {meeting.occurredAt.toLocaleDateString()}</>
           )}
         </p>
+        <p className="mt-1 text-xs text-neutral-400">Last updated {meeting.updatedAt.toLocaleString()}</p>
       </div>
 
       <Card title="Attendees">

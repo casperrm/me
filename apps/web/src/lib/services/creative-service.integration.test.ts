@@ -100,11 +100,15 @@ describe("full campaign -> creative -> approval lifecycle", () => {
   it("moves through requested -> changes_requested -> new version -> approved", async () => {
     const creative = await prisma.creative.findFirstOrThrow({ where: { campaign: { projectId } } });
     const v1 = await prisma.creativeVersion.findFirstOrThrow({ where: { creativeId: creative.id, version: 1 } });
+    const initialUpdatedAt = creative.updatedAt.getTime();
 
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await requestApproval({ actorUserId: ownerUserId, organizationId: orgId, creativeVersionId: v1.id, comment: "please review" });
 
     let updated = await prisma.creative.findUniqueOrThrow({ where: { id: creative.id } });
     expect(updated.status).toBe("PENDING_APPROVAL");
+    // Section 27.1: a real status transition bumps updatedAt, not just createdAt.
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(initialUpdatedAt);
 
     await recordApprovalDecision({
       actorUserId: ownerUserId,

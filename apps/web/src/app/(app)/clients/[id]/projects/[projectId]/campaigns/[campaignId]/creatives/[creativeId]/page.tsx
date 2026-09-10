@@ -116,6 +116,7 @@ export default async function CreativeDetailPage({
           </h1>
           <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLE[creative.status] ?? ""}`}>{creative.status}</span>
         </div>
+        <p className="mt-1 text-xs text-neutral-400">Last updated {creative.updatedAt.toLocaleString()}</p>
       </div>
 
       {canWrite && currentVersion && (
