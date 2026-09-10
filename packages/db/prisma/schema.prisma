@@ -1106,3 +1106,24 @@ model ConnectionEvent {
   @@index([connectionId, receivedAt])
   @@map("connection_events")
 }
+
+// Section 18.2: "durable job execution with retries and dead-letter
+// handling." Before this, a scheduled apps/worker job (escalations,
+// health-scores, ai-eval) had no retry config at all — BullMQ's default
+// is a single attempt — and a failure only ever reached
+// logger.error/stdout, with nothing persisted once BullMQ's own
+// removeOnFail cap (10) rolled the record off. This is the dead-letter
+// record: one row per job execution that exhausted every retry attempt,
+// deployment-wide like AiEvalRun (not tenant data — no organizationId).
+// See docs/specs/worker-job-reliability.md.
+model WorkerJobFailure {
+  id           String   @id @default(uuid())
+  queueName    String
+  jobName      String
+  errorMessage String
+  attemptsMade Int
+  occurredAt   DateTime @default(now())
+
+  @@index([queueName, occurredAt])
+  @@map("worker_job_failures")
+}

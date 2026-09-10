@@ -213,6 +213,43 @@ deployment.
       unaddressed gap (a real user's session count stays naturally small;
       building pagination for a dev-sandbox artifact would be solving the
       wrong problem).
+- [x] Worker job retries + dead-letter handling (Section 18.2) — every
+      scheduled `apps/worker` job (escalations, health scores, AI eval)
+      had zero retry configuration (BullMQ's default is one attempt),
+      and a failure only ever reached `logger.error`, with nothing
+      persisted once BullMQ's own `removeOnFail: 10` cap rolled the
+      record off. Added `attempts: 3` + exponential backoff to each
+      scheduled job; new `WorkerJobFailure` model (deployment-wide, not
+      tenant data — same precedent as `AiEvalRun`) persisted only once
+      every retry attempt is exhausted, via new
+      `apps/worker/src/dead-letter.ts` (`isFinalAttempt`/
+      `recordJobFailureIfFinal`) — extracted out of `index.ts`
+      specifically so this logic has direct test coverage, since
+      `index.ts` self-executes `main()` on import and can't be tested by
+      importing it directly. New "Background job health" card on
+      `/command/supervisor` (same `ai:supervise` gate as the rest of
+      that page — reused rather than inventing a new permission for a
+      deployment-wide operational signal this app has no other surface
+      for). New coverage:
+      `apps/worker/src/dead-letter.integration.test.ts` (2 tests against
+      a real, throwaway BullMQ queue/worker on real Redis — a job that
+      fails once then succeeds never gets a dead-letter row; a job that
+      exhausts every attempt gets exactly one, with the real error and
+      attempt count); 2 new tests in
+      `ai-supervisor.integration.test.ts` for the listing function. Full
+      suite: 664 tests across 7 workspaces, all passing; monorepo
+      typecheck/lint/build clean. Live-verified: started the real
+      `apps/worker` process and confirmed clean startup with the new
+      retry options (no regression across all four jobs); inserted one
+      representative dead-letter row via `psql` and confirmed via a real
+      headless-Chromium screenshot that the new card renders the real
+      queue/job name, attempt count, and error message. Explicitly not
+      built: alerting/paging on a dead-letter row (no outbound
+      notification channel exists for deployment-wide, non-tenant
+      signals), a retry/replay UI, and per-job partial-progress resume
+      (each retry re-runs the whole idempotent scan from scratch, which
+      is correct for these particular jobs, not a gap). See
+      `docs/specs/worker-job-reliability.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

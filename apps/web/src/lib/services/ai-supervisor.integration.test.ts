@@ -11,10 +11,11 @@ vi.mock("next/headers", () => ({
 
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
-import { flagCedarBrainRequest, getAiSupervisorSummary } from "./ai-supervisor-service";
+import { flagCedarBrainRequest, getAiSupervisorSummary, listRecentWorkerJobFailures } from "./ai-supervisor-service";
 
 async function wipeDatabase() {
   await prisma.cedarBrainRequest.deleteMany();
+  await prisma.workerJobFailure.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
@@ -156,5 +157,33 @@ describe("flagCedarBrainRequest", () => {
     await expect(
       flagCedarBrainRequest({ actorUserId: ownerUserId, organizationId: orgId, requestId: otherRequest.id }),
     ).rejects.toThrow(AuthError);
+  });
+});
+
+describe("listRecentWorkerJobFailures", () => {
+  it("returns real dead-letter rows, newest first, deployment-wide (not organization-scoped)", async () => {
+    await prisma.workerJobFailure.deleteMany();
+
+    const older = await prisma.workerJobFailure.create({
+      data: { queueName: "escalations", jobName: "scan", errorMessage: "db timeout", attemptsMade: 3, occurredAt: new Date(Date.now() - 60000) },
+    });
+    const newer = await prisma.workerJobFailure.create({
+      data: { queueName: "health-scores", jobName: "score", errorMessage: "unexpected null", attemptsMade: 3 },
+    });
+
+    const failures = await listRecentWorkerJobFailures();
+    expect(failures.map((f) => f.id)).toEqual([newer.id, older.id]);
+  });
+
+  it("respects the limit parameter", async () => {
+    await prisma.workerJobFailure.deleteMany();
+    for (let i = 0; i < 5; i++) {
+      await prisma.workerJobFailure.create({
+        data: { queueName: "ai-eval", jobName: "eval", errorMessage: `failure ${i}`, attemptsMade: 3 },
+      });
+    }
+
+    const failures = await listRecentWorkerJobFailures(2);
+    expect(failures).toHaveLength(2);
   });
 });

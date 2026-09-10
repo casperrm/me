@@ -9,6 +9,14 @@
   This is `apps/web`'s first direct Redis use — previously only
   `apps/worker`'s BullMQ queues touched Redis. See
   `docs/specs/rate-limiting.md`.
+- **Updated:** 2026-09-10 — closed a real Section 18.2 gap: every
+  scheduled job had zero retry configuration (BullMQ's default is a
+  single attempt) and a failure only ever reached `logger.error`, with
+  nothing persisted once BullMQ's own `removeOnFail: 10` cap rolled a
+  record off. Added `attempts: 3` + exponential backoff to each
+  scheduled job and a new `WorkerJobFailure` dead-letter record,
+  persisted only once every retry attempt is exhausted. See
+  `docs/specs/worker-job-reliability.md`.
 
 ## Context
 

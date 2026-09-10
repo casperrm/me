@@ -5,11 +5,19 @@ import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 import { loadEnv } from "@cedar/config";
 import { logger } from "@cedar/observability";
+import { recordJobFailureIfFinal } from "./dead-letter";
 import { runEscalationScan } from "./jobs/escalations";
 import { runHealthScoreJob } from "./jobs/health-scores";
 import { runAiEvalJob } from "./jobs/ai-eval";
 
 const env = loadEnv();
+
+// Section 18.2: "durable job execution with retries and dead-letter
+// handling." Every scheduled job below gets 3 attempts with exponential
+// backoff — a transient failure (a DB hiccup, a momentary connection
+// drop) shouldn't need to wait for the next scheduled run just because
+// the first attempt lost a race.
+const JOB_RETRY_OPTS = { attempts: 3, backoff: { type: "exponential" as const, delay: 5000 } };
 
 const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
@@ -83,6 +91,7 @@ for (const [name, worker] of [
 ] as const) {
   worker.on("failed", (job, err) => {
     logger.error(`${name} job failed`, { jobId: job?.id, error: String(err) });
+    if (job) void recordJobFailureIfFinal(name, job, err);
   });
 }
 
@@ -94,12 +103,12 @@ async function main() {
     // `immediately: true` runs one scan right away on every worker start
     // (not just on the hourly cadence) — a restart shouldn't leave
     // already-overdue items waiting up to an hour for their first check.
-    { repeat: { every: ESCALATION_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10 },
+    { repeat: { every: ESCALATION_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10, ...JOB_RETRY_OPTS },
   );
   await healthScoresQueue.add(
     "score",
     {},
-    { repeat: { every: HEALTH_SCORE_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10 },
+    { repeat: { every: HEALTH_SCORE_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10, ...JOB_RETRY_OPTS },
   );
   await aiEvalQueue.add(
     "eval",
@@ -107,7 +116,7 @@ async function main() {
     // `immediately: true` for the same reason as the other scheduled
     // jobs: a restart shouldn't leave a routing regression uncaught for
     // up to a day waiting on the next scheduled run.
-    { repeat: { every: AI_EVAL_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10 },
+    { repeat: { every: AI_EVAL_INTERVAL_MS, immediately: true }, removeOnComplete: 10, removeOnFail: 10, ...JOB_RETRY_OPTS },
   );
   logger.info("apps/worker started", {
     env: env.NODE_ENV,

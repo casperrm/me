@@ -156,3 +156,21 @@ export async function flagCedarBrainRequest(params: {
     data: { flaggedIncorrect: true, flaggedAt: new Date(), flaggedByMembershipId: membership.id },
   });
 }
+
+const RECENT_WORKER_FAILURES_LIMIT = 20;
+
+/**
+ * Section 18.2's dead-letter visibility, surfaced here rather than a
+ * dedicated ops page — every apps/worker job today (escalations, health
+ * scores, the AI eval harness) is already AI/business-operational
+ * territory this same audience (ai:supervise) already reviews, and this
+ * app doesn't have a general system-health surface to invent one for.
+ * Deployment-wide like AiEvalRun/WorkerJobFailure itself — not
+ * organization-scoped, since a scheduled job isn't tied to one tenant.
+ */
+export async function listRecentWorkerJobFailures(limit: number = RECENT_WORKER_FAILURES_LIMIT) {
+  return prisma.workerJobFailure.findMany({
+    orderBy: { occurredAt: "desc" },
+    take: limit,
+  });
+}

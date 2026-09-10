@@ -2,7 +2,7 @@ import { isAuthorized } from "@cedar/auth";
 import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
-import { getAiSupervisorSummary, getModelUsageBreakdown } from "@/lib/services/ai-supervisor-service";
+import { getAiSupervisorSummary, getModelUsageBreakdown, listRecentWorkerJobFailures } from "@/lib/services/ai-supervisor-service";
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
 import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { getPromptSnapshots } from "@/lib/services/prompt-registry-service";
@@ -20,13 +20,14 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage] = await Promise.all([
+  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage, workerJobFailures] = await Promise.all([
     getAiSupervisorSummary(actor.organizationId),
     getRecentEvalRuns(),
     getAiBudgetStatus(actor.organizationId),
     isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
     getPromptSnapshots(),
     getModelUsageBreakdown(actor.organizationId),
+    listRecentWorkerJobFailures(),
   ]);
   const latestEvalRun = evalRuns[0];
 
@@ -238,6 +239,32 @@ export default async function AiSupervisorPage() {
             </ul>
           )}
         </div>
+      </Card>
+
+      <Card title="Background job health">
+        <p className="mb-3 text-xs text-neutral-500">
+          Section 18.2&apos;s dead-letter visibility: every scheduled apps/worker job (escalations, health scores,
+          the AI eval harness) now retries up to 3 times with backoff before a run counts as failed. This lists
+          runs that exhausted every retry, deployment-wide (not scoped to this organization, since a scheduled job
+          isn&apos;t tied to one tenant).
+        </p>
+        {workerJobFailures.length === 0 ? (
+          <p className="text-sm text-neutral-400">No job has exhausted its retries.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {workerJobFailures.map((failure) => (
+              <li key={failure.id} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex items-center justify-between text-xs text-neutral-400">
+                  <span>
+                    {failure.queueName} / {failure.jobName} — {failure.attemptsMade} attempt(s)
+                  </span>
+                  <span>{failure.occurredAt.toLocaleString()}</span>
+                </div>
+                <div className="mt-1 text-xs text-red-600">{failure.errorMessage}</div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );
