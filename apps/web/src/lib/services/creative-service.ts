@@ -228,6 +228,13 @@ export async function requestApproval(params: {
     resourceType: "CreativeVersion",
     resourceId: version.id,
     clientId,
+    // A CreativeVersion can go through more than one approval round
+    // (request -> changes_requested -> request again -> approved), each
+    // its own Approval row — resourceId alone can't tell two rounds'
+    // audit events apart, since it's the same creativeVersionId every
+    // time. approvalId lets a query pair the right "requested" event
+    // with the right "decided" event for one specific round.
+    approvalId: approval.id,
     result: "SUCCESS",
     changeSet: qcOverallStatus ? { qualityControl: qcOverallStatus } : undefined,
   });
@@ -320,6 +327,7 @@ export async function recordApprovalDecision(params: {
     resourceType: "CreativeVersion",
     resourceId: version.id,
     clientId,
+    approvalId: approval.id,
     result: "SUCCESS",
     changeSet: { decision: params.decision, decidedBy },
   });

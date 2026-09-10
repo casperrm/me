@@ -11,6 +11,13 @@
   is now real, not just schema-ready: `/security` gained an "Active
   sessions" card backed by `listMySessions`/`revokeMySession`/
   `revokeAllOtherSessions`. See `docs/specs/session-management.md`.
+- **Updated:** 2026-09-10 — `AuditEvent.approvalId`, described below as
+  part of the Section 23.2 schema, existed but was never populated by
+  any of the 74 `emitAuditEvent` call sites (a "reserved for when the
+  Approval model lands" field outliving the model landing). The two
+  approval-workflow call sites now populate it from the `Approval` row
+  they already just created. See
+  `docs/specs/audit-event-approval-linkage.md`.
 
 ## Context
 

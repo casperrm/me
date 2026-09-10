@@ -150,6 +150,68 @@ describe("full campaign -> creative -> approval lifecycle", () => {
     expect(timelineApproved).toBeTruthy();
   });
 
+  it("tags each approval audit event with the exact Approval row it documents", async () => {
+    // Approval is itself an append-only log — every requestApproval/
+    // recordApprovalDecision call creates its own new row (decision:
+    // "requested"/"changes_requested"/"approved"/...), never updates one
+    // in place. So approvalId isn't a shared "round" grouping key; it's a
+    // precise 1:1 pointer from one audit event to the exact Approval row
+    // it documents — useful because resourceId alone (the
+    // creativeVersionId) is identical across every round on the same
+    // version, so it can't tell two different Approval rows apart without
+    // guessing from timestamp order.
+    const campaign = await createCampaign({ actorUserId: ownerUserId, organizationId: orgId, projectId, name: "Approval Pairing Test" });
+    const creative = await createCreative({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      campaignId: campaign.id,
+      type: "image",
+      platform: "instagram_feed",
+    });
+    const v1 = await prisma.creativeVersion.findFirstOrThrow({ where: { creativeId: creative.id, version: 1 } });
+
+    const requestedRound1 = await requestApproval({ actorUserId: ownerUserId, organizationId: orgId, creativeVersionId: v1.id });
+    const decidedRound1 = await recordApprovalDecision({
+      actorUserId: ownerUserId,
+      actorName: "Owner",
+      organizationId: orgId,
+      creativeVersionId: v1.id,
+      decision: "changes_requested",
+    });
+
+    // Same CreativeVersion, a second full round of request -> decide —
+    // same resourceId as round 1's events, but distinct Approval rows.
+    const requestedRound2 = await requestApproval({ actorUserId: ownerUserId, organizationId: orgId, creativeVersionId: v1.id });
+    const decidedRound2 = await recordApprovalDecision({
+      actorUserId: ownerUserId,
+      actorName: "Owner",
+      organizationId: orgId,
+      creativeVersionId: v1.id,
+      decision: "approved",
+    });
+
+    const approvalIds = [requestedRound1.id, decidedRound1.id, requestedRound2.id, decidedRound2.id];
+    expect(new Set(approvalIds).size).toBe(4); // all four are genuinely distinct rows
+
+    for (const approval of [requestedRound1, decidedRound1, requestedRound2, decidedRound2]) {
+      const event = await prisma.auditEvent.findFirstOrThrow({ where: { approvalId: approval.id } });
+      expect(event.resourceId).toBe(v1.id);
+      expect(event.action).toBe(approval.decision === "requested" ? "approval.requested" : "approval.decided");
+      // The whole point: given only the audit event, the exact Approval
+      // row it documents (not just "some approval on this version around
+      // this time") is a direct lookup, not a guess.
+      const resolved = await prisma.approval.findUniqueOrThrow({ where: { id: event.approvalId! } });
+      expect(resolved.decision).toBe(approval.decision);
+    }
+
+    // Every "approval.*" event for this CreativeVersion still shows up
+    // under the old resourceId-based query too — approvalId is additive.
+    const allEventsForVersion = await prisma.auditEvent.findMany({
+      where: { resourceType: "CreativeVersion", resourceId: v1.id, action: { startsWith: "approval." } },
+    });
+    expect(allEventsForVersion).toHaveLength(4);
+  });
+
   it("rejects submitting an old (non-current) version for approval", async () => {
     const creative = await prisma.creative.findFirstOrThrow({ where: { campaign: { projectId } } });
     const v1 = await prisma.creativeVersion.findFirstOrThrow({ where: { creativeId: creative.id, version: 1 } });

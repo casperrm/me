@@ -476,6 +476,42 @@ deployment.
       is confirmed genuinely dead code — never read or written anywhere
       — and deliberately left alone rather than inventing a use for it.
       See `docs/specs/membership-optimistic-concurrency.md`.
+- [x] Populate `AuditEvent.approvalId` on the approval workflow
+      (Section 23.2/27.1). Found via the same discovery method as the
+      two slices above: `approvalId` existed with a comment "reserved
+      for when the Approval model lands (Phase 2)" — the Approval model
+      landed long ago, but none of this codebase's 74 `emitAuditEvent`
+      call sites ever populated it. `Approval` is itself an append-only
+      log (every `requestApproval`/`recordApprovalDecision` call creates
+      a new row, never updates one in place), so a `CreativeVersion`
+      that goes through multiple approval rounds produces several
+      `AuditEvent` rows sharing the exact same `resourceId` — without
+      `approvalId`, there was no way to tell which event documents which
+      specific `Approval` row short of timestamp-order guessing.
+      `requestApproval`/`recordApprovalDecision`
+      (`creative-service.ts`) already hold the just-created `approval`
+      row at the point they call `emitAuditEvent`; both now pass
+      `approvalId: approval.id` — no new query, using data already in
+      scope. `resourceType`/`resourceId` unchanged, so this is additive:
+      the old "every approval event on this version" query still works,
+      and "the exact Approval row this one event is about" now also
+      does. `AuditEvent.correlationId` (a separate, unrelated field,
+      also always null today) deliberately left alone — populating it
+      needs the same per-HTTP-request correlation context
+      `docs/specs/worker-log-correlation.md` already named as a larger,
+      deferred follow-up; wiring it only for approval events would be an
+      inconsistent half-measure. New integration test drives a
+      CreativeVersion through two full approval rounds without a new
+      version in between (four Approval rows, all sharing one
+      resourceId), confirms each resulting AuditEvent's approvalId
+      resolves to the exact matching Approval row by decision, and that
+      the old resourceId-based query still returns all four. Live-
+      verified via a real HTTP call to the real decide route on a
+      running production build, followed by a direct Postgres query
+      confirming a real approvalId resolved to a real Approval row with
+      matching decision/creativeVersionId; the mutation and its
+      ClientTimelineEvent were reverted afterward. See
+      `docs/specs/audit-event-approval-linkage.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
