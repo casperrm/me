@@ -722,6 +722,29 @@ deployment.
       included the real Agency Memory entry; every fixture row (including
       the `CedarBrainRequest` the API call itself created) was deleted
       afterward. See `docs/specs/agency-memory.md`'s "Follow-up" section.
+- [x] Cedar Decision Engine v1.1: Hiring/capacity recommendation (Section
+      20's third worked decision type — "workload, deadlines,
+      utilization, pipeline, service demand"). Unlike Client Renewal, this
+      reuses an entire existing service rather than re-querying:
+      `getBusinessAdvisorBriefing` (Section 16.2, already shipped) had
+      already computed per-member `capacityRisks` and cross-client
+      `upsellRollup`, both already shown raw on the CEO Dashboard — this
+      turns them into one structured `hire`/`monitor`/`no_action_needed`
+      call based on the real ratio of strained team members. "Pipeline" is
+      deliberately omitted — this codebase has no lead/deal-stage concept
+      at all, so there's no real data to report; "utilization" stays
+      honestly named as the task-count proxy it already was, not
+      relabeled as something more precise. New card on the CEO Dashboard,
+      directly below AI Business Advisor. 4 new tests in
+      `decision-engine.integration.test.ts` (9 total, up from 5), each
+      using its own isolated organization since capacity math is org-wide.
+      Live-verified against a real running production build: confirmed
+      the honest baseline ("No action needed") against the real seeded
+      org first, then inserted 5 real open tasks for the one seeded member
+      and confirmed the card switched to "Consider hiring" with the real
+      count, screenshot-verified; fixture tasks deleted afterward. See
+      `docs/specs/cedar-decision-engine.md`'s "Second decision type"
+      section.
 
 ## Phase 1 — Agency Core: **complete**
 

@@ -1,6 +1,6 @@
 # Cedar Decision Engine v1: Client Renewal Recommendation
 
-- **Status:** Implemented (first cut)
+- **Status:** Implemented (first cut; a second decision type added below)
 - **Bible section:** 20 (Cedar Decision Engine)
 - **Date:** 2026-09-10
 
@@ -108,11 +108,80 @@ every reader of the recommendation, not just in this doc:
   the fields this slice can honestly fill; `recommendation` stands in for
   Section 20's "alternatives" as the single real recommendation this system
   currently supports (renew / at-risk / do-not-renew), not a ranked list.
-- Only "Client renewal" is implemented. Section 20 is written as a general
-  decision-support pattern — other decision types (budget reallocation,
-  hiring, etc.) would each need their own evidence-gathering function; none
-  of those inputs exist as real signals in this codebase yet, so building
-  them now would be speculative scaffolding, not a real feature.
+- Two decision types now: "Client renewal" and "Hiring/capacity" (below).
+  Section 20's other two worked examples — "Campaign budget" (needs
+  historical CPA/ROAS, i.e. real ad-platform performance data this system
+  doesn't have — no `PerformanceSnapshot` model, no live connector) and
+  "System improvement" (built separately as Cedar Innovation Lab v1, see
+  `docs/specs/cedar-innovation-lab.md`) — are either blocked on missing
+  external data or already covered elsewhere. Building "Campaign budget"
+  now would mean fabricating the performance numbers Section 20's own
+  evidence column names.
+
+## Second decision type: Hiring/capacity
+
+`getHiringCapacityRecommendation(organizationId)` — Section 20's third
+worked decision type: *"workload, deadlines, utilization, pipeline,
+service demand."* Unlike Client Renewal, this reuses an **existing**
+service wholesale rather than re-querying: `getBusinessAdvisorBriefing`
+(Section 16.2's AI Business Advisor, already shipped) had already computed
+`capacityRisks` (per-member open/overdue task counts) and `upsellRollup`
+(Opportunity Engine's cross-client demand rollup) — both already displayed
+raw on the CEO Dashboard. This is the same synthesis this whole module
+does: turning already-real, already-displayed numbers into one structured
+go/no-go call instead of leaving a human to eyeball a list.
+
+Recommendation logic: `strainedRatio = (# team members over the capacity
+threshold) / (# active team members)`. `>= 50%` → `"hire"`; any strain but
+under 50% → `"monitor"`; none → `"no_action_needed"`.
+
+**Explicit scope boundary**, stated in the returned `assumptions` (not
+just this doc): "pipeline" is omitted entirely — this codebase has no
+lead/deal-stage concept at all (it's an agency delivery system, not a
+CRM), so there's no real data to report, and inventing a fake pipeline
+metric was never on the table. "Utilization" is not a measured
+hours/percentage either; the task-count proxy `capacityRisks` already used
+is named honestly as a proxy, not relabeled as something more precise.
+
+### UI
+
+New "Hiring & capacity recommendation" card on the CEO Dashboard
+(`/dashboard`, same `finance:read` gate as the rest of the page),
+placed directly after the existing "AI Business Advisor" card whose
+`capacityRisks`/`upsellRollup` it reuses. Same badge/evidence/risks/
+assumptions layout as the Client Renewal card, for visual consistency
+across both decision types.
+
+### Tests
+
+`decision-engine.integration.test.ts` gained a new
+`describe("getHiringCapacityRecommendation")` block (4 tests, 9 total in
+the file). Each test uses its own isolated organization — `capacityRisks`
+and the active-member count are org-wide aggregates, so sharing one
+organization across scenarios (as the Client Renewal tests do) would let
+one test's fixture members skew another's strained-ratio math:
+
+- No strained members → `"no_action_needed"`, zero risks.
+- 1 of 3 active members strained (33%) → `"monitor"`.
+- 2 of 2 active members strained (100%) → `"hire"`, both named in `risks`.
+- `requiresApproval` always `true`; assumptions state the real
+  pipeline/utilization scope boundary, not a generic placeholder.
+
+### Verification performed (this addition)
+
+- `npx tsc --noEmit` on `apps/web` and every workspace: clean.
+- `npx eslint`: clean.
+- Full `apps/web` vitest suite: 622/622 passed (95 files).
+- Full monorepo `npm run typecheck --workspaces`: clean on all 15
+  packages.
+- Production build (`next build`): succeeded.
+- Live smoke test against a real running production build: confirmed the
+  honest baseline first (`"No action needed"`, real seeded org has 1
+  active member with no task strain), then inserted 5 real open tasks for
+  that member directly via Postgres, reloaded `/dashboard`, and confirmed
+  the card correctly switched to `"Consider hiring"` with the real task
+  count in evidence and risks — screenshot-verified. Fixture tasks deleted
+  afterward and the dashboard confirmed back to the honest baseline.
 
 ## Tests
 

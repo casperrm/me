@@ -6,6 +6,7 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { getClientProfitability } from "@/lib/services/profitability-service";
 import { getBusinessAdvisorBriefing } from "@/lib/services/business-advisor-service";
 import { generateBusinessAdvisorNarrative } from "@/lib/business-advisor-narrative";
+import { getHiringCapacityRecommendation } from "@/lib/services/decision-engine-service";
 
 // Dashboard figures must always reflect current data, not a build-time snapshot.
 export const dynamic = "force-dynamic";
@@ -74,6 +75,7 @@ export default async function DashboardPage() {
 
   const advisorBriefing = await getBusinessAdvisorBriefing(organizationId);
   const advisorNarrative = await generateBusinessAdvisorNarrative(advisorBriefing);
+  const capacityRecommendation = await getHiringCapacityRecommendation(organizationId);
 
   const revenueCents = revenueAgg._sum.amountCents ?? 0;
   const outstandingCents = outstandingAgg._sum.amountCents ?? 0;
@@ -303,6 +305,53 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+      </Card>
+
+      <Card
+        title="Hiring & capacity recommendation"
+        action={<span className="text-xs text-neutral-400">Decision support, not autonomous truth (Section 20)</span>}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <span
+            className={
+              capacityRecommendation.recommendation === "hire"
+                ? "rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
+                : capacityRecommendation.recommendation === "monitor"
+                  ? "rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
+                  : "rounded-full bg-cedar-100 px-3 py-1 text-xs font-medium text-cedar-800"
+            }
+          >
+            {capacityRecommendation.recommendation === "hire"
+              ? "Consider hiring"
+              : capacityRecommendation.recommendation === "monitor"
+                ? "Monitor"
+                : "No action needed"}
+          </span>
+          <span className="text-xs text-neutral-400">Requires human review — no action is taken automatically.</span>
+        </div>
+        <ul className="space-y-1 text-sm text-neutral-600">
+          {capacityRecommendation.evidence.map((line) => (
+            <li key={line}>- {line}</li>
+          ))}
+        </ul>
+        {capacityRecommendation.risks.length > 0 && (
+          <div className="mt-3 border-t border-neutral-100 pt-3">
+            <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Strained team members</h4>
+            <ul className="space-y-1 text-sm text-red-600">
+              {capacityRecommendation.risks.map((line) => (
+                <li key={line}>- {line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <details className="mt-3 text-xs text-neutral-400">
+          <summary className="cursor-pointer">Assumptions</summary>
+          <ul className="mt-1 space-y-1">
+            {capacityRecommendation.assumptions.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
       </Card>
     </div>
   );

@@ -1,6 +1,7 @@
 import { prisma } from "@cedar/db";
 import { getClientProfitability } from "./profitability-service";
 import { getOpportunitiesForClient } from "./opportunity-service";
+import { getBusinessAdvisorBriefing } from "./business-advisor-service";
 
 export type RenewalCall = "renew" | "at_risk" | "do_not_renew";
 
@@ -131,6 +132,80 @@ export async function getClientRenewalRecommendation(
     assumptions: [
       "Based only on Client Health Score, profitability, payment behavior, delivery history, and cross-sell opportunity — this system has no model of strategic relationship value, contract terms, or market conditions, all of which a human deciding a real renewal must still weigh.",
       "Client Health Score itself already excludes campaign performance, satisfaction signals, and renewal proximity (no data source exists for any of those yet) — see docs/specs/client-health.md.",
+    ],
+    requiresApproval: true,
+  };
+}
+
+export type CapacityCall = "hire" | "monitor" | "no_action_needed";
+
+export interface HiringCapacityRecommendation {
+  recommendation: CapacityCall;
+  evidence: string[];
+  risks: string[];
+  assumptions: string[];
+  requiresApproval: true;
+}
+
+const HIRE_STRAINED_RATIO = 0.5;
+
+/**
+ * Section 20's third worked decision type: "Hiring/capacity: workload,
+ * deadlines, utilization, pipeline, service demand." Reuses
+ * `getBusinessAdvisorBriefing`'s already-computed `capacityRisks`
+ * (per-member open/overdue task counts, Section 16.2) for workload and
+ * deadlines, and its `upsellRollup` (Opportunity Engine's cross-client
+ * rollup) as the real proxy for service demand — the same "combine
+ * already-real signals into one structured call" pattern as
+ * `getClientRenewalRecommendation` above.
+ *
+ * "Pipeline" is deliberately not included: this codebase has no lead/deal
+ * concept (it's an agency delivery system, not a CRM with sales stages),
+ * so there is no real data to report. "Utilization" is also not a
+ * measured hours/percentage — `capacityRisks`' task-count proxy is the
+ * closest real signal, named honestly as a proxy in the assumptions
+ * below, not relabeled as something more precise than it is.
+ */
+export async function getHiringCapacityRecommendation(organizationId: string): Promise<HiringCapacityRecommendation> {
+  const [briefing, activeMemberCount] = await Promise.all([
+    getBusinessAdvisorBriefing(organizationId),
+    prisma.membership.count({ where: { organizationId, status: "ACTIVE" } }),
+  ]);
+
+  const evidence: string[] = [];
+  const risks: string[] = [];
+
+  const strainedCount = briefing.capacityRisks.length;
+  const strainedRatio = activeMemberCount > 0 ? strainedCount / activeMemberCount : 0;
+
+  if (activeMemberCount > 0) {
+    evidence.push(
+      `Workload: ${strainedCount} of ${activeMemberCount} active team member(s) are carrying a disproportionate task load (5+ open or 3+ overdue tasks).`,
+    );
+  } else {
+    evidence.push("No active team members recorded.");
+  }
+
+  for (const risk of briefing.capacityRisks) {
+    risks.push(`${risk.memberName}: ${risk.openTaskCount} open task(s), ${risk.overdueTaskCount} overdue.`);
+  }
+
+  evidence.push(
+    briefing.upsellRollup.length > 0
+      ? `Service demand: ${briefing.upsellRollup.length} evidence-backed cross-sell/upsell opportunity type(s) identified across the organization.`
+      : "Service demand: no cross-sell/upsell opportunities currently identified.",
+  );
+
+  const recommendation: CapacityCall =
+    strainedRatio >= HIRE_STRAINED_RATIO ? "hire" : strainedCount > 0 ? "monitor" : "no_action_needed";
+
+  return {
+    recommendation,
+    evidence,
+    risks,
+    assumptions: [
+      "Based only on assigned-task volume/deadlines and cross-sell opportunity counts — this system has no time-tracking or measured utilization-hours model, no pipeline/lead-stage data, and no cost-of-hire model, all of which a human deciding a real hire must still weigh.",
+      '"Strained" is a coarse task-count proxy (5+ open or 3+ overdue tasks), not a measured hours/utilization percentage — see docs/specs/business-advisor.md.',
     ],
     requiresApproval: true,
   };
