@@ -347,3 +347,40 @@ export async function listProjectTemplatesForManagement(params: { actorUserId: s
     orderBy: { createdAt: "desc" },
   });
 }
+
+/**
+ * Section 22 (Cedar Experience Engine): "Learn non-sensitive workflow
+ * preferences such as... frequently selected templates. Adapt
+ * recommendations and shortcuts... without hiding functionality or
+ * weakening controls." `createProjectFromTemplate` above has recorded
+ * `templateId` on a real `AuditEvent` for every instantiation since the
+ * day it was built (Section 23.2's audit schema) — this simply reads that
+ * existing history rather than adding new instrumentation. Callers use
+ * this to reorder (never hide) template pickers toward what the
+ * organization actually uses most.
+ *
+ * Deliberately not a per-user preference profile: nothing in this system
+ * tracks which individual user selected which template, only how often
+ * the organization as a whole has used each one — there is no page-view
+ * or command-invocation log here to build a real per-user model from, and
+ * inventing one would violate this project's no-fabricated-data rule.
+ * There is also nothing to "reset or override" (Section 22's other
+ * requirement): this is recomputed fresh from real audit history on every
+ * read, never cached or learned state that could drift from the
+ * underlying facts.
+ */
+export async function getTemplateUsageCounts(organizationId: string): Promise<Map<string, number>> {
+  const events = await prisma.auditEvent.findMany({
+    where: { organizationId, action: "project.created_from_template" },
+    select: { changeSet: true },
+  });
+
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    if (!event.changeSet) continue;
+    const templateId = (JSON.parse(event.changeSet) as { templateId?: string }).templateId;
+    if (!templateId) continue;
+    counts.set(templateId, (counts.get(templateId) ?? 0) + 1);
+  }
+  return counts;
+}

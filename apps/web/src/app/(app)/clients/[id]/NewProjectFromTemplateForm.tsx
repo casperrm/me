@@ -7,6 +7,7 @@ interface TemplateOption {
   id: string;
   name: string;
   taskCount: number;
+  usageCount: number;
 }
 
 export function NewProjectFromTemplateForm({ clientId, templates }: { clientId: string; templates: TemplateOption[] }) {
@@ -63,7 +64,8 @@ export function NewProjectFromTemplateForm({ clientId, templates }: { clientId: 
         <option value="">Choose a template…</option>
         {templates.map((t) => (
           <option key={t.id} value={t.id}>
-            {t.name} ({t.taskCount} task{t.taskCount === 1 ? "" : "s"})
+            {t.name} ({t.taskCount} task{t.taskCount === 1 ? "" : "s"}
+            {t.usageCount > 0 ? `, used ${t.usageCount}x` : ""})
           </option>
         ))}
       </select>

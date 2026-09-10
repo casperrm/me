@@ -1,7 +1,7 @@
 import { Card } from "@/components/Card";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { checkPermission } from "@/lib/guards";
-import { listProjectTemplatesForManagement } from "@/lib/services/project-template-service";
+import { getTemplateUsageCounts, listProjectTemplatesForManagement } from "@/lib/services/project-template-service";
 import { TemplateRenameForm } from "./TemplateRenameForm";
 import { TemplateDeleteButton } from "./TemplateDeleteButton";
 import { TemplateTasks } from "./TemplateTasks";
@@ -22,10 +22,22 @@ export default async function TemplatesPage() {
     );
   }
 
-  const templates = await listProjectTemplatesForManagement({
-    actorUserId: actor.user.id,
-    organizationId: actor.organizationId,
-  });
+  const [templates, usageCounts] = await Promise.all([
+    listProjectTemplatesForManagement({
+      actorUserId: actor.user.id,
+      organizationId: actor.organizationId,
+    }),
+    getTemplateUsageCounts(actor.organizationId),
+  ]);
+
+  // Section 22 (Cedar Experience Engine): surface frequently selected
+  // templates first — a real, non-hiding "shortcut" adaptation, not a
+  // reorder that removes anything. Stable sort preserves the original
+  // createdAt-desc order among templates with equal (including zero)
+  // usage.
+  const sortedTemplates = [...templates].sort(
+    (a, b) => (usageCounts.get(b.id) ?? 0) - (usageCounts.get(a.id) ?? 0),
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -34,7 +46,8 @@ export default async function TemplatesPage() {
         <p className="text-sm text-neutral-500">
           Reusable task lists any client&apos;s projects can be instantiated from. Rename, delete, or add/remove a
           task here — there&apos;s no reordering (removing and re-adding a task is the escape hatch, matching how
-          task checklist items work).
+          task checklist items work). Sorted by how often each has actually been used to create a project (Section
+          22) — real usage history, not a fabricated ranking.
         </p>
       </div>
 
@@ -45,14 +58,17 @@ export default async function TemplatesPage() {
           </p>
         </Card>
       ) : (
-        templates.map((template) => (
+        sortedTemplates.map((template) => (
           <Card key={template.id}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-medium text-neutral-900">{template.name}</h3>
                 <p className="mt-0.5 text-xs text-neutral-400">
                   {template.tasks.length} task{template.tasks.length === 1 ? "" : "s"} · created{" "}
-                  {template.createdAt.toLocaleDateString()}
+                  {template.createdAt.toLocaleDateString()} ·{" "}
+                  {usageCounts.get(template.id)
+                    ? `used ${usageCounts.get(template.id)} time${usageCounts.get(template.id) === 1 ? "" : "s"}`
+                    : "not used yet"}
                 </p>
               </div>
               <TemplateDeleteButton templateId={template.id} templateName={template.name} />

@@ -631,6 +631,35 @@ deployment.
       high/medium-severity items rendered with real evidence,
       screenshot-verified; fixture rows deleted and counts confirmed back
       to zero afterward. See `docs/specs/cedar-innovation-lab.md`.
+- [x] Cedar Experience Engine v1: frequently selected templates (Section
+      22). Of Section 22's four named examples ("commonly used views,
+      recurring command patterns, preferred approval routes, and
+      frequently selected templates"), only the last already had a real
+      data source: `createProjectFromTemplate` has recorded `templateId`
+      on a real `AuditEvent` for every instantiation since project
+      templates were built — nothing new to instrument. New
+      `getTemplateUsageCounts()` reads that existing history into a
+      per-template usage count. Wired into two real touchpoints — the
+      `/templates` management page (sorted most-used-first, "used N
+      times" shown) and the Client 360 "+ From template" picker (sorted
+      the same way, usage shown in each option label) — a real "adapt
+      shortcuts without hiding functionality": every template still
+      appears everywhere, only order and an informational label changed.
+      The other three examples remain unbuilt — no page-view, command-
+      invocation, or generic approval-route log exists anywhere in this
+      system to build a real signal from, and this project's own rules
+      forbid inventing one. Explicitly not a per-user preference profile
+      (only org-wide usage is tracked, stated as such) and explicitly
+      nothing to "reset or override" (recomputed fresh from audit history
+      on every read, never cached/learned state). 3 new tests in
+      `project-template-service.integration.test.ts` (27 total in that
+      file) against real Postgres. Live-verified entirely through the
+      real UI on a running production build — real "Save as template" and
+      real template-picker instantiation, not direct DB writes — then
+      confirmed the sorted order and counts rendered correctly on both
+      surfaces, screenshot-verified; every fixture row was deleted
+      afterward and counts confirmed back to baseline. See
+      `docs/specs/cedar-experience-engine.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

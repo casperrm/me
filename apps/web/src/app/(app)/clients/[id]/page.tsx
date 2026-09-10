@@ -16,7 +16,7 @@ import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 import { getClientRenewalRecommendation } from "@/lib/services/decision-engine-service";
 import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-retrieval-service";
-import { listProjectTemplates } from "@/lib/services/project-template-service";
+import { getTemplateUsageCounts, listProjectTemplates } from "@/lib/services/project-template-service";
 import { listMeetingsForClient } from "@/lib/services/meeting-service";
 import { NewMeetingForm } from "../../meetings/NewMeetingForm";
 
@@ -87,9 +87,12 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
     permission: "finance:write",
   });
 
-  const projectTemplates = canWrite
-    ? await listProjectTemplates({ actorUserId: actor.user.id, organizationId: actor.organizationId, clientId: client.id })
-    : [];
+  const [projectTemplates, templateUsageCounts] = canWrite
+    ? await Promise.all([
+        listProjectTemplates({ actorUserId: actor.user.id, organizationId: actor.organizationId, clientId: client.id }),
+        getTemplateUsageCounts(actor.organizationId),
+      ])
+    : [[], new Map<string, number>()] as const;
 
   const brandVersion = client.brandProfile?.versions[0];
   const services = parseJSON<string[]>(client.services, []);
@@ -399,7 +402,9 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           {canWrite && (
             <NewProjectFromTemplateForm
               clientId={client.id}
-              templates={projectTemplates.map((t) => ({ id: t.id, name: t.name, taskCount: t.tasks.length }))}
+              templates={[...projectTemplates]
+                .sort((a, b) => (templateUsageCounts.get(b.id) ?? 0) - (templateUsageCounts.get(a.id) ?? 0))
+                .map((t) => ({ id: t.id, name: t.name, taskCount: t.tasks.length, usageCount: templateUsageCounts.get(t.id) ?? 0 }))}
             />
           )}
         </Card>

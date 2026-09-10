@@ -17,6 +17,7 @@ import {
   createProjectFromTemplate,
   createProjectTemplateFromProject,
   deleteProjectTemplate,
+  getTemplateUsageCounts,
   listProjectTemplates,
   listProjectTemplatesForManagement,
   removeTemplateTask,
@@ -235,6 +236,71 @@ describe("createProjectFromTemplate", () => {
     await expect(
       createProjectFromTemplate({ actorUserId: ownerUserId, organizationId: orgId, clientId: "not-a-real-id", templateId: template.id }),
     ).rejects.toThrow(AuthError);
+  });
+});
+
+describe("getTemplateUsageCounts", () => {
+  it("counts real project.created_from_template audit events per template, from real history — not a stored preference", async () => {
+    const popular = await createProjectTemplateFromProject({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: sourceProjectId,
+      name: "Popular Usage-Count Template",
+    });
+    const rare = await createProjectTemplateFromProject({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: sourceProjectId,
+      name: "Rare Usage-Count Template",
+    });
+
+    await createProjectFromTemplate({ actorUserId: ownerUserId, organizationId: orgId, clientId, templateId: popular.id });
+    await createProjectFromTemplate({ actorUserId: ownerUserId, organizationId: orgId, clientId, templateId: popular.id });
+    await createProjectFromTemplate({ actorUserId: ownerUserId, organizationId: orgId, clientId, templateId: popular.id });
+    await createProjectFromTemplate({ actorUserId: ownerUserId, organizationId: orgId, clientId, templateId: rare.id });
+
+    const counts = await getTemplateUsageCounts(orgId);
+    expect(counts.get(popular.id)).toBe(3);
+    expect(counts.get(rare.id)).toBe(1);
+  });
+
+  it("never counts a template that has never been instantiated", async () => {
+    const neverUsed = await createProjectTemplateFromProject({
+      actorUserId: ownerUserId,
+      organizationId: orgId,
+      projectId: sourceProjectId,
+      name: "Never Used Template",
+    });
+
+    const counts = await getTemplateUsageCounts(orgId);
+    expect(counts.has(neverUsed.id)).toBe(false);
+  });
+
+  it("never counts usage recorded under a different organization", async () => {
+    const otherOrg = await prisma.organization.create({ data: { name: "Other Usage-Count Org" } });
+    const otherClient = await prisma.client.create({
+      data: { organizationId: otherOrg.id, name: "Other Client", companyName: "X", services: "[]" },
+    });
+    const otherOwner = await prisma.user.create({
+      data: { email: "other-usage-count-owner@test.example", name: "Other Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: otherOrg.id, userId: otherOwner.id, role: "OWNER", status: "ACTIVE" } });
+    const otherProject = await prisma.project.create({ data: { clientId: otherClient.id, name: "Other Source Project" } });
+    const otherTemplate = await createProjectTemplateFromProject({
+      actorUserId: otherOwner.id,
+      organizationId: otherOrg.id,
+      projectId: otherProject.id,
+      name: "Other Org Usage Template",
+    });
+    await createProjectFromTemplate({
+      actorUserId: otherOwner.id,
+      organizationId: otherOrg.id,
+      clientId: otherClient.id,
+      templateId: otherTemplate.id,
+    });
+
+    const counts = await getTemplateUsageCounts(orgId);
+    expect(counts.has(otherTemplate.id)).toBe(false);
   });
 });
 
