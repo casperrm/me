@@ -2,6 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-06
+- **Updated:** 2026-09-10 — Section 27.1's "version/concurrency field on
+  collaboratively edited records" rule was only half-implemented:
+  `Membership.version` existed and was incremented on every write, but
+  nothing ever compared it before writing, so it couldn't actually catch
+  a lost update. `changeMemberRole`/`revokeMembership` now condition
+  their writes on the expected version inside the same `updateMany`
+  call. See `docs/specs/membership-optimistic-concurrency.md`.
 
 ## Context
 

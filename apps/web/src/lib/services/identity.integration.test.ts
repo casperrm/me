@@ -253,12 +253,110 @@ describe("invitation lifecycle", () => {
 
     // Owner-only wiring still holds via this real DB round-trip too.
     await expect(
-      changeMemberRole({ actorUserId: managerUser.id, organizationId: org.id, targetMembershipId: ownerMembership.id, newRole: "ADMIN" }),
+      changeMemberRole({
+        actorUserId: managerUser.id,
+        organizationId: org.id,
+        targetMembershipId: ownerMembership.id,
+        newRole: "ADMIN",
+        expectedVersion: ownerMembership.version,
+      }),
     ).rejects.toThrow();
   });
 
   it("rejects an expired/already-used invitation token", async () => {
     await expect(acceptInvitationFlow("not-a-real-token", { name: "Nobody", password: "whatever12345" })).rejects.toThrow(AuthError);
+  });
+});
+
+describe("optimistic concurrency on Membership.version (Section 27.1)", () => {
+  it("rejects a stale-version write instead of silently clobbering a concurrent change", async () => {
+    // Self-contained fixture rather than reusing another describe block's
+    // shared org, so this test's outcome doesn't depend on execution order.
+    const org = await prisma.organization.create({ data: { name: "Concurrency Test Agency" } });
+    const ownerUser = await prisma.user.create({
+      data: { email: "concurrency-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: org.id, userId: ownerUser.id, role: "OWNER", status: "ACTIVE" } });
+    const targetUser = await prisma.user.create({
+      data: { email: "concurrency-target@test.example", name: "Target", passwordHash: "irrelevant" },
+    });
+    const target = await prisma.membership.create({
+      data: { organizationId: org.id, userId: targetUser.id, role: "ADS_MANAGER", status: "ACTIVE" },
+    });
+    expect(target.version).toBe(1);
+
+    // Two "requests" both read the membership at version 1 (e.g. two admin
+    // tabs open on /team at the same time), then both submit a change
+    // based on that stale read — the exact scenario Membership.version
+    // exists to catch (Section 27.1: "version/concurrency field on
+    // collaboratively edited records").
+    await changeMemberRole({
+      actorUserId: ownerUser.id,
+      organizationId: org.id,
+      targetMembershipId: target.id,
+      newRole: "FINANCE",
+      expectedVersion: 1,
+    });
+
+    // The second request still thinks the row is at version 1 — it isn't
+    // anymore (the first request incremented it) — so it must be rejected,
+    // not applied on top of stale data.
+    await expect(
+      changeMemberRole({
+        actorUserId: ownerUser.id,
+        organizationId: org.id,
+        targetMembershipId: target.id,
+        newRole: "DESIGNER",
+        expectedVersion: 1,
+      }),
+    ).rejects.toThrow(/changed by someone else/);
+
+    // The first request's write won and nothing else silently applied on
+    // top of it — this is exactly what "conditional update, not a bare
+    // read-then-write" guarantees that a separate read-check-write couldn't.
+    const afterBoth = await prisma.membership.findUniqueOrThrow({ where: { id: target.id } });
+    expect(afterBoth.role).toBe("FINANCE");
+    expect(afterBoth.version).toBe(2);
+
+    // A subsequent request using the *current* version succeeds normally —
+    // this isn't a permanent lock, just a guard against acting on stale data.
+    await revokeMembership({
+      actorUserId: ownerUser.id,
+      organizationId: org.id,
+      targetMembershipId: target.id,
+      expectedVersion: afterBoth.version,
+    });
+    const afterRevoke = await prisma.membership.findUniqueOrThrow({ where: { id: target.id } });
+    expect(afterRevoke.status).toBe("REVOKED");
+    expect(afterRevoke.version).toBe(3);
+  });
+
+  it("rejects a non-integer expectedVersion up front, before touching the database", async () => {
+    const org = await prisma.organization.create({ data: { name: "Concurrency Guard Test Agency" } });
+    const ownerUser = await prisma.user.create({
+      data: { email: "concurrency-guard-owner@test.example", name: "Owner", passwordHash: "irrelevant" },
+    });
+    await prisma.membership.create({ data: { organizationId: org.id, userId: ownerUser.id, role: "OWNER", status: "ACTIVE" } });
+    const targetUser = await prisma.user.create({
+      data: { email: "concurrency-guard-target@test.example", name: "Target", passwordHash: "irrelevant" },
+    });
+    const target = await prisma.membership.create({
+      data: { organizationId: org.id, userId: targetUser.id, role: "ADS_MANAGER", status: "ACTIVE" },
+    });
+
+    await expect(
+      changeMemberRole({
+        actorUserId: ownerUser.id,
+        organizationId: org.id,
+        targetMembershipId: target.id,
+        newRole: "FINANCE",
+        expectedVersion: Number.NaN,
+      }),
+    ).rejects.toThrow(AuthError);
+
+    const unchanged = await prisma.membership.findUniqueOrThrow({ where: { id: target.id } });
+    expect(unchanged.role).toBe("ADS_MANAGER");
+    expect(unchanged.version).toBe(1);
   });
 });
 
@@ -269,7 +367,12 @@ describe("last-owner protection", () => {
     const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { userId: owner.id, role: "OWNER" } });
 
     await expect(
-      revokeMembership({ actorUserId: owner.id, organizationId: org.id, targetMembershipId: ownerMembership.id }),
+      revokeMembership({
+        actorUserId: owner.id,
+        organizationId: org.id,
+        targetMembershipId: ownerMembership.id,
+        expectedVersion: ownerMembership.version,
+      }),
     ).rejects.toThrow();
 
     const stillActive = await prisma.membership.findUniqueOrThrow({ where: { id: ownerMembership.id } });

@@ -138,6 +138,7 @@ export default async function TeamPage() {
                             membershipId={m.id}
                             role={m.role}
                             status={m.status}
+                            version={m.version}
                             clients={clients}
                             assignableRoles={ASSIGNABLE_ROLES}
                           />

@@ -120,12 +120,29 @@ export async function acceptInvitationFlow(token: string, input: { name: string;
   await setSessionCookie(sessionToken);
 }
 
+// Both mutations below take `expectedVersion` and make the actual write
+// conditional on it in the database (`updateMany`'s `where`, not a
+// separate read-then-write check — that would still leave a gap between
+// checking and writing). `Membership.version` has existed since the
+// original schema with a comment invoking Section 27.1's "version/
+// concurrency field on collaboratively edited records" and gets
+// incremented on every write here, but until now nothing ever compared
+// it before writing — the increment happened, but nothing was gated on
+// it, so it couldn't actually catch a lost update. Two admins acting on
+// the same membership from stale page loads (one revokes while the
+// other is mid-role-change, say) would both silently succeed with the
+// second unknowingly clobbering the first's change with no warning to
+// either admin. See docs/specs/membership-optimistic-concurrency.md.
+
 export async function changeMemberRole(params: {
   actorUserId: string;
   organizationId: string;
   targetMembershipId: string;
   newRole: Role;
+  expectedVersion: number;
 }) {
+  if (!Number.isInteger(params.expectedVersion)) throw new AuthError("Invalid request.");
+
   const actingMembership = await requirePermission({
     userId: params.actorUserId,
     organizationId: params.organizationId,
@@ -144,10 +161,13 @@ export async function changeMemberRole(params: {
     throw new AuthError("Not authorized to change this member's role.");
   }
 
-  await prisma.membership.update({
-    where: { id: target.id },
+  const { count } = await prisma.membership.updateMany({
+    where: { id: target.id, version: params.expectedVersion },
     data: { role: params.newRole, version: { increment: 1 } },
   });
+  if (count === 0) {
+    throw new AuthError("This member was changed by someone else since the page loaded. Refresh and try again.");
+  }
 
   await emitAuditEvent({
     organizationId: params.organizationId,
@@ -161,7 +181,14 @@ export async function changeMemberRole(params: {
   });
 }
 
-export async function revokeMembership(params: { actorUserId: string; organizationId: string; targetMembershipId: string }) {
+export async function revokeMembership(params: {
+  actorUserId: string;
+  organizationId: string;
+  targetMembershipId: string;
+  expectedVersion: number;
+}) {
+  if (!Number.isInteger(params.expectedVersion)) throw new AuthError("Invalid request.");
+
   const actingMembership = await requirePermission({
     userId: params.actorUserId,
     organizationId: params.organizationId,
@@ -180,7 +207,13 @@ export async function revokeMembership(params: { actorUserId: string; organizati
     throw new AuthError("Not authorized to revoke this member.");
   }
 
-  await prisma.membership.update({ where: { id: target.id }, data: { status: "REVOKED", version: { increment: 1 } } });
+  const { count } = await prisma.membership.updateMany({
+    where: { id: target.id, version: params.expectedVersion },
+    data: { status: "REVOKED", version: { increment: 1 } },
+  });
+  if (count === 0) {
+    throw new AuthError("This member was changed by someone else since the page loaded. Refresh and try again.");
+  }
 
   await emitAuditEvent({
     organizationId: params.organizationId,

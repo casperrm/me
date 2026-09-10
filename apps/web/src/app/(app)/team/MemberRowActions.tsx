@@ -14,12 +14,15 @@ export function MemberRowActions({
   membershipId,
   role,
   status,
+  version,
   clients,
   assignableRoles,
 }: {
   membershipId: string;
   role: string;
   status: string;
+  /** Membership.version as of this page's last render — see the module comment. */
+  version: number;
   clients: { id: string; name: string }[];
   assignableRoles: readonly string[];
 }) {
@@ -52,6 +55,7 @@ export function MemberRowActions({
     <>
       <form onSubmit={handleRoleSubmit} className="flex items-center gap-1">
         <input type="hidden" name="membershipId" value={membershipId} />
+        <input type="hidden" name="expectedVersion" value={version} />
         <select
           name="role"
           defaultValue={role}
@@ -77,6 +81,7 @@ export function MemberRowActions({
         <>
           <form onSubmit={handleRevokeSubmit}>
             <input type="hidden" name="membershipId" value={membershipId} />
+            <input type="hidden" name="expectedVersion" value={version} />
             <button type="submit" disabled={isRevokePending} className="text-xs text-red-600 hover:underline">
               Revoke access
             </button>

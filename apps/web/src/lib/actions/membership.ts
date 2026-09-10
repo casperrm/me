@@ -25,9 +25,17 @@ export async function changeRoleAction(formData: FormData): Promise<{ error: str
       organizationId: actor.organizationId,
       targetMembershipId: String(formData.get("membershipId") ?? ""),
       newRole: String(formData.get("role") ?? "") as Role,
+      expectedVersion: Number(formData.get("expectedVersion")),
     });
   } catch (err) {
-    if (err instanceof AuthError) return { error: err.message };
+    if (err instanceof AuthError) {
+      // Refresh even on failure: a version-conflict error means someone
+      // else's change is now the current truth, so the stale row (and
+      // its stale expectedVersion hidden input) this form was rendered
+      // from should be replaced with what's actually in the database.
+      revalidatePath("/team");
+      return { error: err.message };
+    }
     throw err;
   }
 
@@ -43,9 +51,13 @@ export async function revokeMembershipAction(formData: FormData): Promise<{ erro
       actorUserId: actor.user.id,
       organizationId: actor.organizationId,
       targetMembershipId: String(formData.get("membershipId") ?? ""),
+      expectedVersion: Number(formData.get("expectedVersion")),
     });
   } catch (err) {
-    if (err instanceof AuthError) return { error: err.message };
+    if (err instanceof AuthError) {
+      revalidatePath("/team");
+      return { error: err.message };
+    }
     throw err;
   }
 

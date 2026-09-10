@@ -439,6 +439,43 @@ deployment.
       query that the rejected mutation left no partial write. All
       fixture rows cleaned up afterward. See
       `docs/specs/inline-action-errors.md`.
+- [x] Real optimistic concurrency for Membership updates (Section 27.1:
+      "version/concurrency field on collaboratively edited records").
+      `Membership.version` has existed since the original schema with a
+      comment invoking this exact rule, and `changeMemberRole`/
+      `revokeMembership` have always incremented it on every write — but
+      nothing ever compared it before writing, so it couldn't actually
+      catch a lost update. Two admins acting on the same membership from
+      stale `/team` page loads (one revoking while the other changes its
+      role, say) would silently clobber each other with no warning to
+      either. Different from the `Invoice.currency`/`Asset.version`
+      write-only-field pattern this project has caught before: the
+      Bible explicitly names this exact mechanism as required and the
+      field's own comment states its intent, so the fix was finishing
+      the half-built mechanism, not rejecting a speculative one.
+      `changeMemberRole`/`revokeMembership` now take `expectedVersion`
+      and use `prisma.membership.updateMany({ where: { id, version:
+      expectedVersion }, ... })` — the version check happens inside the
+      same write, not as a separate read-then-compare step that would
+      leave its own race window. Zero rows matched throws an `AuthError`
+      ("changed by someone else since the page loaded"), which the
+      previous slice's inline-error plumbing already displays with no
+      new UI mechanism needed; the action layer now also revalidates on
+      any `AuthError`, not just success, so a rejected request's stale
+      view gets refreshed. New `MemberRowActions.tsx` `version` prop +
+      hidden `expectedVersion` input on both affected forms. 2 new
+      integration tests (against real Postgres): the actual lost-update
+      scenario (first write succeeds at version 2, second write with
+      the same stale `expectedVersion: 1` is rejected, final row shows
+      only the first write applied) and a malformed-`expectedVersion`
+      guard. Live-verified with two real browser sessions racing the
+      same membership on a running production build: confirmed the
+      real inline conflict error, no full-page crash, and via direct
+      query that only the first tab's write landed. `Asset.version`
+      (a different, unrelated field found during this investigation)
+      is confirmed genuinely dead code — never read or written anywhere
+      — and deliberately left alone rather than inventing a use for it.
+      See `docs/specs/membership-optimistic-concurrency.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
