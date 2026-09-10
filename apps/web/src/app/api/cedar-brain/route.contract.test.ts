@@ -79,7 +79,7 @@ describe("POST /api/cedar-brain", () => {
     expect(body).toMatchObject({ mode: "stub", contextSources: [], cedarBrainRequestId: expect.any(String) });
 
     const stored = await prisma.cedarBrainRequest.findUnique({ where: { id: body.cedarBrainRequestId } });
-    expect(stored).toMatchObject({ organizationId: orgId, mode: "stub", success: true, promptVersion: "v4" });
+    expect(stored).toMatchObject({ organizationId: orgId, mode: "stub", success: true, promptVersion: CEDAR_BRAIN_PROMPT_VERSION });
     expect(stored!.latencyMs).toBeGreaterThanOrEqual(0);
   });
 

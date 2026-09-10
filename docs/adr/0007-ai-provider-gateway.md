@@ -68,6 +68,25 @@
   failing scheduled run, since `AiEvalRun` has no `organizationId` (it
   is deployment-wide, not tenant data) and the harness's own doc only
   asked for scheduling. See `docs/specs/ai-eval-harness.md`.
+- **Updated:** 2026-09-10 — closed a real Section 23.3 gap ("Treat
+  retrieved content and external webhooks as untrusted data, not
+  instructions"): `governedContext` was being interpolated directly
+  into the system prompt with no delimiting, even though it includes
+  the literal text of past user-typed Cedar Brain prompts
+  (`context-retrieval-service.ts`'s prior-activity section) — a real
+  prompt-injection surface once `ANTHROPIC_API_KEY` exists, not a
+  hypothetical one. `governedContext` is now wrapped in
+  `<retrieved_context>` tags with an explicit instruction in
+  `SYSTEM_PROMPT_TEMPLATE` to treat that block as data, never
+  instructions. `CEDAR_BRAIN_PROMPT_VERSION` bumped to `v5`.
+  `buildSystemPrompt` is now exported specifically so it has direct
+  unit coverage — `callCedarBrain` always hits the stub branch first in
+  every environment this runs in, so without exporting it this
+  security-relevant function would otherwise have zero test coverage.
+  See `docs/specs/governed-context-retrieval.md`'s new section for the
+  honest limit on what this proves (prompt construction is hardened;
+  actual model compliance can't be verified without a live call this
+  sandbox can't make).
 
 ## Context
 
