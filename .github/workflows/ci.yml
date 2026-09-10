@@ -1,8 +1,9 @@
 name: CI
 
 # Bible Section 31.2 CI/CD gates: lint/format/typecheck, unit tests,
-# migration validation, build, dependency scanning. Section 42.1's
-# "mandatory checkpoint after each slice" is what this workflow automates.
+# migration validation, build, E2E/smoke tests, dependency scanning.
+# Section 42.1's "mandatory checkpoint after each slice" is what this
+# workflow automates.
 
 on:
   push:
@@ -83,6 +84,28 @@ jobs:
 
       - name: Build apps/web
         run: npm run build --workspace apps/web
+
+      - name: Install Playwright's Chromium
+        # No pre-installed browser here (unlike the sandbox
+        # playwright.config.ts also supports — see its own comment):
+        # a real managed download, with the OS-level libs headless
+        # Chromium needs on a bare Ubuntu runner.
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E / smoke tests (Section 31.2 "build...and run smoke tests")
+        # test:e2e resets cedarpoint_ci to a known seeded state, clears
+        # any stale rate-limit buckets, then drives a real browser
+        # against a real production build (playwright.config.ts's own
+        # webServer builds + starts apps/web) — see tests/e2e/README.md.
+        run: npm run test:e2e
+
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
 
       - name: Dependency audit (production dependencies)
         run: npm audit --omit=dev --audit-level=critical

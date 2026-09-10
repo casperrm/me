@@ -1,7 +1,9 @@
 # tests/e2e
 
 Critical end-to-end flows (Bible Section 32, 35), run against a real
-browser (Playwright/Chromium) — not curl, not a mock DOM.
+browser (Playwright/Chromium) — not curl, not a mock DOM. Runs in CI
+(`.github/workflows/ci.yml`) on every push/PR, not just locally by hand —
+see `docs/specs/ci-e2e-gate.md`.
 
 ## What's here
 
@@ -89,7 +91,6 @@ transition branches) and any newly-built feature reaching the same bar
 as it ships. Add here as the next highest-value gap is identified, not
 as a blanket "cover everything" pass.
 
-- API-contract tests exist for a representative set of route handlers
-  (`apps/web/src/app/api/**/*.route.contract.test.ts`, see
-  `docs/specs/api-route-contracts.md`) but not all ~35 routes —
-  extending that coverage is separate, real follow-up work.
+- API-contract tests (`apps/web/src/app/api/**/*.route.contract.test.ts`,
+  see `docs/specs/api-route-contracts.md`) now cover every route handler
+  in the app — this used to be partial, closed by a later slice.

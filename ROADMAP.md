@@ -328,6 +328,34 @@ deployment.
       real headless-Chromium check that the task row's tooltip reflected
       the new, real timestamp. All smoke-test rows cleaned up. See
       `docs/specs/data-model-timestamps.md`.
+- [x] E2E/smoke-test CI gate (Section 31.2: "Build frontend/backend/
+      workers and run smoke tests"). The real browser-driven E2E suite
+      (`tests/e2e/`, 8 spec files) already existed but only ever ran
+      locally by hand — CI covered lint/typecheck/migrations/unit+
+      integration tests/build/dependency-audit but never it. Fixed a
+      real blocker underneath first: `playwright.config.ts` hardcoded
+      its browser's `executablePath` to this dev sandbox's own
+      pre-installed Chromium path (`/opt/pw-browsers/chromium`) — a
+      path that doesn't exist on a real GitHub Actions runner, so simply
+      adding a CI step to run the suite would have failed immediately
+      for a reason that would have looked like an environment problem
+      rather than the actual root cause. Made it conditional
+      (`existsSync` selects the sandbox path when present, `undefined`
+      otherwise, letting Playwright launch its own managed browser).
+      `.github/workflows/ci.yml` gained `npx playwright install
+      --with-deps chromium` plus `npm run test:e2e` after the existing
+      build step, and a trace/screenshot artifact upload on failure.
+      Verified: the conditional path-selection logic checked directly
+      (`existsSync` returns `true`/`false` correctly for the real vs. a
+      nonexistent path); the full local E2E suite re-run after the
+      config change — all 8 specs still pass, proving the sandbox branch
+      is unaffected. Honest limit stated in
+      `docs/specs/ci-e2e-gate.md`: the actual "fresh Playwright-managed
+      install on a bare Ubuntu runner" branch couldn't be executed end
+      to end from within this sandbox (no GitHub Actions runner access
+      here) — same category of environment-gated verification as every
+      `ANTHROPIC_API_KEY`/OAuth-blocked item in this project; it gets
+      its first real proof on this workflow's next actual CI run.
 
 ## Phase 1 — Agency Core: **complete**
 
