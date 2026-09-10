@@ -2,7 +2,12 @@ import { isAuthorized } from "@cedar/auth";
 import { Card, StatCard } from "@/components/Card";
 import { checkPermission } from "@/lib/guards";
 import { PermissionDenied } from "@/components/PermissionDenied";
-import { getAiSupervisorSummary, getModelUsageBreakdown, listRecentWorkerJobFailures } from "@/lib/services/ai-supervisor-service";
+import {
+  getAiSupervisorSummary,
+  getModelUsageBreakdown,
+  listRecentWorkerJobFailures,
+  listRecentWorkflowRuns,
+} from "@/lib/services/ai-supervisor-service";
 import { getRecentEvalRuns } from "@/lib/services/eval-service";
 import { getAiBudgetStatus } from "@/lib/services/ai-budget-service";
 import { getPromptSnapshots } from "@/lib/services/prompt-registry-service";
@@ -20,15 +25,17 @@ export default async function AiSupervisorPage() {
     return <PermissionDenied message="AI Supervisor telemetry requires the ai:supervise permission. Ask an admin or owner." />;
   }
 
-  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage, workerJobFailures] = await Promise.all([
-    getAiSupervisorSummary(actor.organizationId),
-    getRecentEvalRuns(),
-    getAiBudgetStatus(actor.organizationId),
-    isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
-    getPromptSnapshots(),
-    getModelUsageBreakdown(actor.organizationId),
-    listRecentWorkerJobFailures(),
-  ]);
+  const [summary, evalRuns, budgetStatus, canManageBudget, promptSnapshots, modelUsage, workerJobFailures, workflowRuns] =
+    await Promise.all([
+      getAiSupervisorSummary(actor.organizationId),
+      getRecentEvalRuns(),
+      getAiBudgetStatus(actor.organizationId),
+      isAuthorized({ userId: actor.user.id, organizationId: actor.organizationId, permission: "organization:manage" }),
+      getPromptSnapshots(),
+      getModelUsageBreakdown(actor.organizationId),
+      listRecentWorkerJobFailures(),
+      listRecentWorkflowRuns(),
+    ]);
   const latestEvalRun = evalRuns[0];
 
   return (
@@ -239,6 +246,49 @@ export default async function AiSupervisorPage() {
             </ul>
           )}
         </div>
+      </Card>
+
+      <Card title="Automation runs">
+        <p className="mb-3 text-xs text-neutral-500">
+          Section 18&apos;s Workflow Automation Engine, first real cut: every run of the escalation scan (the only
+          workflow migrated onto it so far) is recorded here with per-step status, deployment-wide. A step that
+          fails no longer silently blocks the other, unrelated steps in the same run — see
+          docs/specs/automation-engine.md for what this is and isn&apos;t yet (no generic rule builder, no other
+          trigger types beyond the existing schedule).
+        </p>
+        {workflowRuns.length === 0 ? (
+          <p className="text-sm text-neutral-400">No workflow runs recorded yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {workflowRuns.map((run) => (
+              <li key={run.id} className="rounded-lg border border-neutral-100 p-3">
+                <div className="flex items-center justify-between text-xs text-neutral-400">
+                  <span className="font-medium text-neutral-600">{run.workflowKey}</span>
+                  <span>{run.startedAt.toLocaleString()}</span>
+                </div>
+                <div
+                  className={
+                    run.status === "completed"
+                      ? "mt-1 text-xs text-cedar-700"
+                      : run.status === "completed_with_errors"
+                        ? "mt-1 text-xs text-amber-600"
+                        : "mt-1 text-xs text-red-600"
+                  }
+                >
+                  {run.status} — {run.steps.filter((s) => s.status === "success").length}/{run.steps.length} steps
+                  succeeded
+                </div>
+                {run.steps
+                  .filter((s) => s.status === "failed")
+                  .map((s) => (
+                    <div key={s.name} className="mt-1 text-xs text-red-600">
+                      {s.name}: {s.error}
+                    </div>
+                  ))}
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card title="Background job health">

@@ -17,6 +17,16 @@
   scheduled job and a new `WorkerJobFailure` dead-letter record,
   persisted only once every retry attempt is exhausted. See
   `docs/specs/worker-job-reliability.md`.
+- **Updated:** 2026-09-10 — `packages/automation` gained its first real
+  implementation (`runWorkflow()`): a durable, per-step-tracked run
+  record satisfying Section 18.2's "status, step history... errors,
+  and correlation ID" requirement, with `apps/worker`'s escalation scan
+  migrated onto it as the first consumer. This also fixed a real bug:
+  the job's four categories previously ran through a bare `Promise.all`,
+  so one category throwing silently skipped the other three for that
+  run; steps are now isolated from each other. Not the full Section 18
+  engine — no trigger registry, no rule-authoring UI, no step-level
+  retries yet. See `docs/specs/automation-engine.md`.
 
 ## Context
 

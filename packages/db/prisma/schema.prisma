@@ -1141,3 +1141,25 @@ model WorkerJobFailure {
   @@index([queueName, occurredAt])
   @@map("worker_job_failures")
 }
+
+// Section 18 (Workflow Automation Engine) / 18.2: "Every workflow run has
+// status, step history, input/output references, retry count, errors,
+// and correlation ID." packages/automation's runWorkflow() writes one row
+// per invocation — the first real cut of this engine, not a full
+// admin-configurable rule builder (out of scope until a second real
+// consumer justifies one; see docs/specs/automation-engine.md).
+// Deployment-wide like WorkerJobFailure/AiEvalRun — a scheduled job isn't
+// tied to one tenant.
+model WorkflowRun {
+  id            String    @id @default(uuid())
+  workflowKey   String // stable identifier, e.g. "escalation-scan"
+  status        String // "completed" | "completed_with_errors" | "failed"
+  steps         String // JSON array of {name, status, startedAt, finishedAt, output?, error?}
+  correlationId String?
+  retryCount    Int       @default(0) // step-level retry isn't built by this first consumer — see spec
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  @@index([workflowKey, startedAt])
+  @@map("workflow_runs")
+}

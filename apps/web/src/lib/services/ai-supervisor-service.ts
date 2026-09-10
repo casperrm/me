@@ -174,3 +174,36 @@ export async function listRecentWorkerJobFailures(limit: number = RECENT_WORKER_
     take: limit,
   });
 }
+
+const RECENT_WORKFLOW_RUNS_LIMIT = 10;
+
+export interface WorkflowRunSummary {
+  id: string;
+  workflowKey: string;
+  status: string;
+  startedAt: Date;
+  finishedAt: Date | null;
+  steps: { name: string; status: string; error?: string }[];
+}
+
+/**
+ * Section 18.2's "every workflow run has status, step history... errors"
+ * requirement, surfaced here for the same reason listRecentWorkerJobFailures
+ * is: deployment-wide (a scheduled job isn't tied to one tenant), same
+ * audience (ai:supervise already reviews this app's only operational
+ * telemetry surface). See docs/specs/automation-engine.md.
+ */
+export async function listRecentWorkflowRuns(limit: number = RECENT_WORKFLOW_RUNS_LIMIT): Promise<WorkflowRunSummary[]> {
+  const runs = await prisma.workflowRun.findMany({
+    orderBy: { startedAt: "desc" },
+    take: limit,
+  });
+  return runs.map((run) => ({
+    id: run.id,
+    workflowKey: run.workflowKey,
+    status: run.status,
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt,
+    steps: JSON.parse(run.steps) as { name: string; status: string; error?: string }[],
+  }));
+}

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@cedar/ai": "*",
+    "@cedar/automation": "*",
     "@cedar/config": "*",
     "@cedar/db": "*",
     "@cedar/events": "*",

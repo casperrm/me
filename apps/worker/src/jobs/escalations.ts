@@ -1,6 +1,7 @@
 import { prisma } from "@cedar/db";
 import { hasRecentNotification, notifyClientWriters } from "@cedar/events";
 import { logger } from "@cedar/observability";
+import { runWorkflow, type WorkflowDefinition } from "@cedar/automation";
 
 // Once a resource has been escalated, don't escalate it again for a full
 // day even if it's still overdue (Bible Section 30: "Deduplicate noisy
@@ -140,6 +141,27 @@ async function escalateOverdueInvoices() {
   return escalated;
 }
 
+// Section 18's Workflow Automation Engine, first real consumer: each
+// escalation category is its own step, run through packages/automation's
+// runWorkflow() instead of a bare Promise.all. This is a real behavior
+// change, not just re-plumbing for its own sake: before this, a thrown
+// error in *any one* category (say, a bad row in the invoice scan) made
+// Promise.all reject immediately, silently skipping the other three
+// categories for that entire run — task/project/content escalations
+// would go unrun by a bug that had nothing to do with them. Steps are
+// now isolated: one failing category is recorded in that run's step
+// history and does not block the others. See
+// docs/specs/automation-engine.md.
+const escalationScanWorkflow: WorkflowDefinition<void> = {
+  key: "escalation-scan",
+  steps: [
+    { name: "escalate-overdue-tasks", run: async () => ({ escalated: await escalateOverdueTasks() }) },
+    { name: "escalate-overdue-projects", run: async () => ({ escalated: await escalateOverdueProjects() }) },
+    { name: "escalate-overdue-content", run: async () => ({ escalated: await escalateOverdueContent() }) },
+    { name: "escalate-overdue-invoices", run: async () => ({ escalated: await escalateOverdueInvoices() }) },
+  ],
+};
+
 /**
  * Section 30: "Escalation rules for overdue approvals, project risk,
  * payment risk, integration degradation, security events, and failed
@@ -153,18 +175,35 @@ async function escalateOverdueInvoices() {
  * not faked here.
  */
 export async function runEscalationScan() {
-  const [tasks, projects, content, invoices] = await Promise.all([
-    escalateOverdueTasks(),
-    escalateOverdueProjects(),
-    escalateOverdueContent(),
-    escalateOverdueInvoices(),
-  ]);
-  const total = tasks + projects + content + invoices;
-  logger.info("escalation scan complete", {
-    tasksEscalated: tasks,
-    projectsEscalated: projects,
-    contentEscalated: content,
-    invoicesEscalated: invoices,
-  });
+  const outcome = await runWorkflow({ definition: escalationScanWorkflow, context: undefined });
+
+  const totals = { tasksEscalated: 0, projectsEscalated: 0, contentEscalated: 0, invoicesEscalated: 0 };
+  const keyByStep: Record<string, keyof typeof totals> = {
+    "escalate-overdue-tasks": "tasksEscalated",
+    "escalate-overdue-projects": "projectsEscalated",
+    "escalate-overdue-content": "contentEscalated",
+    "escalate-overdue-invoices": "invoicesEscalated",
+  };
+  for (const step of outcome.steps) {
+    if (step.status === "success" && typeof step.output?.escalated === "number") {
+      totals[keyByStep[step.name]] = step.output.escalated;
+    }
+  }
+
+  const total = totals.tasksEscalated + totals.projectsEscalated + totals.contentEscalated + totals.invoicesEscalated;
+  logger.info("escalation scan complete", { ...totals, workflowStatus: outcome.status, workflowRunId: outcome.runId });
+
+  // A step that threw is a real failure the caller (the BullMQ job
+  // handler, which retries and can dead-letter) should still see —
+  // runWorkflow isolates steps from each other, it doesn't hide errors
+  // from the caller entirely. Only escalate if every step failed
+  // (a systemic problem, e.g. the DB itself); one bad category among
+  // three healthy ones is captured in the run's step history and
+  // surfaced on /command/supervisor, not worth failing the whole job for.
+  if (outcome.status === "failed") {
+    const firstError = outcome.steps.find((s) => s.status === "failed")?.error ?? "all steps failed";
+    throw new Error(`escalation scan: ${firstError}`);
+  }
+
   return total;
 }

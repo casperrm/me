@@ -512,6 +512,35 @@ deployment.
       matching decision/creativeVersionId; the mutation and its
       ClientTimelineEvent were reverted afterward. See
       `docs/specs/audit-event-approval-linkage.md`.
+- [x] Workflow Automation Engine v1 (Section 18/18.2) — `packages/automation`
+      had been a placeholder ("Not implemented yet") since Phase 0. New
+      `runWorkflow()`: a `WorkflowDefinition` (named steps) run in order
+      against a real `WorkflowRun` row per invocation (status, per-step
+      history, correlation ID — picked up automatically from the
+      existing ambient correlation context, Section 31.3). `apps/worker`'s
+      escalation scan migrated onto it as the first real consumer (one
+      step per category), which surfaced and fixed a genuine bug in the
+      process: the job previously ran its four categories through a bare
+      `Promise.all`, so one category throwing silently aborted the other
+      three, unrelated categories for that entire run. Steps are now
+      isolated — a broken category is recorded in that run's step
+      history without blocking the healthy ones. New "Automation runs"
+      card on `/command/supervisor`, same pattern as the existing
+      "Background job health" card. Explicitly not built: a generic
+      trigger registry (schedule is still the only trigger source — a
+      second one would need to exist before generalizing), a
+      rule-authoring UI, step-level retries, and pause/cancel/replay —
+      all named directly in Section 18.2 but requiring either a second
+      real consumer or a durable resumption model this first cut
+      doesn't have. New `packages/automation/src/workflow.integration.test.ts`
+      (this package's first-ever test file, 4 tests) plus 2 new/extended
+      tests in `escalations.integration.test.ts`, including a dedicated
+      regression test simulating a real single-category failure and
+      proving the other categories still ran and notified. Live-verified
+      against a real running `apps/worker` process (a real `WorkflowRun`
+      row with a correlation ID matching the job's own log lines) and a
+      real headless-browser session confirming the Supervisor card
+      renders it correctly. See `docs/specs/automation-engine.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
