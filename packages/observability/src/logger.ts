@@ -3,6 +3,7 @@
 // logging framework (pino/winston) yet — see docs/adr/0010-deployment-and-observability.md
 // for when that upgrade is warranted. JSON-per-line to stdout is enough
 // for Phase 0 and composes with any log shipper later without a code change.
+import { getCorrelationId } from "./correlation";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -14,10 +15,18 @@ export interface LogContext {
 }
 
 function log(level: LogLevel, message: string, context: LogContext = {}) {
+  // An explicit correlationId on this specific call always wins; absent
+  // that, fall back to whatever runWithCorrelationId established for the
+  // current async call chain (see correlation.ts) — this is what makes
+  // every log line from one worker job run (or, later, one API request)
+  // actually correlatable without threading an id through every function
+  // signature by hand.
+  const ambientCorrelationId = getCorrelationId();
   const line = JSON.stringify({
     level,
     message,
     timestamp: new Date().toISOString(),
+    ...(ambientCorrelationId ? { correlationId: ambientCorrelationId } : {}),
     ...context,
   });
   if (level === "error") console.error(line);

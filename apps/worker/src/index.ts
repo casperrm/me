@@ -4,7 +4,7 @@
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 import { loadEnv } from "@cedar/config";
-import { logger } from "@cedar/observability";
+import { logger, runWithCorrelationId } from "@cedar/observability";
 import { recordJobFailureIfFinal } from "./dead-letter";
 import { runEscalationScan } from "./jobs/escalations";
 import { runHealthScoreJob } from "./jobs/health-scores";
@@ -50,10 +50,19 @@ const heartbeatWorker = new Worker(
 // the Phase 0 gap noted in ROADMAP.md ("carries no real job yet").
 const escalationsWorker = new Worker(
   ESCALATIONS_QUEUE,
-  async (job) => {
+  // Section 31.3: "structured logs with correlation/request/workflow/
+  // agent IDs." One scheduled job execution is a natural bounded
+  // "workflow" unit — reusing BullMQ's own per-execution job.id (rather
+  // than minting a separate random UUID) as the correlation ID means
+  // every log line emitted anywhere inside runEscalationScan()'s call
+  // graph, plus the "job failed" log line and dead-letter record if it
+  // errors, all share one real, already-unique identifier — so a real
+  // incident can be traced with one grep across every log line from
+  // that specific run.
+  (job) => runWithCorrelationId(job.id ?? "unknown", async () => {
     const count = await runEscalationScan();
     logger.info("escalation job finished", { jobId: job.id, resourcesEscalated: count });
-  },
+  }),
   { connection },
 );
 
@@ -62,10 +71,10 @@ const escalationsWorker = new Worker(
 // real vs. explicitly out of scope.
 const healthScoresWorker = new Worker(
   HEALTH_SCORES_QUEUE,
-  async (job) => {
+  (job) => runWithCorrelationId(job.id ?? "unknown", async () => {
     const count = await runHealthScoreJob();
     logger.info("health score job finished", { jobId: job.id, clientsScored: count });
-  },
+  }),
   { connection },
 );
 
@@ -76,10 +85,10 @@ const healthScoresWorker = new Worker(
 // jobs/ai-eval.ts for exactly what runs.
 const aiEvalWorker = new Worker(
   AI_EVAL_QUEUE,
-  async (job) => {
+  (job) => runWithCorrelationId(job.id ?? "unknown", async () => {
     const run = await runAiEvalJob();
     logger.info("ai eval job finished", { jobId: job.id, totalCases: run.totalCases, passedCases: run.passedCases });
-  },
+  }),
   { connection },
 );
 
@@ -90,8 +99,16 @@ for (const [name, worker] of [
   ["ai-eval", aiEvalWorker],
 ] as const) {
   worker.on("failed", (job, err) => {
-    logger.error(`${name} job failed`, { jobId: job?.id, error: String(err) });
-    if (job) void recordJobFailureIfFinal(name, job, err);
+    // BullMQ fires "failed" as a separate event-listener invocation, not
+    // a continuation of the job handler's own async call stack, so the
+    // correlation context established inside the handler above doesn't
+    // automatically reach here — re-established explicitly from the same
+    // job.id so this log line (and any inside recordJobFailureIfFinal)
+    // still correlates with the run that produced it.
+    runWithCorrelationId(job?.id ?? "unknown", () => {
+      logger.error(`${name} job failed`, { jobId: job?.id, error: String(err) });
+      if (job) void recordJobFailureIfFinal(name, job, err);
+    });
   });
 }
 

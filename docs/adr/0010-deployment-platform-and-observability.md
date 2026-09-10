@@ -2,6 +2,14 @@
 
 - **Status:** Proposed — not yet decided
 - **Date:** 2026-09-06
+- **Updated:** 2026-09-10 — the `correlationId` field this ADR described
+  as "available on every call site" is now actually populated, not just
+  a typed hook: `packages/observability/src/correlation.ts`
+  (`AsyncLocalStorage`-based) threads a real ID through every log line
+  from one `apps/worker` scheduled job run. See
+  `docs/specs/worker-log-correlation.md` for the design and its
+  explicitly-deferred sibling gap (per-HTTP-request correlation IDs
+  across `apps/web`'s ~61 API routes — a larger, separate follow-up).
 
 ## Context
 

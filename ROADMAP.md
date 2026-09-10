@@ -356,6 +356,47 @@ deployment.
       here) — same category of environment-gated verification as every
       `ANTHROPIC_API_KEY`/OAuth-blocked item in this project; it gets
       its first real proof on this workflow's next actual CI run.
+- [x] Correlation IDs for worker job logs (Section 31.3: "structured
+      logs with correlation/request/workflow/agent IDs"). ADR-010
+      already described a `correlationId` field as "available on every
+      call site," but grepping for real usage across `apps/*` before
+      starting this slice found zero — a typed hook, not a working
+      mechanism, structurally identical to the `Invoice.currency`
+      dead-field pattern caught earlier this session. New
+      `packages/observability/src/correlation.ts` uses Node's built-in
+      `AsyncLocalStorage` (`runWithCorrelationId`/`getCorrelationId`,
+      no new dependency) to thread an ID through an async call chain
+      several layers deep without touching every function signature in
+      between; `logger.ts` now auto-merges the ambient ID into every
+      log line unless a call site passes its own explicit one.
+      `apps/worker/src/index.ts` wraps its three real scheduled job
+      handlers (escalations, health scores, AI eval) in
+      `runWithCorrelationId(job.id, ...)`, reusing BullMQ's own
+      per-execution `job.id` rather than minting a separate UUID — the
+      same value the "job failed" log line and `WorkerJobFailure`
+      dead-letter rows already reference. The shared
+      `worker.on("failed", ...)` handler re-establishes the same
+      correlation id explicitly, since BullMQ fires it as a separate
+      event-listener invocation that doesn't inherit the handler's own
+      async context. `heartbeat` deliberately left unwrapped — a
+      trivial one-line debug tick, not a multi-step workflow worth
+      tracing. Explicitly deferred: per-HTTP-request correlation IDs
+      across `apps/web`'s ~61 API routes (a much larger, separate
+      change — Next.js middleware can't establish `AsyncLocalStorage`
+      context on a route handler's behalf, since they run as separate
+      function invocations) and distributed tracing (needs a real
+      tracing backend, out of scope for the same reason ADR-010 gives
+      for not adopting a full logging framework yet). New
+      `packages/observability/src/correlation.test.ts` — this
+      package's first-ever test file, 8 tests covering absence outside
+      context, scoped availability, nested-async propagation, no
+      cross-contamination between concurrent runs, and logger
+      auto-tagging (omit/include/override). Live-verified against a
+      real running `apps/worker` process: log output confirmed a
+      nested call (`runAiEvalJob`) and its wrapper shared one real
+      correlation ID, and different job types running in the same
+      process got different, non-overlapping IDs; all incidental rows
+      cleaned up afterward. See `docs/specs/worker-log-correlation.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
