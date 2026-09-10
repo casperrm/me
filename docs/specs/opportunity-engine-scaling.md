@@ -141,13 +141,22 @@ produced.
 
 ## Scope boundary — what's still open
 
-Remaining ranked items from the Phase 7 audit
-(`docs/specs/dashboard-aggregates.md`), untouched by this slice: the
-clients list page, the content calendar's per-client lists, the Client
-Portal's external-facing lists, the shoots page, and asset-picker
-dropdowns. The service-gap signal's `Client.services` scan (above) is
-newly identified as a real but lower-priority item — bounded by client
-count rather than history, so ranked below the others.
+At the time this slice was written, the Phase 7 audit
+(`docs/specs/dashboard-aggregates.md`) still had other ranked items
+open: the clients list page, the content calendar's per-client lists,
+the Client Portal's external-facing lists, the shoots page, and
+asset-picker dropdowns. **Update:** every one of those has since landed
+as its own follow-up slice (see ROADMAP.md's Phase 7 section) — this
+note is kept for history, not as an open item list. The service-gap
+signal's `Client.services` scan (above) is a real but lower-priority
+item that was ranked below the others and remains unaddressed — bounded
+by client count rather than history, so it's a smaller win than the
+others were. Note this isn't a pending TODO: the code comment on that
+scan (`opportunity-service.ts`) already gives the reason it's fine
+as a plain Node-side scan rather than raw SQL — it's bounded by
+organization-wide client count (the Bible's own 500-client scale
+target), not by unbounded history, so it doesn't grow the way the
+creative-format queries above did.
 
 ## Acceptance
 
