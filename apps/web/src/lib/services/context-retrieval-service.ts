@@ -1,8 +1,10 @@
 import { isAuthorized } from "@cedar/auth";
 import { prisma } from "@cedar/db";
 import { AuthError } from "./auth-service";
+import type { MeetingDecision } from "./meeting-service";
 
 const RECENT_TIMELINE_LIMIT = 3;
+const RECENT_MEETINGS_LIMIT = 3;
 const RECENT_CEDAR_BRAIN_LIMIT = 3;
 const SUMMARY_EXCERPT_LENGTH = 150;
 const MAX_CONTEXT_CHARS = 2000; // bounded, per Section 34's "bounded metadata" principle
@@ -86,10 +88,23 @@ export async function getRecentCedarBrainActivityForClient(
  * layers." Command Center previously sent nothing but the raw prompt to
  * the model — this is the first real implementation of that retrieval
  * step, using plain structured queries against canonical tables (Client,
- * BrandProfileVersion, ClientHealthScore, ClientTimelineEvent). No
- * semantic/vector retrieval — ADR-008 defers that until there's
- * unstructured content worth indexing, which this system still doesn't
- * have.
+ * BrandProfileVersion, ClientHealthScore, ClientTimelineEvent,
+ * Meeting.decisions — see below). No semantic/vector retrieval — ADR-008
+ * defers that until there's unstructured content worth indexing, which
+ * this system still doesn't have.
+ *
+ * Also Section 19's Knowledge Graph, a bounded first cut: "structured
+ * queries first for canonical facts" (19.1) plus one real hop of the
+ * Bible's own example relationship chain, "Client -> Meeting -> Decision
+ * -> Task" — this function already did the "structured queries first"
+ * half for Brand DNA/health score/timeline, but never actually walked
+ * that specific chain even though its own top-of-function reference to
+ * Section 6.6 ("decisions... client-specific lessons") named decisions
+ * as in scope. No graph *database*, no semantic retrieval, no promotion/
+ * curation machinery (19.2) — those all need infrastructure or a real
+ * curation workflow this system doesn't have; this is one more real,
+ * bounded relational hop through data that already exists, the same
+ * pattern as every other section below.
  *
  * Authorization happens BEFORE any data is touched, matching the lifecycle
  * order verbatim: an actor who can't read this client gets AuthError, not
@@ -114,6 +129,11 @@ export async function buildGovernedContext(params: {
       brandProfile: { include: { versions: { orderBy: { version: "desc" }, take: 1 } } },
       healthScores: { orderBy: { computedAt: "desc" }, take: 1 },
       timelineEvents: { orderBy: { occurredAt: "desc" }, take: RECENT_TIMELINE_LIMIT },
+      meetings: {
+        orderBy: { occurredAt: "desc" },
+        take: RECENT_MEETINGS_LIMIT,
+        select: { title: true, occurredAt: true, decisions: true },
+      },
     },
   });
   if (!client) throw new AuthError("Client not found.");
@@ -146,6 +166,21 @@ export async function buildGovernedContext(params: {
     const timelineLines = client.timelineEvents.map((e) => `- ${e.occurredAt.toISOString().slice(0, 10)}: ${e.summary}`);
     sections.push(`Recent activity:\n${timelineLines.join("\n")}`);
     sources.push(`${client.timelineEvents.length} recent timeline event(s)`);
+  }
+
+  // Section 19's Knowledge Graph example chain, one real hop: Client ->
+  // Meeting -> Decision. Only meetings that actually recorded a decision
+  // contribute a line — a meeting with none has nothing relevant to add
+  // here (its existence is still visible via the calendar, just not
+  // worth a context line for Cedar Brain).
+  const decisionLines = client.meetings.flatMap((meeting) =>
+    parseJSON<MeetingDecision[]>(meeting.decisions, []).map(
+      (decision) => `- ${meeting.occurredAt.toISOString().slice(0, 10)} (${meeting.title}): ${decision.text}`,
+    ),
+  );
+  if (decisionLines.length > 0) {
+    sections.push(`Recent decisions from meetings:\n${decisionLines.join("\n")}`);
+    sources.push(`${decisionLines.length} recent meeting decision(s)`);
   }
 
   // Only successful, never-flagged prior answers are worth feeding back

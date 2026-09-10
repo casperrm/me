@@ -541,6 +541,33 @@ deployment.
       row with a correlation ID matching the job's own log lines) and a
       real headless-browser session confirming the Supervisor card
       renders it correctly. See `docs/specs/automation-engine.md`.
+- [x] Knowledge Graph v1: Client -> Meeting -> Decision structured
+      retrieval (Section 19/19.1). `context-retrieval-service.ts`'s
+      `buildGovernedContext` already did Section 19.1's "structured
+      queries first for canonical facts" for Brand DNA/health score/
+      timeline, and its own doc comment already cited Section 6.6's
+      "decisions" as in scope — but never once queried `Meeting
+      .decisions`, even though every piece it needed (the `Meeting`
+      model, its `decisions` JSON column, `Client.meetings`) already
+      existed from the Meetings module. Now pulls the 3 most recent
+      meetings for the client and adds a line per real decision found
+      (never a placeholder for a meeting with none), with a real,
+      countable `sources` entry — Section 19.1's "retain source/resource
+      references for traceability." Explicitly not built: a graph
+      database, semantic/vector retrieval (still deferred per ADR-008 —
+      no embedding infra, no live model calls to use one against even if
+      it existed), graph expansion beyond this one hop, or any
+      promotion/curation machinery (19.2) — this is one bounded
+      relational hop through data that already existed, not the query
+      layer. `context-retrieval.integration.test.ts` extended to 10
+      tests (from 9): the main test now asserts real decision content
+      and its source count; a new dedicated test confirms a meeting with
+      no decisions contributes nothing. Live-verified via a real HTTP
+      call to `POST /api/cedar-brain` on a running production build,
+      confirming the real decision surfaced in the response's
+      `contextSources`; row cleanup confirmed the dev database was back
+      to its seeded baseline. See
+      `docs/specs/knowledge-graph-meeting-decisions.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
@@ -1371,11 +1398,17 @@ Phase 5's concretely buildable scope is now complete.
       curation, no cross-client pattern extraction, no outcome
       measurement — one client's own history, read back verbatim,
       filtered only by what a human already said about it.
-- [ ] Agency Memory, Success Library, Knowledge Graph query layer, Cedar
-      Decision Engine, Cedar Intelligence, Living/Market Intelligence,
-      Digital Twin, Innovation Lab, Experience Engine — not started;
-      each needs curation/outcome-measurement/cross-client
-      infrastructure this slice deliberately didn't invent.
+- [ ] Agency Memory, Success Library, Cedar Decision Engine, Cedar
+      Intelligence, Living/Market Intelligence, Digital Twin, Innovation
+      Lab, Experience Engine — not started; each needs curation/outcome-
+      measurement/cross-client infrastructure this project deliberately
+      hasn't invented. **Knowledge Graph query layer partially started**
+      (see Phase 1's "Knowledge Graph v1" entry): one real relational hop
+      of Section 19's own example chain, Client -> Meeting -> Decision,
+      now feeds Cedar Brain's context — still no graph database, no
+      semantic/vector retrieval, no graph expansion beyond that one hop,
+      no promotion/curation (19.2). A genuinely bounded first cut, not
+      the full query layer.
 
 ## Phase 7 — Scale Hardening: started
 

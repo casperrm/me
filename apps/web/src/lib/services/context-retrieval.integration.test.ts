@@ -15,6 +15,8 @@ import { buildGovernedContext, getRecentCedarBrainActivityForClient } from "./co
 
 async function wipeDatabase() {
   await prisma.cedarBrainRequest.deleteMany();
+  await prisma.meetingAttendee.deleteMany();
+  await prisma.meeting.deleteMany();
   await prisma.clientTimelineEvent.deleteMany();
   await prisma.clientHealthScore.deleteMany();
   await prisma.brandProfileVersion.deleteMany();
@@ -69,6 +71,22 @@ beforeAll(async () => {
 
   await prisma.clientTimelineEvent.create({
     data: { clientId: clientAId, type: "project_created", summary: "Kicked off Q1 campaign." },
+  });
+
+  // Section 19's Knowledge Graph example chain: Client -> Meeting ->
+  // Decision. One meeting with a real decision (must appear in context),
+  // one with none (must contribute nothing — no fabricated "no decisions"
+  // line for it).
+  await prisma.meeting.create({
+    data: {
+      organizationId: org.id,
+      clientId: clientAId,
+      title: "Q1 kickoff",
+      decisions: JSON.stringify([{ id: "d1", text: "Launch on the 15th, not the 1st.", rationale: null, createdAt: new Date().toISOString() }]),
+    },
+  });
+  await prisma.meeting.create({
+    data: { organizationId: org.id, clientId: clientAId, title: "Status check-in, no decisions made" },
   });
 
   // A prior successful Cedar Brain request for Client A — real material
@@ -151,12 +169,24 @@ describe("buildGovernedContext", () => {
     expect(context.text).toContain("82/100");
     expect(context.text).toContain("Kicked off Q1 campaign.");
     expect(context.text).toContain("Charge in the time it takes to check your notifications.");
+    // Section 19's Knowledge Graph chain: Client -> Meeting -> Decision.
+    expect(context.text).toContain("Launch on the 15th, not the 1st.");
+    expect(context.text).toContain("Q1 kickoff");
 
     expect(context.sources).toContain("Client record");
     expect(context.sources.some((s) => s.startsWith("Brand DNA"))).toBe(true);
     expect(context.sources.some((s) => s.includes("82/100"))).toBe(true);
     expect(context.sources.some((s) => s.includes("timeline event"))).toBe(true);
     expect(context.sources.some((s) => s.includes("prior Cedar Brain answer"))).toBe(true);
+    expect(context.sources).toContain("1 recent meeting decision(s)");
+  });
+
+  it("includes a decision from every meeting that recorded one, but contributes nothing for a meeting with none", async () => {
+    const context = await buildGovernedContext({ actorUserId: ownerUserId, organizationId: orgId, clientId: clientAId });
+    // The second meeting fixture ("Status check-in, no decisions made")
+    // has no decisions JSON at all — its title must never appear, since
+    // this section only exists to report actual decisions, not meetings.
+    expect(context.text).not.toContain("Status check-in, no decisions made");
   });
 
   it("never feeds a failed prior request's (non-existent) content back into the model's context", async () => {
