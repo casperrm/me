@@ -26,6 +26,7 @@ interface Decision {
   text: string;
   rationale: string | null;
   createdAt: string;
+  promotedToMemoryId: string | null;
 }
 interface FollowUp {
   id: string;
@@ -166,7 +167,10 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
           <ul className="space-y-2">
             {decisions.map((d) => (
               <li key={d.id} className="rounded-md border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm">
-                <div className="font-medium text-neutral-800">{d.text}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium text-neutral-800">{d.text}</div>
+                  {d.promotedToMemoryId && <span className="shrink-0 text-xs text-cedar-700">In Agency Memory</span>}
+                </div>
                 {d.rationale && <div className="mt-0.5 text-xs text-neutral-500">Rationale: {d.rationale}</div>}
               </li>
             ))}

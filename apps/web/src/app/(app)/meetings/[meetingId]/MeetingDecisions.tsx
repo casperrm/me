@@ -8,6 +8,7 @@ interface Decision {
   text: string;
   rationale: string | null;
   createdAt: string;
+  promotedToMemoryId: string | null;
 }
 
 export function MeetingDecisions({ meetingId, decisions }: { meetingId: string; decisions: Decision[] }) {
@@ -16,6 +17,17 @@ export function MeetingDecisions({ meetingId, decisions }: { meetingId: string; 
   const [rationale, setRationale] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+
+  async function onPromote(decisionId: string) {
+    setPromotingId(decisionId);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/decisions/${decisionId}/promote`, { method: "POST" });
+      if (res.ok) router.refresh();
+    } finally {
+      setPromotingId(null);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +61,21 @@ export function MeetingDecisions({ meetingId, decisions }: { meetingId: string; 
         <ul className="space-y-2">
           {decisions.map((d) => (
             <li key={d.id} className="rounded-md border border-neutral-100 bg-neutral-50 px-3 py-2 text-sm">
-              <div className="font-medium text-neutral-800">{d.text}</div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-medium text-neutral-800">{d.text}</div>
+                {d.promotedToMemoryId ? (
+                  <span className="shrink-0 text-xs text-cedar-700">In Agency Memory</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onPromote(d.id)}
+                    disabled={promotingId === d.id}
+                    className="shrink-0 text-xs text-cedar-700 hover:underline disabled:opacity-50"
+                  >
+                    {promotingId === d.id ? "…" : "Promote to Agency Memory"}
+                  </button>
+                )}
+              </div>
               {d.rationale && <div className="mt-0.5 text-xs text-neutral-500">Rationale: {d.rationale}</div>}
               <div className="mt-0.5 text-xs text-neutral-400">{new Date(d.createdAt).toLocaleString()}</div>
             </li>

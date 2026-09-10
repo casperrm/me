@@ -660,6 +660,43 @@ deployment.
       surfaces, screenshot-verified; every fixture row was deleted
       afterward and counts confirmed back to baseline. See
       `docs/specs/cedar-experience-engine.md`.
+- [x] Cedar Knowledge Promotion v1: meeting decision -> Agency Memory
+      (Section 19.2 / 6.6 / 13). Section 19.2: "Raw AI output is not
+      automatically institutional knowledge. Promotion requires an
+      approved outcome, explicit curation, a verified external source, or
+      a defined system rule." Section 13's own text names the first real
+      trigger: "Approved meeting decisions... can be promoted into
+      memory." Meeting decisions (already built) had no promotion path —
+      this is that path. New `AgencyMemoryEntry` model (migration
+      `20260910124021_agency_memory_entries`) and
+      `promoteMeetingDecisionToMemory()`, triggered only by a person
+      clicking "Promote to Agency Memory" on a real meeting decision,
+      never automatically — mirrors the existing
+      `promoteFollowUpToTask()` "promote" pattern and its
+      already-promoted guard. Maps Section 19.2's five required fields to
+      real data only: provenance (source meeting + decision + promoter),
+      freshness (promotedAt), and scope (clientId, nullable) are all real;
+      "confidence" is deliberately not a fabricated numeric score — every
+      row's existence, by construction, already is the real confidence
+      signal, since explicit curation is the only path that creates one;
+      "supersession links" are the one field NOT built — no real trigger
+      exists yet to set one, and an always-null column would be exactly
+      the unused scaffolding this project's own discipline forbids (see
+      the earlier `Asset.version` rejection). New `/memory` page
+      (org-wide `clients:write` gate, matching `/templates`) lists every
+      promoted entry with its client, promoter, and a link back to the
+      source meeting. New "Promote to Agency Memory" button on each
+      meeting decision. New `agency-memory.integration.test.ts` (6 tests)
+      and a route-contract test for the new promote endpoint (5 tests)
+      against real Postgres. ADR-008 updated: promoted entries are not
+      yet wired into Cedar Brain's own retrieval (`buildGovernedContext`)
+      — this slice is promotion machinery, not retrieval; that wiring
+      remains future work. Live-verified entirely through the real UI on
+      a running production build — real meeting creation, real decision,
+      real promote click — then confirmed the entry rendered correctly on
+      `/memory` with the right client and promoter names, screenshot-
+      verified; every fixture row was deleted afterward and counts
+      confirmed back to baseline. See `docs/specs/agency-memory.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

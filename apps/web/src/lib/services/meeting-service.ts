@@ -19,6 +19,7 @@ export interface MeetingDecision {
   text: string;
   rationale: string | null;
   createdAt: string;
+  promotedToMemoryId: string | null;
 }
 
 export interface MeetingFollowUp {
@@ -206,6 +207,7 @@ export async function addMeetingDecision(params: {
     text,
     rationale: params.rationale?.trim() || null,
     createdAt: new Date().toISOString(),
+    promotedToMemoryId: null,
   };
   decisions.push(decision);
 

@@ -78,6 +78,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(canSeeAiSupervisor ? [{ href: "/command/supervisor", label: "AI Supervisor", badge: 0 }] : []),
     { href: "/metrics", label: "Metrics Catalog", badge: 0 },
     ...(canSeeTemplates ? [{ href: "/templates", label: "Project Templates", badge: 0 }] : []),
+    ...(canSeeTemplates ? [{ href: "/memory", label: "Agency Memory", badge: 0 }] : []),
     ...(canSeeIntegrations ? [{ href: "/integrations", label: "Integration Center", badge: 0 }] : []),
     ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions", badge: 0 }] : []),
   ];

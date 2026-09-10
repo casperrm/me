@@ -1163,3 +1163,46 @@ model WorkflowRun {
   @@index([workflowKey, startedAt])
   @@map("workflow_runs")
 }
+
+// Section 19.2 (Knowledge Promotion) / 6.6's "Agency Memory" row: "Raw AI
+// output is not automatically institutional knowledge. Promotion requires
+// an approved outcome, explicit curation, a verified external source, or
+// a defined system rule. Store provenance, scope, freshness, confidence,
+// and supersession links." First real source: a meeting decision
+// (Section 13's own text: "Approved meeting decisions... can be promoted
+// into memory."), and the only trigger in this v1 is "explicit curation"
+// — a human clicking Promote, never an automatic write.
+//
+// No relation() fields to Organization/Meeting/Client/Membership — this
+// entry only needs to be queried by its own organizationId (like
+// CedarBrainRequest above), never navigated to FROM those models, so a
+// bare scalar id avoids touching four unrelated model definitions for a
+// back-reference array nothing reads.
+//
+// "Provenance": sourceMeetingId + sourceDecisionId + promotedByMembershipId
+// trace back to the exact decision and the exact human who curated it.
+// "Freshness": promotedAt. "Scope": clientId (nullable — an internal
+// meeting's decision has none) even though Agency Memory itself reads
+// org-wide, same as Client Memory vs. Agency Memory in Section 6.6's own
+// table. "Confidence": deliberately not a fabricated numeric score —
+// explicit human curation is the only path that creates a row at all in
+// this v1, so every row's very existence already is the real confidence
+// signal, not a number invented on top of it. "Supersession links" are
+// NOT included: nothing in this v1 has a real trigger to set one (no UI
+// exists yet to mark one entry as replacing another), and an always-null
+// column would be exactly the unused scaffolding this project's own
+// discipline forbids — see docs/specs/agency-memory.md.
+model AgencyMemoryEntry {
+  id                     String   @id @default(uuid())
+  organizationId         String
+  content                String // the decision text, verbatim — never rewritten/summarized by this system
+  sourceMeetingId        String
+  sourceDecisionId       String // the decision's own id within Meeting.decisions JSON
+  clientId               String?
+  promotedByMembershipId String
+  promotedAt             DateTime @default(now())
+
+  @@unique([sourceMeetingId, sourceDecisionId])
+  @@index([organizationId, promotedAt])
+  @@map("agency_memory_entries")
+}

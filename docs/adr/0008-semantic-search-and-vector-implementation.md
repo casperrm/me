@@ -11,6 +11,16 @@
   it as in scope). Still no semantic/vector retrieval or graph
   expansion — this decision is unchanged. See
   `docs/specs/knowledge-graph-meeting-decisions.md`.
+- **Updated:** 2026-09-10 — Section 19.2 (Knowledge Promotion) got its
+  first real cut: a new `AgencyMemoryEntry` table and
+  `promoteMeetingDecisionToMemory()`, triggered only by explicit human
+  curation (a person clicking "Promote to Agency Memory" on a meeting
+  decision), never automatically. This is promotion machinery, not
+  retrieval — `AgencyMemoryEntry` rows are not yet wired into
+  `buildGovernedContext`'s retrieval above, so Cedar Brain still cannot
+  see promoted knowledge; that wiring, plus real semantic/vector
+  retrieval, both remain future work this decision still defers. See
+  `docs/specs/agency-memory.md`.
 
 ## Context
 
