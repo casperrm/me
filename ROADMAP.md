@@ -250,6 +250,48 @@ deployment.
       (each retry re-runs the whole idempotent scan from scratch, which
       is correct for these particular jobs, not a gap). See
       `docs/specs/worker-job-reliability.md`.
+- [x] Command Palette keyboard/semantic accessibility (Section 39:
+      "Keyboard and semantic accessibility are part of definition of
+      done for core UI") — never referenced anywhere in this project
+      before this slice (confirmed by grepping ROADMAP.md for
+      "accessib"/"aria"/"keyboard"). Deliberately scoped to one
+      representative component rather than an app-wide audit: the
+      Command Palette (Cmd/Ctrl+K), the app's single most keyboard-
+      driven interaction. Real gaps found and fixed: no dialog ARIA
+      semantics (`role="dialog"`/`aria-modal`/`aria-label`), no
+      combobox/listbox pattern linking the input to results
+      (`role="combobox"`, `aria-expanded`/`aria-controls`/
+      `aria-activedescendant` on the input; `role="listbox"`/
+      `role="option"`/`aria-selected` on results), no focus trap (Tab
+      could escape into the page behind the still-open overlay), and no
+      focus restoration to the trigger button on close. New
+      `tests/e2e/command-palette-accessibility.spec.ts` — one real
+      Playwright/Chromium test driven entirely by keyboard (no mouse),
+      asserting on actual ARIA roles and focus state via `getByRole`/
+      `toBeFocused()`, which only pass if the semantics are genuinely
+      correct. **A real regression this slice caused and fixed along the
+      way:** the test's first version logged in fresh per test case via
+      `beforeEach` (4 logins), breaking this repo's established
+      one-login-per-file E2E convention; combined with every other spec
+      file's own login, one full `npm run test:e2e` run performed enough
+      real logins from the same IP to trip the real login rate limiter
+      built earlier this session (10 attempts/15 min —
+      `docs/specs/rate-limiting.md`), causing a real 429 that broke the
+      previously-passing, unrelated `mfa.spec.ts`. Fixed by consolidating
+      to one login (matching the established convention) AND hardening
+      the E2E pipeline itself: new `scripts/reset-rate-limits.ts`
+      (`packages/auth`'s new `resetAllRateLimitsForTests()`) now runs in
+      `npm run test:e2e` alongside the existing `db:reset`, so this class
+      of bug can't silently reappear as the E2E suite keeps growing. 1
+      new test for the reset function in
+      `rate-limit.integration.test.ts`. Full suite: 665 tests across 7
+      workspaces, all passing; full `npm run test:e2e` run (production
+      build, all 8 spec files) passes end to end including the
+      previously-broken `mfa.spec.ts`. Explicitly not built: an app-wide
+      accessibility audit, an automated axe-core/lint gate in CI, or a
+      color-contrast/screen-reader-output review — see
+      `docs/specs/command-palette-accessibility.md` for the full scope
+      boundary.
 
 ## Phase 1 — Agency Core: **complete**
 

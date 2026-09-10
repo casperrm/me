@@ -90,7 +90,9 @@ already-scoped `clientIds`, the same contract `calendar-service.ts` uses.
   "Search… ⌘K" button plus a global `⌘K`/`Ctrl+K` keyboard listener, both
   opening the same overlay. Results are grouped by a type badge, debounced
   (200ms), and keyboard-navigable (↑/↓/Enter/Esc). Selecting a result
-  navigates via Next's router and closes the palette.
+  navigates via Next's router and closes the palette. Real dialog/
+  combobox ARIA semantics, a keyboard focus trap, and focus restoration
+  on close — see `docs/specs/command-palette-accessibility.md` (Section 39).
 
 ## Jobs
 

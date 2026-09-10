@@ -22,11 +22,24 @@ const TYPE_LABEL: Record<string, string> = {
   meeting: "Meeting",
 };
 
+const LISTBOX_ID = "command-palette-listbox";
+function optionId(result: SearchResult): string {
+  return `command-palette-option-${result.type}-${result.id}`;
+}
+
 // Bible Section 28.2: "Global search/command palette can find records and
 // initiate permitted actions." This is the "find records" half — jumping
 // to a result by keyboard is the only "action" it initiates. Running a
 // command against a record belongs with Cedar Command Center, not here
 // (see docs/specs/search.md).
+//
+// Section 39 ("Keyboard and semantic accessibility are part of definition
+// of done for core UI") — this is the app's most keyboard-driven
+// interaction, so it's the representative fix for that requirement (see
+// docs/specs/command-palette-accessibility.md for the full scope
+// boundary: this is one component, not an app-wide audit). Real dialog/
+// combobox ARIA semantics, a focus trap so Tab can't escape into the page
+// behind the overlay, and focus restored to the trigger button on close.
 export function CommandPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -35,12 +48,18 @@ export function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
     setResults([]);
     setActiveIndex(0);
+    // Keyboard users shouldn't lose their place when the dialog closes —
+    // without this, focus drops to <body> and they'd have to re-tab from
+    // the top of the page.
+    triggerRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -84,6 +103,29 @@ export function CommandPalette() {
     router.push(result.url);
   }
 
+  // A focus trap: Tab/Shift+Tab cycle only among the dialog's own
+  // focusable elements (the input plus any rendered result buttons)
+  // rather than escaping into the page behind the overlay, which is
+  // still in the DOM and tabbable without this.
+  function onDialogKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== "Tab" || !dialogRef.current) return;
+    const focusable = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>('input, button[role="option"]'),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const activeEl = document.activeElement;
+
+    if (e.shiftKey && activeEl === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && activeEl === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   function onInputKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -100,7 +142,10 @@ export function CommandPalette() {
   return (
     <>
       <button
+        ref={triggerRef}
         onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         className="flex w-full items-center justify-between rounded-md border border-neutral-200 px-3 py-2 text-left text-sm text-neutral-500 hover:bg-neutral-50"
       >
         <span>Search…</span>
@@ -109,18 +154,28 @@ export function CommandPalette() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-24" onClick={close}>
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search"
+            onKeyDown={onDialogKeyDown}
             className="w-full max-w-lg rounded-xl border border-neutral-200 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <input
               ref={inputRef}
+              role="combobox"
+              aria-expanded={results.length > 0}
+              aria-controls={LISTBOX_ID}
+              aria-autocomplete="list"
+              aria-activedescendant={results[activeIndex] ? optionId(results[activeIndex]) : undefined}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onInputKeyDown}
               placeholder="Search clients, projects, tasks, meetings, campaigns, creative…"
               className="w-full border-b border-neutral-100 px-4 py-3 text-sm outline-none"
             />
-            <div className="max-h-80 overflow-y-auto">
+            <div id={LISTBOX_ID} role="listbox" aria-label="Search results" className="max-h-80 overflow-y-auto">
               {loading && <p className="px-4 py-3 text-sm text-neutral-400">Searching…</p>}
               {!loading && query.trim().length >= 2 && results.length === 0 && (
                 <p className="px-4 py-3 text-sm text-neutral-400">No matches.</p>
@@ -129,6 +184,9 @@ export function CommandPalette() {
                 results.map((r, i) => (
                   <button
                     key={`${r.type}-${r.id}`}
+                    id={optionId(r)}
+                    role="option"
+                    aria-selected={i === activeIndex}
                     onClick={() => go(r)}
                     onMouseEnter={() => setActiveIndex(i)}
                     className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm ${

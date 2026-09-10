@@ -65,6 +65,22 @@ export async function resetRateLimitForTests(bucketKey: string): Promise<void> {
   await getRedisClient().del(`${KEY_PREFIX}${bucketKey}`);
 }
 
+/**
+ * Clears every rate-limit bucket. Used by `npm run test:e2e` (see
+ * scripts/reset-rate-limits.ts) alongside its existing `db:reset` —
+ * without this, a growing E2E suite that legitimately logs in many times
+ * against one shared dev IP can trip the real login rate limit and break
+ * an unrelated test, exactly as happened once during development of this
+ * feature (see docs/specs/rate-limiting.md's "E2E suite interaction"
+ * note). Not exposed to application code paths, only test/dev tooling —
+ * clearing every bucket is never a legitimate production operation.
+ */
+export async function resetAllRateLimitsForTests(): Promise<void> {
+  const redis = getRedisClient();
+  const keys = await redis.keys(`${KEY_PREFIX}*`);
+  if (keys.length > 0) await redis.del(...keys);
+}
+
 /** Test-only: release the underlying Redis connection so vitest can exit cleanly. */
 export async function closeRateLimitConnectionForTests(): Promise<void> {
   if (redisClient) {

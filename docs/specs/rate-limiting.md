@@ -79,6 +79,24 @@ are real, scoped-out gaps, not oversights:
   `"unknown"`-fallback approach is honest about being a development-time
   approximation, not a production-hardened one.
 
+## E2E suite interaction
+
+A real browser-driven E2E run (`tests/e2e/`) performs many genuine logins
+from the same client IP within the 10-attempts/15-min window — one per
+spec file today, growing as more files are added. This isn't hypothetical:
+during development of `docs/specs/command-palette-accessibility.md`'s
+slice, a new test file that logged in 4 times in a `beforeEach` combined
+with every other file's own login and tripped the real limit, breaking an
+unrelated, previously-passing test (`mfa.spec.ts`) with a genuine 429.
+Fixed two ways: the offending file was corrected to log in once (matching
+every other file's established one-login-per-file convention), and
+`npm run test:e2e` now runs a new `scripts/reset-rate-limits.ts`
+(`packages/auth`'s `resetAllRateLimitsForTests()`) right after its
+existing `db:reset`, so every E2E run starts with a clean rate-limit
+slate the same way it already starts with a clean database — this keeps
+the underlying risk from silently reappearing as the suite grows, rather
+than only patching the one file that hit it first.
+
 ## Testing
 
 - `packages/auth/src/rate-limit.integration.test.ts` — against real Redis:

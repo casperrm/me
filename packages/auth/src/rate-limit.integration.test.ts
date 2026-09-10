@@ -2,7 +2,7 @@
 // the atomic INCR+EXPIRE Lua script is exactly the part worth proving
 // against the real thing.
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { checkRateLimit, closeRateLimitConnectionForTests, resetRateLimitForTests } from "./rate-limit";
+import { checkRateLimit, closeRateLimitConnectionForTests, resetAllRateLimitsForTests, resetRateLimitForTests } from "./rate-limit";
 
 const usedKeys = new Set<string>();
 
@@ -62,5 +62,24 @@ describe("checkRateLimit", () => {
     expect(stillOpenB.allowed).toBe(true);
     const blockedA = await checkRateLimit(keyA, 2, 60);
     expect(blockedA.allowed).toBe(false);
+  });
+});
+
+describe("resetAllRateLimitsForTests", () => {
+  it("clears every bucket, real ones included, without touching unrelated keys", async () => {
+    const keyA = bucket("wipe-a");
+    const keyB = bucket("wipe-b");
+    await checkRateLimit(keyA, 5, 60);
+    await checkRateLimit(keyB, 5, 60);
+
+    const beforeA = await checkRateLimit(keyA, 5, 60);
+    expect(beforeA.remaining).toBe(3); // 2 prior calls + this one
+
+    await resetAllRateLimitsForTests();
+
+    const afterA = await checkRateLimit(keyA, 5, 60);
+    const afterB = await checkRateLimit(keyB, 5, 60);
+    expect(afterA.remaining).toBe(4); // back to a fresh window
+    expect(afterB.remaining).toBe(4);
   });
 });
