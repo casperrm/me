@@ -14,6 +14,7 @@ import { AddInvoiceForm } from "./AddInvoiceForm";
 import { InvoiceActions } from "./InvoiceActions";
 import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
+import { getClientRenewalRecommendation } from "@/lib/services/decision-engine-service";
 import { getRecentCedarBrainActivityForClient } from "@/lib/services/context-retrieval-service";
 import { listProjectTemplates } from "@/lib/services/project-template-service";
 import { listMeetingsForClient } from "@/lib/services/meeting-service";
@@ -100,6 +101,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   const health = client.healthScores[0];
   const healthFactors = parseJSON<{ signal: string; value: string; penalty: number; explanation: string }[]>(health?.factors, []);
   const opportunities = await getOpportunitiesForClient(client.id, actor.organizationId);
+  const renewalRecommendation = await getClientRenewalRecommendation(client.id, actor.organizationId);
   const cedarBrainActivity = await getRecentCedarBrainActivityForClient(client.id, actor.organizationId);
   // Separate from client.projects (which is capped to PREVIEW_LIMIT most
   // recent) — the picker needs the full set of projects to tag against,
@@ -164,6 +166,53 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
           </details>
         )}
       </div>
+
+      <Card
+        title="Renewal recommendation"
+        action={<span className="text-xs text-neutral-400">Decision support, not autonomous truth (Section 20)</span>}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <span
+            className={
+              renewalRecommendation.recommendation === "renew"
+                ? "rounded-full bg-cedar-100 px-3 py-1 text-xs font-medium text-cedar-800"
+                : renewalRecommendation.recommendation === "at_risk"
+                  ? "rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
+                  : "rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
+            }
+          >
+            {renewalRecommendation.recommendation === "renew"
+              ? "Renew"
+              : renewalRecommendation.recommendation === "at_risk"
+                ? "At risk"
+                : "Do not renew"}
+          </span>
+          <span className="text-xs text-neutral-400">Requires human review — no action is taken automatically.</span>
+        </div>
+        <ul className="space-y-1 text-sm text-neutral-600">
+          {renewalRecommendation.evidence.map((line) => (
+            <li key={line}>- {line}</li>
+          ))}
+        </ul>
+        {renewalRecommendation.risks.length > 0 && (
+          <div className="mt-3 border-t border-neutral-100 pt-3">
+            <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Risks</h4>
+            <ul className="space-y-1 text-sm text-red-600">
+              {renewalRecommendation.risks.map((line) => (
+                <li key={line}>- {line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <details className="mt-3 text-xs text-neutral-400">
+          <summary className="cursor-pointer">Assumptions</summary>
+          <ul className="mt-1 space-y-1">
+            {renewalRecommendation.assumptions.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      </Card>
 
       {opportunities.length > 0 && (
         <Card

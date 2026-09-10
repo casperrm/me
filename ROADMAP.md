@@ -568,6 +568,41 @@ deployment.
       `contextSources`; row cleanup confirmed the dev database was back
       to its seeded baseline. See
       `docs/specs/knowledge-graph-meeting-decisions.md`.
+- [x] Cedar Decision Engine v1: Client Renewal Recommendation (Section 20).
+      Section 20's own worked example names "Client renewal" with exactly
+      this evidence list: profitability, health score, delivery history,
+      payment behavior, opportunity — every one of which was already a
+      real, independently computed signal elsewhere in this app (Client
+      Health Score, `getClientProfitability`, `getOpportunitiesForClient`,
+      the same overdue task/invoice queries `escalations.ts` already
+      uses); nothing had combined them into one go/no-go call before this
+      slice. New `getClientRenewalRecommendation()` returns
+      `{ recommendation: "renew" | "at_risk" | "do_not_renew", evidence,
+      risks, assumptions, requiresApproval: true }` — deterministic, no
+      model call, same "decision support, not autonomous truth" stance as
+      Client Health Score and the AI Business Advisor. `requiresApproval`
+      is structural, not a label: no write path anywhere acts on the
+      recommendation. Caught and fixed a real bug during testing:
+      `getClientProfitability` returns a zeroed entry for every client in
+      the org rather than `null` for one with no financial history, which
+      would have produced a misleading "$0.00" line for a brand-new
+      client — the service now explicitly checks for all-zero revenue and
+      cost before treating profitability as real data. New "Renewal
+      recommendation" card on the Client 360 page, above Opportunities.
+      Explicitly not built: "alternatives" and "expected impact" fields
+      Section 20 names — no real alternatives-generation or
+      impact-modeling capability exists yet to draw from, and fabricating
+      either would violate this project's own no-invented-data rule; and
+      every other decision type Section 20's pattern implies (budget
+      reallocation, hiring, etc.) — each would need its own real evidence
+      inputs that don't exist in this codebase yet. New
+      `decision-engine.integration.test.ts` (5 tests) against real
+      Postgres. Live-verified against a real running production build and
+      real seeded client data (Volt Mobile: health score 82, one overdue
+      $2,500 invoice) via a real headless-browser login and page load —
+      confirmed the correct "At risk" badge and real evidence/risk lines
+      rendered, screenshot-verified. See
+      `docs/specs/cedar-decision-engine.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
