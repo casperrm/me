@@ -84,7 +84,12 @@ rejection, the pattern used for the blocked-task bug above).
   screen. Retrofitting every action to return a structured `{ error }`
   result (so a form could show an inline message instead of losing the
   whole page) is a real, separately-scoped follow-up — not built here,
-  named explicitly rather than left silent.
+  named explicitly rather than left silent. **Update:** the two
+  actions (of this repo's three `"use server"` files) with a
+  genuinely reachable failure now do this — see
+  `docs/specs/inline-action-errors.md`. The rest were deliberately
+  left throwing into this boundary, since they have no real failure
+  path to report inline.
 - **No error reporting/telemetry pipeline.** `ErrorBoundaryContent`
   calls `console.error(error)` on mount (Next.js's own documented
   pattern) so a real error is visible in server/container logs with its

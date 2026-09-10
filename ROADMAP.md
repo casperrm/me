@@ -397,6 +397,48 @@ deployment.
       correlation ID, and different job types running in the same
       process got different, non-overlapping IDs; all incidental rows
       cleaned up afterward. See `docs/specs/worker-log-correlation.md`.
+- [x] Inline errors for reachable server-action failures, instead of a
+      full-page crash (Section 28.2). `docs/specs/error-boundaries.md`
+      named "retrofit every action to return a structured `{ error }`
+      result" as an explicit, unbuilt follow-up. Rather than converting
+      all three of this repo's `"use server"` action files speculatively,
+      audited each action's real failure paths against what the UI
+      already prevents and found exactly two reachable, non-hypothetical
+      cases: `setTaskStatusAction`'s blocked-completion race (the "done"
+      option is only disabled using blocker data as of the page's last
+      render — a blocker added after that is a real two-tab/two-person
+      race, not contrived), and `changeRoleAction`/
+      `revokeMembershipAction` when an ADMIN targets a non-last OWNER
+      (the Team page only hides these forms for the *last remaining*
+      OWNER, not for "any OWNER when the actor isn't one" — policy.ts's
+      `canManageMembership` forbids exactly that combination). The other
+      three actions (`setTaskPriorityAction`, `setTaskEstimateAction`,
+      `grantClientScopeAction`) were checked and left unconverted — no
+      comparable reachable failure exists for them, and wrapping them
+      anyway would mean building a display path that can never fire
+      (the same over-completeness this project has caught and rejected
+      elsewhere, e.g. `Invoice.currency`). Since this repo's `react-dom`
+      is pinned to 18.3.1 (no `useFormState`/`useActionState`, both
+      React 19 APIs), the fix calls the action directly from an
+      `onSubmit` handler instead of the `<form action={...}>` prop —
+      identical server-action semantics, just invoked from client code
+      the same way the rest of the app's mutations already are. New
+      `MemberRowActions.tsx` client component extracted from the Team
+      page's inline forms to carry this state; `TaskStatusForm.tsx`'s
+      select is now controlled so a rejected change visibly reverts
+      instead of showing a change that didn't happen. New
+      `apps/web/src/lib/actions/{task,membership}.test.ts` (4 tests
+      against real Postgres). Live-verified against a real running
+      production build with a real headless-browser session: reproduced
+      both real failure scenarios (adding the task's blocking dependency
+      *after* page render, to exercise the server check the same way a
+      genuine race would, since the pre-existing disabled option
+      correctly blocks the render-time case), confirmed the real inline
+      error text rendered with no "Something went wrong" full-page
+      crash and the rest of the page intact, and confirmed via direct
+      query that the rejected mutation left no partial write. All
+      fixture rows cleaned up afterward. See
+      `docs/specs/inline-action-errors.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

@@ -4,7 +4,7 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { Card } from "@/components/Card";
 import { InviteForm } from "./InviteForm";
 import { SetMfaPolicyForm } from "./SetMfaPolicyForm";
-import { changeRoleAction, revokeMembershipAction, grantClientScopeAction } from "@/lib/actions/membership";
+import { MemberRowActions } from "./MemberRowActions";
 import { getMfaPolicy } from "@/lib/services/mfa-policy-service";
 
 export const dynamic = "force-dynamic";
@@ -134,51 +134,13 @@ export default async function TeamPage() {
                     {canManage.allowed && (
                       <td className="space-y-1 py-2">
                         {!isLastOwner && (
-                          <>
-                            <form action={changeRoleAction} className="flex items-center gap-1">
-                              <input type="hidden" name="membershipId" value={m.id} />
-                              <select name="role" defaultValue={m.role} className="rounded border border-neutral-200 px-1 py-0.5 text-xs">
-                                <option value="OWNER" disabled>
-                                  OWNER
-                                </option>
-                                {ASSIGNABLE_ROLES.map((r) => (
-                                  <option key={r} value={r}>
-                                    {r}
-                                  </option>
-                                ))}
-                              </select>
-                              <button type="submit" className="text-xs text-cedar-700 hover:underline">
-                                Save
-                              </button>
-                            </form>
-                            {m.status === "ACTIVE" && (
-                              <form action={revokeMembershipAction}>
-                                <input type="hidden" name="membershipId" value={m.id} />
-                                <button type="submit" className="text-xs text-red-600 hover:underline">
-                                  Revoke access
-                                </button>
-                              </form>
-                            )}
-                            {clients.length > 0 && (
-                              <form action={grantClientScopeAction} className="flex items-center gap-1">
-                                <input type="hidden" name="membershipId" value={m.id} />
-                                <select name="clientId" className="rounded border border-neutral-200 px-1 py-0.5 text-xs">
-                                  {clients.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <select name="permission" className="rounded border border-neutral-200 px-1 py-0.5 text-xs">
-                                  <option value="clients:read">clients:read</option>
-                                  <option value="clients:write">clients:write</option>
-                                </select>
-                                <button type="submit" className="text-xs text-cedar-700 hover:underline">
-                                  Grant
-                                </button>
-                              </form>
-                            )}
-                          </>
+                          <MemberRowActions
+                            membershipId={m.id}
+                            role={m.role}
+                            status={m.status}
+                            clients={clients}
+                            assignableRoles={ASSIGNABLE_ROLES}
+                          />
                         )}
                         {isLastOwner && <span className="text-xs text-neutral-400">Last owner — protected</span>}
                       </td>
