@@ -1527,17 +1527,32 @@ Phase 5's concretely buildable scope is now complete.
       curation, no cross-client pattern extraction, no outcome
       measurement — one client's own history, read back verbatim,
       filtered only by what a human already said about it.
-- [ ] Agency Memory, Success Library, Cedar Decision Engine, Cedar
-      Intelligence, Living/Market Intelligence, Digital Twin, Innovation
-      Lab, Experience Engine — not started; each needs curation/outcome-
-      measurement/cross-client infrastructure this project deliberately
-      hasn't invented. **Knowledge Graph query layer partially started**
-      (see Phase 1's "Knowledge Graph v1" entry): one real relational hop
-      of Section 19's own example chain, Client -> Meeting -> Decision,
-      now feeds Cedar Brain's context — still no graph database, no
-      semantic/vector retrieval, no graph expansion beyond that one hop,
-      no promotion/curation (19.2). A genuinely bounded first cut, not
-      the full query layer.
+- [ ] Success Library, Living/Market Intelligence, Digital Twin — still
+      not started. Success Library (Section 6.6: "High-performing
+      campaigns/creatives plus context, metrics, and why they may have
+      worked. Only after measurable outcome and review") needs real
+      campaign performance data this system doesn't have — no
+      `PerformanceSnapshot` model exists, and no live ad-platform
+      connector (Phase 4, OAuth-blocked) feeds one; building it now would
+      mean fabricating the "measurable outcome" the Bible itself requires.
+      Living/Market Intelligence (Section 6.5: "Ingest legitimate public,
+      licensed, or authorized market knowledge... Never treat unverified
+      market content as canonical client truth") needs a real, licensed
+      external ingestion source this environment has no legitimate access
+      to; a schema with nothing real to populate it would be exactly the
+      unused scaffolding this project's discipline forbids. Digital Twin
+      is never elaborated anywhere else in the Bible beyond being named in
+      this same list — there's no concrete requirement to build against.
+      **Agency Memory, Cedar Decision Engine, Cedar Intelligence,
+      Innovation Lab, Experience Engine, and the Knowledge Graph query
+      layer all now have real bounded first cuts** — see Phase 1's
+      "Cedar Decision Engine v1," "Cedar Innovation Lab v1," "Cedar
+      Experience Engine v1," "Cedar Knowledge Promotion v1," and
+      "Knowledge Graph v1" entries. None of these are their full Bible
+      scope (no cross-client pattern extraction beyond one meeting-
+      decision source, no graph database, no semantic/vector retrieval,
+      no promoted-knowledge wiring into Cedar Brain's own context yet) —
+      each entry names exactly what's still missing and why.
 
 ## Phase 7 — Scale Hardening: started
 
