@@ -667,8 +667,14 @@ h3 { font-size: 1.25rem; }
   transform: scale(1.04);
   box-shadow: var(--shadow-lg);
   position: relative;
+  animation: pricingGlow 3.2s ease-in-out infinite;
 }
 .pricing-card.featured:hover { transform: scale(1.04) translateY(-6px); }
+.pricing-card.featured .service-icon { background: var(--cyan); color: var(--ink); }
+@keyframes pricingGlow {
+  0%, 100% { box-shadow: var(--shadow-lg); }
+  50% { box-shadow: var(--shadow-lg), 0 0 40px rgba(22,194,204,0.25); }
+}
 .pricing-badge {
   position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
   background: var(--cyan);
@@ -948,8 +954,62 @@ h3 { font-size: 1.25rem; }
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.7s ease, transform 0.7s ease;
+  transition-delay: var(--reveal-delay, 0s);
 }
 [data-reveal].in-view { opacity: 1; transform: translateY(0); }
+
+/* ---------- Mini pricing cards (homepage teaser) ---------- */
+.pricing-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+.pricing-mini-card {
+  position: relative;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  padding: 32px 26px;
+  text-align: left;
+  transition: transform 0.35s ease, border-color 0.35s ease, background 0.35s ease, box-shadow 0.35s ease;
+}
+.pricing-mini-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--cyan);
+  background: rgba(22,194,204,0.06);
+}
+.pricing-mini-card.featured {
+  background: rgba(22,194,204,0.08);
+  border-color: var(--cyan);
+  animation: miniGlow 3.2s ease-in-out infinite;
+}
+@keyframes miniGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(22,194,204,0); }
+  50% { box-shadow: 0 0 32px rgba(22,194,204,0.18); }
+}
+.pricing-mini-badge {
+  position: absolute; top: -13px; left: 26px;
+  background: var(--cyan); color: var(--ink);
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 100px;
+}
+.pricing-mini-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: rgba(22,194,204,0.12);
+  color: var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+  transition: transform 0.35s ease, background 0.35s ease, color 0.35s ease;
+}
+.pricing-mini-card:hover .pricing-mini-icon { transform: scale(1.12) rotate(-6deg); background: var(--cyan); color: var(--ink); }
+.pricing-mini-card h3 { color: var(--white); font-size: 1.1rem; margin-bottom: 6px; }
+.pricing-mini-price { color: var(--cyan-light); font-size: 1.7rem; font-weight: 800; font-family: var(--font-head); margin-bottom: 12px; }
+.pricing-mini-price span { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.5); }
+.pricing-mini-desc { color: rgba(255,255,255,0.6); font-size: 0.92rem; }
+@media (max-width: 900px) {
+  .pricing-mini-grid { grid-template-columns: 1fr; }
+  .pricing-mini-card.featured { order: -1; }
+}
 
 /* =========================================================
    Responsive

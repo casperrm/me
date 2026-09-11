@@ -17,6 +17,9 @@
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lightbulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 18h16l-1.5-9-4 3-2.5-5-2.5 5-4-3L4 18z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.5 20h15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
   <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor"/></symbol>
   <symbol id="i-instagram" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor"/></symbol>
@@ -82,7 +85,8 @@
     <div class="container">
       <div class="pricing-grid">
 
-        <div class="pricing-card" data-reveal>
+        <div class="pricing-card" data-reveal style="--reveal-delay: 0s;">
+          <div class="service-icon"><svg class="icon"><use href="#i-lightbulb"></use></svg></div>
           <p class="pricing-name">Basic</p>
           <p class="pricing-desc">A solid starting point for brands building their first real presence.</p>
           <div class="pricing-price"><span class="amount">$150</span><span class="period">/ month</span></div>
@@ -95,8 +99,9 @@
           <a href="contact.html" class="btn btn-outline">Choose Basic</a>
         </div>
 
-        <div class="pricing-card featured" data-reveal>
+        <div class="pricing-card featured" data-reveal style="--reveal-delay: 0.12s;">
           <span class="pricing-badge">Most Chosen</span>
+          <div class="service-icon"><svg class="icon"><use href="#i-target"></use></svg></div>
           <p class="pricing-name">Standard</p>
           <p class="pricing-desc">The balance of consistent content and real strategic direction.</p>
           <div class="pricing-price"><span class="amount">$350</span><span class="period">/ month</span></div>
@@ -110,7 +115,8 @@
           <a href="contact.html" class="btn btn-primary">Choose Standard</a>
         </div>
 
-        <div class="pricing-card" data-reveal>
+        <div class="pricing-card" data-reveal style="--reveal-delay: 0.24s;">
+          <div class="service-icon"><svg class="icon"><use href="#i-crown"></use></svg></div>
           <p class="pricing-name">Premium</p>
           <p class="pricing-desc">Full-scale management for brands ready to compete seriously.</p>
           <div class="pricing-price"><span class="amount">$620</span><span class="period">/ month</span></div>
