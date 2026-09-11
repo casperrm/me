@@ -68,34 +68,6 @@
   }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
   revealEls.forEach((el) => revealObserver.observe(el));
 
-  // ---- Animated counters ----
-  const counters = document.querySelectorAll('.stat-num');
-  const animateCounter = (el) => {
-    const target = parseFloat(el.getAttribute('data-count'));
-    const decimals = parseInt(el.getAttribute('data-decimal') || '0', 10);
-    const duration = 1600;
-    const start = performance.now();
-
-    const tick = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const value = target * eased;
-      el.textContent = decimals ? value.toFixed(decimals) : Math.floor(value);
-      if (progress < 1) requestAnimationFrame(tick);
-      else el.textContent = decimals ? target.toFixed(decimals) : target;
-    };
-    requestAnimationFrame(tick);
-  };
-  const counterObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        animateCounter(entry.target);
-        counterObserver.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.5 });
-  counters.forEach((el) => counterObserver.observe(el));
-
   // ---- Portfolio filter ----
   const filterBtns = document.querySelectorAll('.filter-btn');
   const portfolioItems = document.querySelectorAll('.portfolio-item');
@@ -185,38 +157,103 @@
     sections.forEach((s) => sectionObserver.observe(s));
   }
 
-  // ---- Contact form (only present on the contact page) ----
-  // Opens a pre-filled Gmail compose window rather than a plain "mailto:" link.
-  // mailto: only works when the visitor's device has a desktop mail client
-  // configured, which fails silently for most people on phones/Chromebooks —
-  // going straight to Gmail's own compose URL is reliable since the inbox
-  // this form sends to is a Gmail address anyway.
-  const contactForm = document.getElementById('contactForm');
-  const formNote = document.getElementById('formNote');
-  if (contactForm && formNote) {
-    contactForm.addEventListener('submit', (e) => {
+  // ---- Shared email helper ----
+  // Opens a pre-filled Gmail compose window rather than a plain "mailto:"
+  // link. mailto: only works when the visitor's device has a desktop mail
+  // client configured, which fails silently for most people on phones/
+  // Chromebooks — going straight to Gmail's own compose URL is reliable
+  // since the inbox every form sends to is a Gmail address anyway.
+  const sendViaGmail = (subject, bodyText) => {
+    const encSubject = encodeURIComponent(subject);
+    const encBody = encodeURIComponent(bodyText);
+    const mailtoUrl = `mailto:consultingcedarpoint@gmail.com?subject=${encSubject}&body=${encBody}`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=consultingcedarpoint@gmail.com&su=${encSubject}&body=${encBody}`;
+    const gmailTab = window.open(gmailUrl, '_blank', 'noopener');
+    if (!gmailTab) {
+      // Popup blocked — fall back to the OS mail handler.
+      window.location.href = mailtoUrl;
+    }
+    return mailtoUrl;
+  };
+
+  const showConfirmation = (form, confirmation) => {
+    if (!form || !confirmation) return;
+    form.style.display = 'none';
+    confirmation.classList.add('show');
+  };
+
+  // ---- Free audit form (audit.html) ----
+  const auditForm = document.getElementById('auditForm');
+  const auditConfirmation = document.getElementById('auditConfirmation');
+  if (auditForm && auditConfirmation) {
+    auditForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const service = document.getElementById('service').value;
-      const message = document.getElementById('message').value.trim();
+      const name = document.getElementById('auditName').value.trim();
+      const email = document.getElementById('auditEmail').value.trim();
+      const handle = document.getElementById('auditHandle').value.trim();
+      const industry = document.getElementById('auditIndustry').value.trim();
+      const challenge = document.getElementById('auditChallenge').value.trim();
 
-      const subject = encodeURIComponent(`New project inquiry — ${service}`);
-      const body = encodeURIComponent(
-        `Name: ${name}\nEmail: ${email}\nService: ${service}\n\nMessage:\n${message}`
-      );
-      const mailtoUrl = `mailto:consultingcedarpoint@gmail.com?subject=${subject}&body=${body}`;
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=consultingcedarpoint@gmail.com&su=${subject}&body=${body}`;
+      const body = `Name: ${name}\nEmail: ${email}\nInstagram / Website: ${handle}\nBusiness type: ${industry || '—'}\n\nBiggest challenge:\n${challenge || '—'}`;
+      sendViaGmail('Free Brand Audit Request', body);
+      showConfirmation(auditForm, auditConfirmation);
+    });
+  }
 
-      const gmailTab = window.open(gmailUrl, '_blank', 'noopener');
-      if (!gmailTab) {
-        // Popup blocked — fall back to the OS mail handler.
-        window.location.href = mailtoUrl;
-      }
+  // ---- Multi-step "Request a Quote" form (contact.html) ----
+  const quoteForm = document.getElementById('quoteForm');
+  const quoteConfirmation = document.getElementById('quoteConfirmation');
+  if (quoteForm && quoteConfirmation) {
+    // Chip selection: single-select groups keep one active chip, the
+    // service group (data-multi) allows several.
+    quoteForm.querySelectorAll('.chip-group').forEach((group) => {
+      const multi = group.getAttribute('data-multi') === 'true';
+      group.querySelectorAll('.chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          if (!multi) {
+            group.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+          }
+          chip.classList.toggle('selected');
+        });
+      });
+    });
 
-      formNote.innerHTML = `Opening Gmail in a new tab to send your message — just hit send there. Trouble seeing it? Email us directly at <a href="${mailtoUrl}">consultingcedarpoint@gmail.com</a>.`;
-      formNote.classList.add('success');
-      contactForm.reset();
+    const steps = Array.from(quoteForm.querySelectorAll('.quote-step'));
+    const progressSteps = Array.from(document.querySelectorAll('#quoteProgress .quote-progress-step'));
+    const goToStep = (n) => {
+      steps.forEach((s) => s.classList.toggle('active', Number(s.getAttribute('data-step')) === n));
+      progressSteps.forEach((p, i) => p.classList.toggle('active', i < n));
+    };
+
+    const nextBtn = document.getElementById('quoteNext');
+    const backBtn = document.getElementById('quoteBack');
+    if (nextBtn) nextBtn.addEventListener('click', () => goToStep(2));
+    if (backBtn) backBtn.addEventListener('click', () => goToStep(1));
+
+    quoteForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const selectedFrom = (groupName) =>
+        Array.from(quoteForm.querySelectorAll(`.chip-group[data-group="${groupName}"] .chip.selected`))
+          .map((c) => c.textContent.trim());
+
+      const services = selectedFrom('service').join(', ') || '—';
+      const budget = selectedFrom('budget')[0] || '—';
+      const timeline = selectedFrom('timeline')[0] || '—';
+
+      const name = document.getElementById('quoteName').value.trim();
+      const email = document.getElementById('quoteEmail').value.trim();
+      const phone = document.getElementById('quotePhone').value.trim();
+      const brand = document.getElementById('quoteBrand').value.trim();
+      const message = document.getElementById('quoteMessage').value.trim();
+
+      const body =
+        `Service(s) needed: ${services}\nBudget: ${budget}\nTimeline: ${timeline}\n\n` +
+        `Name: ${name}\nEmail: ${email}\nPhone: ${phone || '—'}\nBrand/Business: ${brand || '—'}\n\n` +
+        `Message:\n${message || '—'}`;
+
+      sendViaGmail('New Quote Request', body);
+      showConfirmation(quoteForm, quoteConfirmation);
     });
   }
 
