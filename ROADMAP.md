@@ -865,6 +865,36 @@ deployment.
       then deleted both fixtures and confirmed the dev database returned
       to its exact seeded baseline (the one original seeded note). See
       `docs/specs/client-note-creation.md`.
+- [x] Client editing (Section 4). The client-creation slice's own explicit
+      scope boundary named this as the deferred next step ("no
+      client-editing UI... a distinct, smaller follow-up"), confirmed
+      directly: `client-service.ts` had exactly one exported function
+      (`createClient`), `prisma.client.update` had zero non-test call
+      sites, and no `PATCH /api/clients/[id]` route or edit UI existed —
+      once created, a client's core fields were permanently fixed. New
+      `updateClient()` — the missing write half of `createClient` — is
+      gated client-scoped `clients:write` (not org-wide, since it's a
+      write on an already-existing client, the same tier
+      `createProject`/`createShoot`/`createNote` use), takes every field
+      as optional, rejects an empty-fields call, clears optional fields to
+      `null` on an empty string, and emits a real `AuditEvent` with a
+      genuine `{before, after}` diff of only what actually changed — no
+      event at all when nothing changed. New `PATCH /api/clients/[id]`
+      route and a new `/clients/[id]/edit` page (pre-filled form,
+      structurally identical to `/clients/new`'s), with an "Edit details"
+      link on the client detail page gated on the same `clients:write`
+      check already computed there. 7 new service tests + 5 new
+      route-contract tests against real Postgres. Full suite: 662/662
+      passed. Full monorepo typecheck: clean on all 15 packages.
+      Production build succeeded. Live-verified against a real running
+      production build via real Playwright/Chromium on the real seeded
+      "Volt Mobile" client (not a fixture insert, since this mutates
+      existing data): confirmed the edit form was genuinely pre-filled
+      from Postgres, changed lifecycle stage and industry through the
+      real UI, confirmed the real `PATCH` request and the resulting
+      `AuditEvent`'s before/after diff matched exactly, then reverted the
+      seeded client's fields directly in Postgres and confirmed it matched
+      its exact original baseline. See `docs/specs/client-editing.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

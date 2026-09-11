@@ -148,6 +148,11 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
         <div>
           <h1 className="text-2xl font-semibold">{client.name}</h1>
           <p className="text-sm text-neutral-500">{client.companyName}</p>
+          {canWrite && (
+            <Link href={`/clients/${client.id}/edit`} className="mt-1 inline-block text-xs text-cedar-700 hover:underline">
+              Edit details
+            </Link>
+          )}
         </div>
         {health && (
           <details className="group rounded-lg border border-neutral-200 bg-white px-4 py-2 text-center">
