@@ -8,6 +8,7 @@ import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { getPaginatedExpenses } from "@/lib/services/client-relations-service";
 import { AddExpenseForm } from "../AddExpenseForm";
+import { ExpenseRowActions } from "./ExpenseRowActions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,11 +72,25 @@ export default async function ClientExpensesPage({
         ) : (
           <ul className="space-y-2 text-sm">
             {items.map((exp) => (
-              <li key={exp.id} className="flex justify-between">
+              <li key={exp.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-50 pb-2 last:border-0">
                 <span>
                   {exp.incurredAt.toLocaleDateString()} — {exp.category}
+                  {exp.description && <span className="text-neutral-400"> ({exp.description})</span>}
                 </span>
-                <span>${(exp.amountCents / 100).toLocaleString()}</span>
+                <span className="flex items-center gap-3">
+                  <span>${(exp.amountCents / 100).toLocaleString()}</span>
+                  {canWriteFinance && (
+                    <ExpenseRowActions
+                      expense={{
+                        id: exp.id,
+                        category: exp.category,
+                        amountCents: exp.amountCents,
+                        description: exp.description,
+                        incurredAt: exp.incurredAt.toISOString(),
+                      }}
+                    />
+                  )}
+                </span>
               </li>
             ))}
           </ul>

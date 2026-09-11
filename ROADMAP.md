@@ -895,6 +895,36 @@ deployment.
       `AuditEvent`'s before/after diff matched exactly, then reverted the
       seeded client's fields directly in Postgres and confirmed it matched
       its exact original baseline. See `docs/specs/client-editing.md`.
+- [x] Expense editing and deletion (Section 4.2/16 Finance Hub). Same
+      create-only shape as the just-fixed Client-editing gap, found by a
+      targeted follow-up sweep: `expense-service.ts` had only
+      `createExpense`, `prisma.expense.update`/`.delete` had zero
+      non-test call sites, and `/clients/[id]/expenses/page.tsx` rendered
+      a plain read-only list. A fat-fingered amount/category was
+      previously permanent, and that number feeds directly into
+      `getClientProfitability`/`getProjectProfitability`/
+      `getCampaignProfitability` and the CEO Dashboard's cost aggregate —
+      a real data-integrity gap in the systems recent profitability
+      slices have been hardening. New `updateExpense()`/`deleteExpense()`
+      — org-wide `finance:write`, the same tier `createExpense` already
+      uses (an expense's `clientId` is optional, so this can't be
+      client-scoped the way `updateClient` is) — with a real before/after
+      `AuditEvent` diff on update and a full snapshot on delete.
+      Deliberately does NOT allow reassigning `clientId`/`projectId`/
+      `campaignId` (moving an expense between books is a separate, larger
+      question); only `category`/`amountCents`/`description`/
+      `incurredAt` are editable. New `PATCH`/`DELETE /api/expenses/[id]`
+      routes and inline edit/delete controls on the expenses list page,
+      gated on the existing `canWriteFinance` check. 10 new service tests
+      + 9 new route-contract tests against real Postgres. Full suite:
+      681/681 passed. Full monorepo typecheck: clean on all 15 packages.
+      Production build succeeded. Live-verified against a real running
+      production build via real Playwright/Chromium on the real seeded
+      client: logged a real fixture expense, edited it through the real
+      inline form, deleted it with the real confirm dialog, confirmed the
+      full `created → updated → deleted` audit trail in Postgres matched
+      exactly, then cleaned up and confirmed the org's two pre-existing
+      seeded expenses were untouched. See `docs/specs/expense-editing.md`.
 
 ## Phase 1 — Agency Core: **complete**
 
