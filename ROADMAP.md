@@ -800,6 +800,43 @@ deployment.
       server-side (not just a label) by comparing `?resourceType=User`
       vs `?resourceType=Organization` results directly. Read-only smoke
       test — no fixture cleanup needed. See `docs/specs/audit-log.md`.
+- [x] Client creation (Section 4). A dedicated Explore agent's exhaustive
+      codebase search confirmed there was **no way to create a new Client
+      anywhere in the running application** — `prisma.client.create` was
+      called only from `packages/db/prisma/seed.ts` and test fixtures; no
+      service function, server action, or API route existed; the
+      `/clients` empty state literally told users to reseed the database.
+      This is the same "declared but never wired" shape caught repeatedly
+      this session (`audit:read`, `AuditEvent.approvalId`) but more
+      severe — Client is the system's primary entity, and this is core
+      CRUD, not a secondary read surface, despite Phase 1 below being
+      marked "complete." New `createClient()` (org-wide `clients:write`,
+      same tier as project-template creation, with a real `AuditEvent`),
+      new `POST /api/clients` route, new `/clients/new` page + form
+      covering every real baseline `Client` field (name, company name,
+      industry, lifecycle stage, primary contact name/email), and a
+      "+ New Client" button on the `/clients` list page gated on the same
+      permission. Explicit scope boundary: no bulk import, no
+      prospect-to-active workflow automation, no logo upload, no
+      `connectedAccounts`/`services` UI (nothing in the app writes to
+      those yet at all — this only initializes `services` to `[]`), no
+      client-editing UI (a distinct, smaller follow-up). 6 new service
+      integration tests + 7 new route-contract tests against real
+      Postgres, including the org-wide `ScopedGrant` permission tier.
+      Full suite: 641/641 passed. Full monorepo typecheck: clean on all
+      15 packages. Production build succeeded. Live-verified against a
+      real running production build via real Playwright/Chromium: logged
+      in as the real seeded OWNER, created a real client through the real
+      UI end to end, confirmed it on the client detail page and the
+      `/clients` list, confirmed the real Postgres row and `AuditEvent`
+      matched exactly what was typed, then deleted the fixture and
+      confirmed the dev database returned to its exact seeded baseline
+      (`Volt Mobile`, the only client). One test-script bug was caught and
+      fixed mid-smoke-test: a generic `button[type="submit"]` selector
+      first matched the authenticated shell's own "Log out" button before
+      the real form's submit button, logging the session out — fixed by
+      scoping the click to the button's own text. See
+      `docs/specs/client-creation.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

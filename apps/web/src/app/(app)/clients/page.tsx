@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@cedar/db";
+import { isAuthorized } from "@cedar/auth";
 import { Card } from "@/components/Card";
 import { Pagination } from "@/components/Pagination";
 import { requireActor } from "@/lib/guards";
@@ -28,6 +29,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   // the clients they've been granted, enforced here at the query layer —
   // not by fetching everything and hiding rows in the UI.
   const clientIdFilter = await getReadableClientIds(actor);
+
+  const canCreateClient = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "clients:write",
+  });
 
   const where = {
     organizationId: actor.organizationId,
@@ -58,18 +65,30 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Clients</h1>
-        <p className="text-sm text-neutral-500">
-          One profile per client — brand, projects, files, approvals, billing (Section 4).
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Clients</h1>
+          <p className="text-sm text-neutral-500">
+            One profile per client — brand, projects, files, approvals, billing (Section 4).
+          </p>
+        </div>
+        {canCreateClient && (
+          <Link
+            href="/clients/new"
+            className="shrink-0 rounded-md bg-cedar-600 px-3 py-2 text-sm font-medium text-white hover:bg-cedar-700"
+          >
+            + New Client
+          </Link>
+        )}
       </div>
 
       {clients.length === 0 ? (
         <Card>
           <p className="text-sm text-neutral-400">
             {clientIdFilter === undefined
-              ? "No clients yet. Run npm run db:seed for demo data."
+              ? canCreateClient
+                ? "No clients yet. Create your first client to get started, or run npm run db:seed for demo data."
+                : "No clients yet. Run npm run db:seed for demo data."
               : "You haven't been granted access to any clients yet — ask an owner or admin."}
           </p>
         </Card>
