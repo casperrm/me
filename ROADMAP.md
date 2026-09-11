@@ -837,6 +837,34 @@ deployment.
       the real form's submit button, logging the session out — fixed by
       scoping the click to the button's own text. See
       `docs/specs/client-creation.md`.
+- [x] Client note creation (Section 4). A quick sanity pass over other
+      primary entities' creation paths right after closing the client
+      gap above (Campaign, Creative, Task, Project all confirmed real via
+      `.create(` grep) surfaced the same shape one level down:
+      `prisma.note.create` had zero non-test call sites anywhere — both
+      the client detail page's Notes card and the dedicated
+      `/clients/[id]/notes` list page were read-only. New `createNote()`
+      (client-scoped `clients:write`, same tier `createProject`/
+      `createShoot`/`createExpense` already use, with a real
+      `AuditEvent`), new `POST /api/clients/[id]/notes` route, and a new
+      `AddNoteForm.tsx` wired into both previously-read-only surfaces.
+      Explicit scope boundary: no note editing/deletion (treated as an
+      append-only log, matching `ClientTimelineEvent`/`AuditEvent`), no
+      `authorId` field added to the `Note` model itself (who wrote it is
+      still recoverable via the `AuditEvent` this slice emits, the same
+      indirection the Audit Log viewer already relies on), no rich
+      text/attachments. 4 new service integration tests + 5 new
+      route-contract tests against real Postgres. Full suite: 650/650
+      passed. Full monorepo typecheck: clean on all 15 packages.
+      Production build succeeded. Live-verified against a real running
+      production build via real Playwright/Chromium: logged in as the
+      real seeded OWNER, added a real note from the client detail page's
+      Notes card, confirmed it appeared there and on the dedicated
+      `/notes` list page, added a second note directly from that list
+      page, confirmed both real rows and their `AuditEvent`s in Postgres,
+      then deleted both fixtures and confirmed the dev database returned
+      to its exact seeded baseline (the one original seeded note). See
+      `docs/specs/client-note-creation.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

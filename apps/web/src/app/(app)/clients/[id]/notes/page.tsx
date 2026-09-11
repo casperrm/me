@@ -7,6 +7,7 @@ import { Pagination } from "@/components/Pagination";
 import { PermissionDenied } from "@/components/PermissionDenied";
 import { requireActor } from "@/lib/guards";
 import { getPaginatedNotes } from "@/lib/services/client-relations-service";
+import { AddNoteForm } from "../AddNoteForm";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,13 @@ export default async function ClientNotesPage({
   });
   if (!allowed) return <PermissionDenied message="You don't have access to this client's notes." />;
 
+  const canWrite = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "clients:write",
+    clientId: client.id,
+  });
+
   const { items, page, totalPages, totalCount } = await getPaginatedNotes(client.id, Number(pageParam) || 1);
 
   return (
@@ -55,6 +63,7 @@ export default async function ClientNotesPage({
           </ul>
         )}
         <Pagination basePath={`/clients/${client.id}/notes`} page={page} totalPages={totalPages} totalCount={totalCount} />
+        {canWrite && <AddNoteForm clientId={client.id} />}
       </Card>
     </div>
   );

@@ -12,6 +12,7 @@ import { AssetsList } from "./AssetsList";
 import { AddExpenseForm } from "./AddExpenseForm";
 import { AddInvoiceForm } from "./AddInvoiceForm";
 import { InvoiceActions } from "./InvoiceActions";
+import { AddNoteForm } from "./AddNoteForm";
 import { buildSignedDownloadPath } from "@/lib/storage";
 import { getOpportunitiesForClient } from "@/lib/services/opportunity-service";
 import { getClientRenewalRecommendation } from "@/lib/services/decision-engine-service";
@@ -512,6 +513,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
               ))}
             </ul>
           )}
+          {canWrite && <AddNoteForm clientId={client.id} />}
         </Card>
 
         <Card
