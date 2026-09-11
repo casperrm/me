@@ -774,6 +774,32 @@ deployment.
       was genuinely rejected in Postgres, not just visually reverted.
       Policy reset afterward. See `docs/specs/inline-action-errors.md`'s
       "Follow-up" section.
+- [x] Audit Log viewer UI (Section 23.2/27). `audit:read` has been a real
+      permission in the RBAC catalog since Phase 0, granted to ADMIN/OWNER
+      by default — a repo-wide search found zero call sites checking it
+      anywhere before this slice, the same "declared but never wired"
+      shape already caught once this session for `AuditEvent.approvalId`.
+      This directly closes `audit-event-approval-linkage.md`'s own named
+      follow-up ("No UI surfaces approvalId yet... a separate, smaller
+      follow-up"). New `listAuditEvents()` (org-wide, paginated,
+      optional resourceType filter, batched actor/client name
+      resolution) and a new `/audit` page + nav item, gated on the
+      now-finally-used `audit:read`. Explicit scope boundary: no
+      export/download (a real compliance feature with retention-policy
+      questions this slice doesn't invent answers to), no
+      integrity-hash-chain verification tool, no full-text search beyond
+      the one resourceType filter, no correlation-id cross-reference UI
+      (most events still have `correlationId: null` — API-route-level
+      correlation IDs remain `worker-log-correlation.md`'s own
+      deliberately-deferred, much-larger gap). 4 new tests against real
+      Postgres. Live-verified against a real running production build:
+      confirmed the nav item and page render real history for the real
+      OWNER actor (every login session this entire build-out session
+      created, plus the real `org.seeded` event), screenshot-verified;
+      confirmed the resourceType filter genuinely constrains the query
+      server-side (not just a label) by comparing `?resourceType=User`
+      vs `?resourceType=Organization` results directly. Read-only smoke
+      test — no fixture cleanup needed. See `docs/specs/audit-log.md`.
 
 ## Phase 1 — Agency Core: **complete**
 

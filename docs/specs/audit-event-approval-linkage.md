@@ -66,7 +66,11 @@ guesswork.
   "Approval details" link. This slice makes the data correct and
   queryable (proven by direct query, both in the integration test and
   the live HTTP smoke test below); building a UI consumer for it is a
-  separate, smaller follow-up with no urgency behind it yet.
+  separate, smaller follow-up with no urgency behind it yet. **Update
+  (2026-09-11):** that follow-up is now built — see
+  `docs/specs/audit-log.md`. The new `/audit` page (gated on `audit:read`,
+  itself a real permission that had zero consumers anywhere until this
+  same slice) shows `approvalId` on every row that carries one.
 
 ## Testing
 

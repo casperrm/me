@@ -55,6 +55,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     permission: "organization:manage",
   });
 
+  const canSeeAuditLog = await isAuthorized({
+    userId: actor.user.id,
+    organizationId: actor.organizationId,
+    permission: "audit:read",
+  });
+
   // Template editing (docs/specs/projects-and-calendar.md) is gated
   // org-wide clients:write, same tier as creating a template from any
   // client's project — mirrors how /integrations gates its own nav item
@@ -80,6 +86,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(canSeeTemplates ? [{ href: "/templates", label: "Project Templates", badge: 0 }] : []),
     ...(canSeeTemplates ? [{ href: "/memory", label: "Agency Memory", badge: 0 }] : []),
     ...(canSeeIntegrations ? [{ href: "/integrations", label: "Integration Center", badge: 0 }] : []),
+    ...(canSeeAuditLog ? [{ href: "/audit", label: "Audit Log", badge: 0 }] : []),
     ...(canSeeTeam ? [{ href: "/team", label: "Team & Permissions", badge: 0 }] : []),
   ];
 
