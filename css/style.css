@@ -430,6 +430,7 @@ h3 { font-size: 1.25rem; }
   border-radius: var(--radius-md);
   padding: 30px 26px;
   display: flex; flex-direction: column;
+  overflow: auto;
 }
 .flip-card-front { background: var(--off-white); border: 1px solid var(--gray-100); }
 .flip-card:hover .flip-card-front,
@@ -499,7 +500,6 @@ h3 { font-size: 1.25rem; }
 .portfolio-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 220px;
   gap: 18px;
 }
 .portfolio-item {
@@ -507,10 +507,12 @@ h3 { font-size: 1.25rem; }
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  grid-column: span 1;
-  grid-row: span 1;
+  background: var(--gray-100);
+  /* Every source image is a native 4:5 post — matching the box to that
+     ratio means object-fit: cover never has to crop into the artwork
+     or its baked-in text. */
+  aspect-ratio: 4 / 5;
 }
-.portfolio-item.tall { grid-row: span 2; }
 .portfolio-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
 .portfolio-item:hover img { transform: scale(1.08); }
 .portfolio-item figcaption {
@@ -785,7 +787,9 @@ h3 { font-size: 1.25rem; }
   .hero-lead { margin-left: auto; margin-right: auto; }
   .hero-cta { justify-content: center; }
   .hero-trust { justify-content: center; }
-  .hero-visual { display: none; }
+  .hero-visual { height: auto; margin-top: 40px; }
+  .hero-card-main { position: static; width: 100%; max-width: 380px; margin: 0 auto; border-width: 4px; }
+  .hero-card-1, .hero-card-2 { display: none; }
   .services-grid { grid-template-columns: repeat(2, 1fr); }
   .about-inner, .contact-inner { grid-template-columns: 1fr; }
   .about-visual { order: 2; }
@@ -806,16 +810,17 @@ h3 { font-size: 1.25rem; }
 
 @media (max-width: 720px) {
   .section { padding: 80px 0; }
-  .portfolio-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 180px; }
-  .process-rail { grid-template-columns: repeat(2, 1fr); }
+  .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+  .process-rail { grid-template-columns: 1fr; }
   .services-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .flip-card, .process-step.flip-card { min-height: 320px; }
 }
 
 @media (max-width: 480px) {
-  .portfolio-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 150px; }
+  .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-cta { flex-direction: column; align-items: stretch; }
   .hero-trust { gap: 24px; }
 }
