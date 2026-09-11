@@ -86,10 +86,15 @@ rejection, the pattern used for the blocked-task bug above).
   whole page) is a real, separately-scoped follow-up — not built here,
   named explicitly rather than left silent. **Update:** the two
   actions (of this repo's three `"use server"` files) with a
-  genuinely reachable failure now do this — see
-  `docs/specs/inline-action-errors.md`. The rest were deliberately
-  left throwing into this boundary, since they have no real failure
-  path to report inline.
+  genuinely reachable *business-rule* failure did this first — see
+  `docs/specs/inline-action-errors.md`. **Second update:** the remaining
+  actions turned out to share a different reachable failure this first
+  pass missed — `AuthorizationError`/`MfaRequiredError` from the
+  authorization layer underneath every write path, not a per-action
+  business rule. All six write actions across both files now catch and
+  report both — see `docs/specs/inline-action-errors.md`'s "Follow-up"
+  section. `logoutAction` (`auth.ts`) remains the one action with
+  genuinely nothing to catch (it calls no permission-gated service).
 - **No error reporting/telemetry pipeline.** `ErrorBoundaryContent`
   calls `console.error(error)` on mount (Next.js's own documented
   pattern) so a real error is visible in server/container logs with its

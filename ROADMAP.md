@@ -745,6 +745,35 @@ deployment.
       count, screenshot-verified; fixture tasks deleted afterward. See
       `docs/specs/cedar-decision-engine.md`'s "Second decision type"
       section.
+- [x] Complete server-action error handling: catch
+      AuthorizationError/MfaRequiredError, not just each action's own
+      business-rule AuthError (Section 23.1/28.2 follow-up). Both
+      `docs/specs/mfa.md` and `docs/specs/error-boundaries.md` explicitly
+      named this gap: every write action in `task.ts`/`membership.ts`
+      calls a service that itself calls `requirePermission`/
+      `requireAnyPermission`, which can throw `AuthorizationError` or
+      `MfaRequiredError` — a different failure source than each action's
+      own business rule, which the earlier `inline-action-errors.md`
+      slice's per-action audit didn't consider. A real, reachable race:
+      an org turns its MFA-required policy on while a privileged user
+      already has a page open — their next submit used to crash into the
+      full-page `error.tsx` boundary instead of showing an inline
+      message. All six write actions across both files now catch and
+      report both error types via a shared `actionErrorMessage()`
+      helper. `TaskPriorityForm.tsx`/`TaskEstimateForm.tsx` and
+      `MemberRowActions.tsx`'s grant-scope form converted from plain
+      `<form action={...}>` to the same controlled inline-error pattern
+      `TaskStatusForm.tsx` already established. 2 new tests (one per
+      action file) against real Postgres with a real unenrolled
+      OWNER/ADMIN under a real MFA-required org policy. Live-verified
+      against a real running production build: loaded a real task page
+      while the org's MFA policy was off, flipped it on directly in
+      Postgres without reloading (reproducing the exact race — a reload
+      would hit the layout-level redirect instead), then confirmed the
+      real inline error rendered with no crash and the underlying write
+      was genuinely rejected in Postgres, not just visually reverted.
+      Policy reset afterward. See `docs/specs/inline-action-errors.md`'s
+      "Follow-up" section.
 
 ## Phase 1 — Agency Core: **complete**
 

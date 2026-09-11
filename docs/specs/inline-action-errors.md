@@ -37,14 +37,15 @@ cases — not hypothetical:
   an ordinary, reachable state, not an edge case.
 
 The other three actions in these files (`setTaskPriorityAction`,
-`setTaskEstimateAction`, `grantClientScopeAction`) were checked and have
-no comparable reachable failure — priority/estimate have no business rule
-beyond what the UI already enforces, and `ScopedGrant` has no unique
-constraint to violate. They were deliberately left unconverted rather
-than adding the same wrapping everywhere for consistency's own sake —
-that would mean building an error-display path that can never actually
-fire, the same over-completeness this project has caught and rejected
-elsewhere (`Invoice.currency`, a real field nothing reads).
+`setTaskEstimateAction`, `grantClientScopeAction`) were checked and, at
+the time, had no comparable reachable *business-rule* failure —
+priority/estimate have no rule beyond what the UI already enforces, and
+`ScopedGrant` has no unique constraint to violate. They were left
+unconverted for that reason. **Update — see "Follow-up: the
+AuthorizationError/MfaRequiredError gap" below: this reasoning covered
+each action's own service-level business rule, but missed a failure
+mode every one of the six actions shares underneath — `requirePermission`/
+`requireAnyPermission` itself.** That gap is now closed for all six.
 
 ## What's built
 
@@ -72,9 +73,10 @@ elsewhere (`Invoice.currency`, a real field nothing reads).
   `defaultValue`) so a rejected change visibly reverts to the real
   server-confirmed status instead of leaving the dropdown showing a
   change that didn't happen.
-- `grantClientScopeAction` in `MemberRowActions.tsx` is left as a plain
-  `<form action={...}>` (no onSubmit/error state) — no real error path
-  exists for it, so there's nothing to display.
+- `grantClientScopeAction` in `MemberRowActions.tsx` was, at the time,
+  left as a plain `<form action={...}>` (no onSubmit/error state) since
+  no real error path existed for it yet. **See the follow-up below — this
+  is no longer accurate.**
 
 ## Scope — explicitly not built
 
@@ -127,3 +129,67 @@ elsewhere (`Invoice.currency`, a real field nothing reads).
   memberships, 2 tasks, 1 dependency, their sessions/audit events)
   cleaned up afterward; confirmed the dev DB was back to exactly the
   seeded 1 user / 1 membership.
+
+## Follow-up: the AuthorizationError/MfaRequiredError gap
+
+`docs/specs/mfa.md` and `docs/specs/error-boundaries.md` both explicitly
+named a gap this slice's own scan didn't cover: every write path in
+`task.ts`/`membership.ts` calls a service function that itself calls
+`requirePermission`/`requireAnyPermission` (`@cedar/auth`) — which can
+throw `AuthorizationError` (denied outright) or `MfaRequiredError` (the
+org's MFA-required policy is on and this actor hasn't enrolled), neither
+of which any action caught. `AuthError` is each *service's own* business
+rule; `AuthorizationError`/`MfaRequiredError` are the shared
+authorization/MFA layer underneath every one of them — a different
+failure source this slice's original per-action business-rule audit
+didn't consider.
+
+A real, reachable race for the MFA case: an owner turns the org's
+MFA-required policy on while another privileged user still has a page
+open from before that change. `(app)/layout.tsx`'s redirect-to-`/security`
+gate only runs on page *navigation* — a server action on an
+already-rendered page skips it entirely, so that user's next submit would
+have crashed into the page's `error.tsx` boundary.
+
+### What changed
+
+- Both action files gained a shared `actionErrorMessage(err)` helper:
+  `AuthError`/`MfaRequiredError` return their own message verbatim (both
+  are already written as real user-facing text);
+  `AuthorizationError` returns a generic "You don't have permission to do
+  that." (its own message embeds the raw `Permission` string, e.g.
+  `"Not authorized: clients:write"`, which isn't real user-facing copy).
+- All six actions (`setTaskStatusAction`, `setTaskPriorityAction`,
+  `setTaskEstimateAction`, `changeRoleAction`, `revokeMembershipAction`,
+  `grantClientScopeAction`) now return `{ error: string } | undefined`
+  and use this helper — the three that previously had "no comparable
+  reachable failure" needed it for this shared layer even though their
+  own business rule truly has none.
+- `TaskPriorityForm.tsx` and `TaskEstimateForm.tsx` converted from plain
+  `<form action={...}>` to the same controlled `useTransition` + inline
+  error pattern `TaskStatusForm.tsx` already established (both now
+  needed it for the first time, since their actions can return an error
+  now). `MemberRowActions.tsx`'s grant-scope form converted the same way,
+  joining its two sibling forms in that file that already used the
+  pattern.
+
+### Testing
+
+- `task.test.ts` gained a new `describe("MFA enforcement gate")` test:
+  a real org with `mfaRequiredForPrivilegedRoles: true`, a real
+  unenrolled OWNER, confirms `setTaskPriorityAction` returns `{ error:
+  "MFA enrollment is required for this account before this action can be
+  performed." }` instead of throwing.
+- `membership.test.ts` gained the equivalent test for `changeRoleAction`
+  with an unenrolled ADMIN.
+- Live-verified against a real running production build: loaded a real
+  task page while the seeded org's MFA policy was still off (an
+  already-open tab), then flipped `mfaRequiredForPrivilegedRoles` to
+  `true` directly in Postgres *without reloading the page* — reproducing
+  the exact race, since a reload would have hit the layout-level redirect
+  instead. Submitted the already-rendered priority selector: confirmed
+  the real inline "MFA enrollment is required..." message rendered (no
+  `error.tsx` crash), the selector visibly reverted to its prior value,
+  and the task's `priority` column in Postgres was genuinely unchanged —
+  not merely a UI-level revert. The org's MFA policy was reset to `false`
+  afterward, confirmed back to the seeded baseline.

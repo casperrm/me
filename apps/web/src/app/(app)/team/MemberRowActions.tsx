@@ -28,8 +28,10 @@ export function MemberRowActions({
 }) {
   const [roleError, setRoleError] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [grantError, setGrantError] = useState<string | null>(null);
   const [isRolePending, startRoleTransition] = useTransition();
   const [isRevokePending, startRevokeTransition] = useTransition();
+  const [isGrantPending, startGrantTransition] = useTransition();
 
   function handleRoleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,6 +50,16 @@ export function MemberRowActions({
     startRevokeTransition(async () => {
       const result = await revokeMembershipAction(formData);
       if (result?.error) setRevokeError(result.error);
+    });
+  }
+
+  function handleGrantSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setGrantError(null);
+    const formData = new FormData(e.currentTarget);
+    startGrantTransition(async () => {
+      const result = await grantClientScopeAction(formData);
+      if (result?.error) setGrantError(result.error);
     });
   }
 
@@ -91,23 +103,26 @@ export function MemberRowActions({
       )}
 
       {clients.length > 0 && (
-        <form action={grantClientScopeAction} className="flex items-center gap-1">
-          <input type="hidden" name="membershipId" value={membershipId} />
-          <select name="clientId" className="rounded border border-neutral-200 px-1 py-0.5 text-xs">
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select name="permission" className="rounded border border-neutral-200 px-1 py-0.5 text-xs">
-            <option value="clients:read">clients:read</option>
-            <option value="clients:write">clients:write</option>
-          </select>
-          <button type="submit" className="text-xs text-cedar-700 hover:underline">
-            Grant
-          </button>
-        </form>
+        <>
+          <form onSubmit={handleGrantSubmit} className="flex items-center gap-1">
+            <input type="hidden" name="membershipId" value={membershipId} />
+            <select name="clientId" disabled={isGrantPending} className="rounded border border-neutral-200 px-1 py-0.5 text-xs disabled:opacity-60">
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select name="permission" disabled={isGrantPending} className="rounded border border-neutral-200 px-1 py-0.5 text-xs disabled:opacity-60">
+              <option value="clients:read">clients:read</option>
+              <option value="clients:write">clients:write</option>
+            </select>
+            <button type="submit" disabled={isGrantPending} className="text-xs text-cedar-700 hover:underline">
+              Grant
+            </button>
+          </form>
+          {grantError && <p className="text-xs text-red-600">{grantError}</p>}
+        </>
       )}
     </>
   );

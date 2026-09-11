@@ -29,15 +29,19 @@ configurable policy (today it's a single organization-wide boolean
 covering exactly OWNER and ADMIN — see the rationale in
 `packages/domain/src/roles.ts`'s doc comment on `MFA_PRIVILEGED_ROLES`
 for why a data-driven per-role policy table wasn't built for a two-role
-list); and server actions (`apps/web/src/lib/actions/*.ts`) still don't
-catch `AuthorizationError`/`MfaRequiredError` themselves — a pre-existing
-gap this slice did not fix, named explicitly below rather than left
-silent. A later, separately-scoped slice (`docs/specs/error-boundaries.md`)
-added a real app-wide `error.tsx` boundary, so an uncaught
-`MfaRequiredError` from a server action now shows a friendly fallback
-instead of crashing the whole page — a real improvement, but not the
-same thing as the action catching it and returning an inline message;
-that retrofit remains unbuilt.
+list). Server actions (`apps/web/src/lib/actions/*.ts`) not catching
+`AuthorizationError`/`MfaRequiredError` themselves was a pre-existing gap
+named explicitly here rather than left silent. A later, separately-scoped
+slice (`docs/specs/error-boundaries.md`) added a real app-wide `error.tsx`
+boundary, so an uncaught `MfaRequiredError` from a server action showed a
+friendly fallback instead of crashing the whole page — a real
+improvement, but not the same thing as the action catching it and
+returning an inline message. **That retrofit is now built too** — see
+`docs/specs/inline-action-errors.md`'s "Follow-up:
+AuthorizationError/MfaRequiredError gap" section: every write action now
+catches both and returns an inline `{ error }`, live-verified against the
+exact race this scope boundary named (an org's MFA policy flipped on
+while a privileged user already has a page open).
 
 ## Enforcement policy
 

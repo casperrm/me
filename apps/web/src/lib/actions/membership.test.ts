@@ -81,3 +81,43 @@ describe("revokeMembershipAction", () => {
     expect(stillActive.status).toBe("ACTIVE");
   });
 });
+
+// Real, reachable race (docs/specs/mfa.md's own named gap): an owner
+// toggles the organization's MFA-required policy on while a privileged
+// user still has a page open from before that change — their next write
+// throws MfaRequiredError at the service layer (requirePermission),
+// which changeRoleAction/revokeMembershipAction/grantClientScopeAction
+// none caught before this slice.
+describe("MFA enforcement gate", () => {
+  it("returns {error} instead of throwing when the acting ADMIN hasn't enrolled and the org now requires it", async () => {
+    const mfaOrg = await prisma.organization.create({ data: { name: "Membership MFA Gate Agency", mfaRequiredForPrivilegedRoles: true } });
+    const unenrolledAdmin = await prisma.user.create({
+      data: { email: "membership-mfa-gate-admin@test.example", name: "Unenrolled Admin", passwordHash: "irrelevant", mfaEnabled: false },
+    });
+    const adminMembership = await prisma.membership.create({
+      data: { organizationId: mfaOrg.id, userId: unenrolledAdmin.id, role: "ADMIN", status: "ACTIVE" },
+    });
+    const target = await prisma.user.create({
+      data: { email: "membership-mfa-gate-target@test.example", name: "Target", passwordHash: "irrelevant" },
+    });
+    const targetMembership = await prisma.membership.create({
+      data: { organizationId: mfaOrg.id, userId: target.id, role: "DESIGNER", status: "ACTIVE" },
+    });
+
+    getCurrentActor.mockResolvedValueOnce({ user: { id: unenrolledAdmin.id }, organizationId: mfaOrg.id });
+
+    const formData = new FormData();
+    formData.set("membershipId", targetMembership.id);
+    formData.set("role", "ACCOUNT_MANAGER");
+    formData.set("expectedVersion", "0");
+
+    const result = await changeRoleAction(formData);
+
+    expect(result?.error).toBe("MFA enrollment is required for this account before this action can be performed.");
+
+    getCurrentActor.mockResolvedValue({ user: { id: adminUserId }, organizationId: orgId });
+    await prisma.membership.deleteMany({ where: { id: { in: [adminMembership.id, targetMembership.id] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [unenrolledAdmin.id, target.id] } } });
+    await prisma.organization.deleteMany({ where: { id: mfaOrg.id } });
+  });
+});

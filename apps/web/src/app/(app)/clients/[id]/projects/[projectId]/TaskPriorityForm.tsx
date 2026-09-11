@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { setTaskPriorityAction } from "@/lib/actions/task";
 
 const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
@@ -20,16 +21,38 @@ export function TaskPriorityForm({
   projectId: string;
   priority: string;
 }) {
+  const [selected, setSelected] = useState(priority);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value;
+    setSelected(next);
+    setError(null);
+
+    const formData = new FormData();
+    formData.set("taskId", taskId);
+    formData.set("clientId", clientId);
+    formData.set("projectId", projectId);
+    formData.set("priority", next);
+
+    startTransition(async () => {
+      const result = await setTaskPriorityAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setSelected(priority);
+      }
+    });
+  }
+
   return (
-    <form action={setTaskPriorityAction} className="flex items-center gap-1">
-      <input type="hidden" name="taskId" value={taskId} />
-      <input type="hidden" name="clientId" value={clientId} />
-      <input type="hidden" name="projectId" value={projectId} />
+    <div className="flex flex-col gap-0.5">
       <select
         name="priority"
-        defaultValue={priority}
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className={`rounded border border-neutral-200 bg-white px-1 py-0.5 text-xs ${PRIORITY_COLOR[priority] ?? ""}`}
+        value={selected}
+        onChange={handleChange}
+        disabled={isPending}
+        className={`rounded border border-neutral-200 bg-white px-1 py-0.5 text-xs disabled:opacity-60 ${PRIORITY_COLOR[selected] ?? ""}`}
       >
         {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
           <option key={value} value={value}>
@@ -37,6 +60,7 @@ export function TaskPriorityForm({
           </option>
         ))}
       </select>
-    </form>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </div>
   );
 }
