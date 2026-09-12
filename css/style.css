@@ -873,7 +873,16 @@ h3 { font-size: 1.25rem; }
 .footer-social a[aria-label="Instagram"]:hover { background: radial-gradient(circle at 30% 110%, #fdf497, #fd5949 45%, #d6249f 60%, #285AEB 90%); border-color: transparent; }
 .footer-social a[aria-label="WhatsApp"]:hover { background: #25d366; border-color: transparent; }
 .footer-social a[aria-label="Email"]:hover { background: var(--cyan); color: var(--ink); border-color: transparent; }
-.footer-bottom { padding: 24px 0; text-align: center; font-size: 0.82rem; color: rgba(255,255,255,0.4); }
+.footer-bottom {
+  padding: 24px 0;
+  font-size: 0.82rem; color: rgba(255,255,255,0.4);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.footer-legal { display: flex; gap: 20px; }
+.footer-legal a { transition: color 0.2s ease; }
+.footer-legal a:hover { color: var(--white); }
+.footer-area { font-size: 0.85rem; color: rgba(255,255,255,0.55); margin-top: 10px; }
+@media (max-width: 600px) { .footer-bottom { justify-content: center; text-align: center; } }
 
 /* ---------- Back to top ---------- */
 .back-to-top {
@@ -1011,10 +1020,143 @@ h3 { font-size: 1.25rem; }
   .pricing-mini-card.featured { order: -1; }
 }
 
+/* ---------- Cinematic intro (preloader -> hero) ---------- */
+.preloader-mark { animation: spin 0.9s linear infinite, markPulse 1.8s ease-in-out infinite; }
+@keyframes markPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.hero-copy, .hero-visual { animation: introRise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.hero-visual { animation-delay: 0.12s; }
+@keyframes introRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- Signature moment: identity watermark ---------- */
+.signature-mark {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 640px; height: 640px;
+  transform: translate(-50%, -50%) scale(0.85);
+  color: var(--cyan);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 1.4s ease, transform 1.4s ease;
+}
+.signature-mark.in-view { opacity: 0.05; transform: translate(-50%, -50%) scale(1); }
+.signature-mark svg { width: 100%; height: 100%; }
+.has-signature { position: relative; overflow: hidden; }
+.has-signature > .container { position: relative; z-index: 1; }
+
+/* ---------- Interactive service selector ---------- */
+.selector-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+.selector-option {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  padding: 22px 20px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--gray-100);
+  background: var(--off-white);
+  text-align: left;
+  transition: all 0.25s ease;
+}
+.selector-option .service-icon { margin-bottom: 0; width: 42px; height: 42px; }
+.selector-option span { font-weight: 700; font-size: 0.95rem; }
+.selector-option:hover { border-color: var(--cyan); transform: translateY(-4px); }
+.selector-option.selected { background: var(--ink); border-color: var(--ink); }
+.selector-option.selected span { color: var(--white); }
+.selector-option.selected .service-icon { background: var(--cyan); color: var(--ink); }
+
+.selector-result {
+  display: none;
+  margin-top: 8px;
+  padding: 28px 30px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--white);
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  animation: quoteStepIn 0.4s ease;
+}
+.selector-result.show { display: flex; }
+.selector-result-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cyan-light); margin-bottom: 6px; }
+.selector-result h4 { color: var(--white); font-size: 1.2rem; margin-bottom: 6px; }
+.selector-result p { color: rgba(255,255,255,0.65); font-size: 0.92rem; max-width: 480px; }
+.selector-result .btn { flex-shrink: 0; }
+
+/* ---------- FAQ accordion ---------- */
+.faq-list { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.faq-item { border: 1px solid var(--gray-100); border-radius: var(--radius-md); overflow: hidden; }
+.faq-question {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 20px 24px;
+  text-align: left;
+  font-weight: 700; font-size: 1rem;
+  background: var(--off-white);
+  transition: background 0.2s ease;
+}
+.faq-item.open .faq-question { background: var(--ink); color: var(--white); }
+.faq-question .icon { flex-shrink: 0; transition: transform 0.3s ease; color: var(--cyan-dark); }
+.faq-item.open .faq-question .icon { transform: rotate(45deg); color: var(--cyan); }
+.faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.faq-answer-inner { padding: 4px 24px 22px; color: var(--gray-500); font-size: 0.95rem; }
+.faq-item.open .faq-answer { max-height: 240px; }
+
+/* ---------- Consultation / Quote tabs ---------- */
+.mode-tabs { display: flex; gap: 8px; margin-bottom: 24px; padding: 5px; background: var(--gray-100); border-radius: 100px; }
+.mode-tab { flex: 1; padding: 11px 16px; border-radius: 100px; font-weight: 700; font-size: 0.88rem; color: var(--gray-500); transition: all 0.25s ease; text-align: center; }
+.mode-tab.active { background: var(--ink); color: var(--white); }
+.mode-panel { display: none; }
+.mode-panel.active { display: block; animation: quoteStepIn 0.35s ease; }
+
+/* ---------- Case study modal ---------- */
+.cs-trigger { cursor: pointer; }
+.case-study-body .btn { margin-top: 18px; }
+.cs-modal {
+  position: fixed; inset: 0; z-index: 2100;
+  background: rgba(8,9,12,0.85);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.cs-modal.open { opacity: 1; visibility: visible; }
+.cs-modal-panel {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  max-width: 780px; width: 100%;
+  max-height: 88vh; overflow-y: auto;
+  position: relative;
+}
+.cs-modal-media { aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.cs-modal-media img { width: 100%; height: 100%; object-fit: cover; }
+.cs-modal-body { padding: 34px 36px 40px; }
+.cs-modal-close {
+  position: absolute; top: 18px; right: 18px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(8,9,12,0.6); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s ease;
+  z-index: 2;
+}
+.cs-modal-close:hover { background: var(--ink); }
+.cs-modal-body .case-study-category { margin-bottom: 8px; }
+.cs-modal-body h3 { font-size: 1.5rem; margin-bottom: 20px; }
+.cs-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.cs-modal-note { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--gray-100); font-size: 0.82rem; color: var(--gray-500); font-style: italic; }
+
+/* ---------- Legal pages ---------- */
+.legal-prose h2 { font-size: 1.4rem; margin: 36px 0 14px; }
+.legal-prose h2:first-child { margin-top: 0; }
+.legal-prose p, .legal-prose li { color: var(--gray-500); margin-bottom: 12px; }
+.legal-prose ul { list-style: disc; padding-left: 22px; }
+.legal-prose ul li { margin-bottom: 8px; }
+.legal-updated { color: var(--gray-500); font-size: 0.85rem; margin-bottom: 40px; }
+
 /* =========================================================
    Responsive
    ========================================================= */
 @media (max-width: 1100px) {
+  .selector-grid { grid-template-columns: repeat(2, 1fr); }
+  .cs-modal-grid { grid-template-columns: 1fr; }
   .portfolio-grid { grid-template-columns: repeat(3, 1fr); }
   .process-rail { grid-template-columns: repeat(3, 1fr); }
   .footer-inner { grid-template-columns: 1fr 1fr; }
@@ -1069,10 +1211,16 @@ h3 { font-size: 1.25rem; }
   .custom-package { flex-direction: column; align-items: flex-start; text-align: left; }
   .custom-package .btn { width: 100%; }
   .quote-nav .btn { flex: 1; }
+  .selector-grid { grid-template-columns: 1fr 1fr; }
+  .selector-result { flex-direction: column; align-items: flex-start; }
+  .selector-result .btn { width: 100%; }
+  .mode-tab { font-size: 0.8rem; padding: 10px 8px; }
+  .cs-modal-body { padding: 26px 22px 30px; }
 }
 
 @media (max-width: 480px) {
   .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-cta { flex-direction: column; align-items: stretch; }
   .hero-trust { gap: 10px; }
+  .selector-grid { grid-template-columns: 1fr; }
 }

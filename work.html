@@ -87,7 +87,7 @@
       </div>
 
       <div class="case-study-grid">
-        <div class="case-study-card" data-reveal>
+        <div class="case-study-card cs-trigger" data-reveal tabindex="0" role="button" data-cs-id="black-charge">
           <div class="case-study-media"><img src="assets/images/work-drink-boost.jpg" alt="Black Charge energy drink product ad"></div>
           <div class="case-study-body">
             <span class="case-study-category">Product Ads</span>
@@ -95,10 +95,11 @@
             <div class="case-study-row"><span>The Brief</span><p>Design scroll-stopping product ads for a new energy drink line, ready for Instagram and TikTok placement.</p></div>
             <div class="case-study-row"><span>Our Approach</span><p>Two ad variants — a bold hero shot and a playful "fuel gauge" concept — anchored to one consistent brand system.</p></div>
             <div class="case-study-row"><span>Deliverables</span><p>2 finished ad creatives, packaging integration, platform-ready exports.</p></div>
+            <span class="service-next">View full case study <svg class="icon"><use href="#i-arrow-right"></use></svg></span>
           </div>
         </div>
 
-        <div class="case-study-card" data-reveal>
+        <div class="case-study-card cs-trigger" data-reveal tabindex="0" role="button" data-cs-id="growth-carousel">
           <div class="case-study-media"><img src="assets/images/work-carousel-idea.jpg" alt="Five-slide growth carousel design"></div>
           <div class="case-study-body">
             <span class="case-study-category">Social Carousel</span>
@@ -106,10 +107,11 @@
             <div class="case-study-row"><span>The Brief</span><p>Turn a process into a shareable, swipeable Instagram carousel people actually read to the end.</p></div>
             <div class="case-study-row"><span>Our Approach</span><p>A 5-slide system with one visual language — each slide standalone, all five building toward a clear CTA.</p></div>
             <div class="case-study-row"><span>Deliverables</span><p>5-slide carousel, matching cover design, caption copy.</p></div>
+            <span class="service-next">View full case study <svg class="icon"><use href="#i-arrow-right"></use></svg></span>
           </div>
         </div>
 
-        <div class="case-study-card" data-reveal>
+        <div class="case-study-card cs-trigger" data-reveal tabindex="0" role="button" data-cs-id="trend-marketing">
           <div class="case-study-media"><img src="assets/images/work-kermit-trends.jpg" alt="Trend-style meme marketing ad"></div>
           <div class="case-study-body">
             <span class="case-study-category">Trend Marketing</span>
@@ -117,6 +119,7 @@
             <div class="case-study-row"><span>The Brief</span><p>Show how a recognizable, relatable format can be adapted into on-brand marketing without feeling forced.</p></div>
             <div class="case-study-row"><span>Our Approach</span><p>Paired a familiar format with copy written for real small-business pain points, in English and Arabic.</p></div>
             <div class="case-study-row"><span>Deliverables</span><p>4-piece ad set, bilingual copy versions.</p></div>
+            <span class="service-next">View full case study <svg class="icon"><use href="#i-arrow-right"></use></svg></span>
           </div>
         </div>
       </div>
@@ -249,6 +252,7 @@
       <a href="about.html">About</a>
       <a href="audit.html">Free Audit</a>
       <a href="contact.html">Request a Quote</a>
+      <a href="contact.html#consultation">Book a Consultation</a>
     </div>
 
     <div class="footer-links">
@@ -256,6 +260,7 @@
       <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
       <a href="tel:+96181113001">+961 81 113 001</a>
       <span class="footer-status"><svg class="icon icon-tiny"><use href="#i-dot"></use></svg> Open 24/7</span>
+      <p class="footer-area">Lebanon — serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
         <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
@@ -265,6 +270,10 @@
   </div>
   <div class="container footer-bottom">
     <p>&copy; <span id="year"></span> CedarPoint Media. All rights reserved.</p>
+    <div class="footer-legal">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+    </div>
   </div>
 </footer>
 
@@ -280,6 +289,25 @@
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lightboxClose" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
   <img src="" alt="" id="lightboxImg">
+</div>
+
+<!-- Case Study Modal -->
+<div class="cs-modal" id="csModal">
+  <div class="cs-modal-panel">
+    <button class="cs-modal-close" id="csModalClose" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+    <div class="cs-modal-media"><img src="" alt="" id="csModalImg"></div>
+    <div class="cs-modal-body">
+      <span class="case-study-category" id="csModalCategory"></span>
+      <h3 id="csModalTitle"></h3>
+      <div class="cs-modal-grid">
+        <div class="case-study-row"><span>Project</span><p id="csModalProject"></p></div>
+        <div class="case-study-row"><span>Objective</span><p id="csModalObjective"></p></div>
+        <div class="case-study-row"><span>Creative Direction</span><p id="csModalDirection"></p></div>
+        <div class="case-study-row"><span>Deliverables</span><p id="csModalDeliverables"></p></div>
+      </div>
+      <p class="cs-modal-note" id="csModalResult"></p>
+    </div>
+  </div>
 </div>
 
 <script src="js/script.js"></script>

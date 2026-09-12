@@ -73,19 +73,19 @@
       <div class="grid-overlay"></div>
     </div>
     <div class="container page-hero-inner" data-reveal>
-      <span class="tag tag-light">Request a Quote</span>
+      <span class="tag tag-light">Request a Quote or Book a Call</span>
       <h1>Tell us what you need. <span class="text-accent">We'll take it from there.</span></h1>
-      <p>Two quick steps — what your brand needs, then how to reach you. No generic contact form guesswork.</p>
+      <p>Send a project brief, or pick a time to talk it through directly — no generic contact form guesswork.</p>
     </div>
   </section>
 
-  <!-- ===== QUOTE FORM ===== -->
-  <section class="section">
+  <!-- ===== QUOTE / CONSULTATION ===== -->
+  <section class="section" id="consultation">
     <div class="container contact-inner">
       <div class="contact-info" data-reveal>
         <span class="tag">Get In Touch</span>
         <h2>Prefer to just <span class="text-accent">reach out directly?</span></h2>
-        <p>That works too. Email, call, or WhatsApp us any time — the quote form is just the fastest way for us to prepare a real answer instead of a generic reply.</p>
+        <p>That works too. Email, call, or WhatsApp us any time — the forms here are just the fastest way for us to prepare a real answer instead of a generic reply.</p>
 
         <div class="contact-detail">
           <svg class="icon"><use href="#i-envelope"></use></svg>
@@ -117,89 +117,213 @@
       </div>
 
       <div class="quote-card" data-reveal>
-        <div class="quote-progress" id="quoteProgress">
-          <div class="quote-progress-step active" data-step="1"></div>
-          <div class="quote-progress-step" data-step="2"></div>
+        <div class="mode-tabs" id="modeTabs">
+          <button type="button" class="mode-tab active" data-mode="quote">Request a Quote</button>
+          <button type="button" class="mode-tab" data-mode="consultation">Book a Consultation</button>
         </div>
 
-        <form id="quoteForm">
-          <!-- STEP 1 -->
-          <div class="quote-step active" data-step="1">
-            <p class="quote-progress-label">Step 1 of 2 — What do you need?</p>
-
-            <span class="chip-group-label">Which service(s)?</span>
-            <div class="chip-group" data-group="service" data-multi="true">
-              <button type="button" class="chip">Social Media Management</button>
-              <button type="button" class="chip">Content & Design</button>
-              <button type="button" class="chip">Paid Ads</button>
-              <button type="button" class="chip">Brand Strategy</button>
-              <button type="button" class="chip">Custom Package</button>
-              <button type="button" class="chip">Something Else</button>
-            </div>
-
-            <span class="chip-group-label">Monthly budget</span>
-            <div class="chip-group" data-group="budget">
-              <button type="button" class="chip">Under $200</button>
-              <button type="button" class="chip">$200 – $500</button>
-              <button type="button" class="chip">$500+</button>
-              <button type="button" class="chip">Not sure yet</button>
-            </div>
-
-            <span class="chip-group-label">Timeline</span>
-            <div class="chip-group" data-group="timeline">
-              <button type="button" class="chip">ASAP</button>
-              <button type="button" class="chip">This month</button>
-              <button type="button" class="chip">Just exploring</button>
-            </div>
-
-            <div class="quote-nav">
-              <button type="button" class="btn btn-primary btn-lg" id="quoteNext">Next: Your Info <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
-            </div>
+        <!-- ===== QUOTE MODE ===== -->
+        <div class="mode-panel active" data-mode-panel="quote">
+          <div class="quote-progress" id="quoteProgress">
+            <div class="quote-progress-step active" data-step="1"></div>
+            <div class="quote-progress-step" data-step="2"></div>
           </div>
 
-          <!-- STEP 2 -->
-          <div class="quote-step" data-step="2">
-            <p class="quote-progress-label">Step 2 of 2 — Your info</p>
+          <form id="quoteForm">
+            <!-- STEP 1 -->
+            <div class="quote-step active" data-step="1">
+              <p class="quote-progress-label">Step 1 of 2 — What do you need?</p>
 
-            <div class="form-row">
-              <div class="form-field">
-                <label for="quoteName">Your name</label>
-                <input type="text" id="quoteName" name="name" placeholder="Jane Doe" required>
+              <span class="chip-group-label">Which service(s)?</span>
+              <div class="chip-group" data-group="service" data-multi="true">
+                <button type="button" class="chip">Social Media Management</button>
+                <button type="button" class="chip">Content & Design</button>
+                <button type="button" class="chip">Paid Ads</button>
+                <button type="button" class="chip">Brand Strategy</button>
+                <button type="button" class="chip">Custom Package</button>
+                <button type="button" class="chip">Something Else</button>
+              </div>
+
+              <span class="chip-group-label">Monthly budget or package</span>
+              <div class="chip-group" data-group="budget">
+                <button type="button" class="chip">Starter (~$150)</button>
+                <button type="button" class="chip">Growth (~$350)</button>
+                <button type="button" class="chip">Premium (~$620)</button>
+                <button type="button" class="chip">Not sure yet</button>
+              </div>
+
+              <span class="chip-group-label">Timeline</span>
+              <div class="chip-group" data-group="timeline">
+                <button type="button" class="chip">ASAP</button>
+                <button type="button" class="chip">This month</button>
+                <button type="button" class="chip">Just exploring</button>
+              </div>
+
+              <div class="quote-nav">
+                <button type="button" class="btn btn-primary btn-lg" id="quoteNext">Next: Business Info <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+              </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="quote-step" data-step="2">
+              <p class="quote-progress-label">Step 2 of 2 — Your business & contact info</p>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="quoteBrand">Business name</label>
+                  <input type="text" id="quoteBrand" name="brand" placeholder="Your brand">
+                </div>
+                <div class="form-field">
+                  <label for="quoteIndustry">Industry</label>
+                  <input type="text" id="quoteIndustry" name="industry" placeholder="e.g. restaurant, clothing, real estate">
+                </div>
               </div>
               <div class="form-field">
-                <label for="quoteEmail">Your email</label>
-                <input type="email" id="quoteEmail" name="email" placeholder="jane@brand.com" required>
+                <label for="quoteSocial">Social accounts / website (optional)</label>
+                <input type="text" id="quoteSocial" name="social" placeholder="@yourbrand or yourbrand.com">
+              </div>
+              <div class="form-field">
+                <label for="quoteGoals">What are your goals?</label>
+                <textarea id="quoteGoals" name="goals" rows="3" placeholder="What are you hoping this project achieves?"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="quoteName">Your name</label>
+                  <input type="text" id="quoteName" name="name" placeholder="Jane Doe" required>
+                </div>
+                <div class="form-field">
+                  <label for="quoteEmail">Your email</label>
+                  <input type="email" id="quoteEmail" name="email" placeholder="jane@brand.com" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="quotePhone">Phone / WhatsApp (optional)</label>
+                  <input type="tel" id="quotePhone" name="phone" placeholder="+961 ...">
+                </div>
+                <div class="form-field">
+                  <label for="quoteStart">Preferred start date (optional)</label>
+                  <input type="text" id="quoteStart" name="start" placeholder="e.g. Immediately, next month...">
+                </div>
+              </div>
+
+              <span class="chip-group-label">How should we contact you?</span>
+              <div class="chip-group" data-group="contactPref">
+                <button type="button" class="chip">Email</button>
+                <button type="button" class="chip">Phone Call</button>
+                <button type="button" class="chip">WhatsApp</button>
+                <button type="button" class="chip">Instagram DM</button>
+              </div>
+
+              <div class="quote-nav">
+                <button type="button" class="btn btn-outline btn-lg" id="quoteBack"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back</button>
+                <button type="submit" class="btn btn-primary btn-lg">Send Request <svg class="icon"><use href="#i-send"></use></svg></button>
+              </div>
+              <p class="form-note" id="quoteFormNote">We'll reply personally within 24 hours.</p>
+            </div>
+          </form>
+
+          <div class="form-confirmation" id="quoteConfirmation">
+            <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
+            <h3>Request sent</h3>
+            <p>A Gmail tab just opened with your request pre-filled — hit send there to complete it.</p>
+            <p>Once we get it, we'll reply personally with next steps, usually within 24 hours.</p>
+            <a href="index.html" class="btn btn-outline">Back to Home</a>
+          </div>
+        </div>
+
+        <!-- ===== CONSULTATION MODE ===== -->
+        <div class="mode-panel" data-mode-panel="consultation">
+          <p class="form-hint" style="margin-top: 0;">Suggest a day and time that works for you — we'll confirm by email or WhatsApp, usually within a few hours.</p>
+
+          <form id="consultForm">
+            <div class="form-row">
+              <div class="form-field">
+                <label for="consultName">Your name</label>
+                <input type="text" id="consultName" name="name" placeholder="Jane Doe" required>
+              </div>
+              <div class="form-field">
+                <label for="consultEmail">Your email</label>
+                <input type="email" id="consultEmail" name="email" placeholder="jane@brand.com" required>
               </div>
             </div>
             <div class="form-row">
               <div class="form-field">
-                <label for="quotePhone">Phone (optional)</label>
-                <input type="tel" id="quotePhone" name="phone" placeholder="+961 ...">
+                <label for="consultPhone">Phone / WhatsApp</label>
+                <input type="tel" id="consultPhone" name="phone" placeholder="+961 ..." required>
               </div>
               <div class="form-field">
-                <label for="quoteBrand">Brand / business name</label>
-                <input type="text" id="quoteBrand" name="brand" placeholder="Your brand">
+                <label for="consultDate">Preferred date</label>
+                <input type="date" id="consultDate" name="date">
               </div>
             </div>
+
+            <span class="chip-group-label">Preferred time</span>
+            <div class="chip-group" data-group="timeWindow">
+              <button type="button" class="chip">Morning</button>
+              <button type="button" class="chip">Afternoon</button>
+              <button type="button" class="chip">Evening</button>
+            </div>
+
+            <span class="chip-group-label">How should we reach you?</span>
+            <div class="chip-group" data-group="consultContactPref">
+              <button type="button" class="chip">Phone Call</button>
+              <button type="button" class="chip">WhatsApp</button>
+              <button type="button" class="chip">Video Call</button>
+            </div>
+
             <div class="form-field">
-              <label for="quoteMessage">Anything else we should know?</label>
-              <textarea id="quoteMessage" name="message" rows="3" placeholder="Optional — goals, links, references..."></textarea>
+              <label for="consultTopic">What would you like to discuss? (optional)</label>
+              <textarea id="consultTopic" name="topic" rows="3" placeholder="e.g. which package fits, a specific campaign idea..."></textarea>
             </div>
 
-            <div class="quote-nav">
-              <button type="button" class="btn btn-outline btn-lg" id="quoteBack"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back</button>
-              <button type="submit" class="btn btn-primary btn-lg">Send Request <svg class="icon"><use href="#i-send"></use></svg></button>
-            </div>
-            <p class="form-note" id="quoteFormNote">We'll reply personally within 24 hours.</p>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Request This Time <svg class="icon"><use href="#i-send"></use></svg></button>
+            <p class="form-note">This confirms a request, not a booked slot — we'll follow up to lock in the time.</p>
+          </form>
+
+          <div class="form-confirmation" id="consultConfirmation">
+            <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
+            <h3>Consultation requested</h3>
+            <p>A Gmail tab just opened with your preferred time pre-filled — hit send there to complete it.</p>
+            <p>We'll confirm the exact time by email or WhatsApp shortly.</p>
+            <a href="index.html" class="btn btn-outline">Back to Home</a>
           </div>
-        </form>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="form-confirmation" id="quoteConfirmation">
-          <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
-          <h3>Request sent</h3>
-          <p>A Gmail tab just opened with your request pre-filled — hit send there to complete it.</p>
-          <p>Once we get it, we'll reply personally with next steps, usually within 24 hours.</p>
-          <a href="index.html" class="btn btn-outline">Back to Home</a>
+  <!-- ===== FAQ ===== -->
+  <section class="section section-off">
+    <div class="container">
+      <div class="section-head center" data-reveal>
+        <span class="tag">Common Questions</span>
+        <h2>Before you <span class="text-accent">reach out.</span></h2>
+      </div>
+      <div class="faq-list" id="faqList">
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">How does payment work?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">We agree on scope and price before anything starts. Monthly packages are billed at the start of each month; one-off projects are typically split into a deposit and a final payment on delivery.</div></div>
+        </div>
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">How long does a project take?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">Monthly management runs continuously once we start. One-off projects (a shoot, a campaign, a brand refresh) vary by scope — we'll give you a real timeline during your quote, not a generic estimate.</div></div>
+        </div>
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">Do you work internationally?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes. We're based in Lebanon and work with clients remotely worldwide — everything from strategy calls to content delivery happens online.</div></div>
+        </div>
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">How many revisions are included?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">Social Media Management packages include ongoing revisions as part of the monthly service. For one-off design or campaign work, revision rounds are agreed upfront when we scope the project.</div></div>
+        </div>
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">Can I choose individual services instead of a package?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes. Packages are the easiest starting point, but you can request any single service — content, ads, strategy, a shoot — on its own through the quote form.</div></div>
+        </div>
+        <div class="faq-item" data-reveal>
+          <button type="button" class="faq-question">What happens after I submit a request?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+          <div class="faq-answer"><div class="faq-answer-inner">We personally read every request. You'll hear back from us directly — usually within 24 hours — with real next steps, not an automated reply.</div></div>
         </div>
       </div>
     </div>
@@ -236,6 +360,7 @@
       <a href="about.html">About</a>
       <a href="audit.html">Free Audit</a>
       <a href="contact.html">Request a Quote</a>
+      <a href="contact.html#consultation">Book a Consultation</a>
     </div>
 
     <div class="footer-links">
@@ -243,6 +368,7 @@
       <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
       <a href="tel:+96181113001">+961 81 113 001</a>
       <span class="footer-status"><svg class="icon icon-tiny"><use href="#i-dot"></use></svg> Open 24/7</span>
+      <p class="footer-area">Lebanon — serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
         <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
@@ -252,6 +378,10 @@
   </div>
   <div class="container footer-bottom">
     <p>&copy; <span id="year"></span> CedarPoint Media. All rights reserved.</p>
+    <div class="footer-legal">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+    </div>
   </div>
 </footer>
 

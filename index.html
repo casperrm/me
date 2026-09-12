@@ -51,6 +51,7 @@
 <nav class="section-nav" id="sectionNav" aria-label="Jump to section">
   <a href="#home" data-section="home" aria-label="Home"></a>
   <a href="#services" data-section="services" aria-label="Services"></a>
+  <a href="#selector" data-section="selector" aria-label="Find Your Fit"></a>
   <a href="#work-teaser" data-section="work-teaser" aria-label="Our Work"></a>
   <a href="#packages-teaser" data-section="packages-teaser" aria-label="Packages"></a>
   <a href="#get-started" data-section="get-started" aria-label="Get Started"></a>
@@ -185,8 +186,69 @@
     </div>
   </section>
 
+  <!-- ===== SERVICE SELECTOR ===== -->
+  <section class="section section-off has-signature" id="selector">
+    <div class="signature-mark" data-reveal aria-hidden="true">
+      <svg viewBox="0 0 100 100">
+        <path d="M78 26 A38 38 0 1 0 78 74" fill="none" stroke="currentColor" stroke-width="8"/>
+        <polygon points="42,34 42,66 70,50" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <span class="tag">Not Sure Where to Start?</span>
+        <h2>What does your business <span class="text-accent">need right now?</span></h2>
+        <p>Pick what's closest to your goal and we'll point you to the right service and package.</p>
+      </div>
+
+      <div class="selector-grid" id="selectorGrid">
+        <button type="button" class="selector-option" data-need="branding">
+          <div class="service-icon"><svg class="icon"><use href="#i-compass"></use></svg></div>
+          <h3>Branding</h3>
+          <p>I need a clearer identity and strategy.</p>
+        </button>
+        <button type="button" class="selector-option" data-need="social">
+          <div class="service-icon"><svg class="icon"><use href="#i-lightbulb"></use></svg></div>
+          <h3>Social Media Management</h3>
+          <p>I need consistent posting and community management.</p>
+        </button>
+        <button type="button" class="selector-option" data-need="content">
+          <div class="service-icon"><svg class="icon"><use href="#i-pen"></use></svg></div>
+          <h3>Content Creation</h3>
+          <p>I need graphics, reels, and creative assets.</p>
+        </button>
+        <button type="button" class="selector-option" data-need="ads">
+          <div class="service-icon"><svg class="icon"><use href="#i-target"></use></svg></div>
+          <h3>Paid Advertising</h3>
+          <p>I need campaigns that reach the right people.</p>
+        </button>
+        <button type="button" class="selector-option" data-need="design">
+          <div class="service-icon"><svg class="icon"><use href="#i-image"></use></svg></div>
+          <h3>Design</h3>
+          <p>I need product shoots, print, or visual design.</p>
+        </button>
+        <button type="button" class="selector-option" data-need="full">
+          <div class="service-icon"><svg class="icon"><use href="#i-crown"></use></svg></div>
+          <h3>Full Marketing Support</h3>
+          <p>I need everything handled, end to end.</p>
+        </button>
+      </div>
+
+      <div class="selector-result" id="selectorResult">
+        <div>
+          <strong id="selectorResultTitle">Recommendation</strong>
+          <p id="selectorResultText">Pick an option above to see what fits best.</p>
+        </div>
+        <div class="hero-cta" style="margin: 0;">
+          <a href="services.html" class="btn btn-light" id="selectorServiceLink">View Service</a>
+          <a href="packages.html" class="btn btn-outline" id="selectorPackageLink" style="border-color: rgba(255,255,255,0.3); color: #fff;">See Package</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== WHY CEDARPOINT ===== -->
-  <section class="section section-off" id="why-us">
+  <section class="section" id="why-us">
     <div class="container">
       <div class="section-head" data-reveal>
         <span class="tag">Why Brands Choose Cedar Point</span>
@@ -265,14 +327,14 @@
       <div class="pricing-mini-grid">
         <div class="pricing-mini-card" data-reveal style="--reveal-delay: 0s;">
           <div class="pricing-mini-icon"><svg class="icon"><use href="#i-lightbulb"></use></svg></div>
-          <h3>Basic</h3>
+          <h3>Starter</h3>
           <p class="pricing-mini-price">$150<span>/mo</span></p>
           <p class="pricing-mini-desc">12 posts a month plus weekly boosting — a solid starting point.</p>
         </div>
         <div class="pricing-mini-card featured" data-reveal style="--reveal-delay: 0.12s;">
           <span class="pricing-mini-badge">Most Chosen</span>
           <div class="pricing-mini-icon"><svg class="icon"><use href="#i-target"></use></svg></div>
-          <h3>Standard</h3>
+          <h3>Growth</h3>
           <p class="pricing-mini-price">$350<span>/mo</span></p>
           <p class="pricing-mini-desc">20 posts, reels, and a real strategy & growth plan behind them.</p>
         </div>
@@ -333,6 +395,7 @@
       <a href="about.html">About</a>
       <a href="audit.html">Free Audit</a>
       <a href="contact.html">Request a Quote</a>
+      <a href="contact.html#consultation">Book a Consultation</a>
     </div>
 
     <div class="footer-links">
@@ -340,6 +403,7 @@
       <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
       <a href="tel:+96181113001">+961 81 113 001</a>
       <span class="footer-status"><svg class="icon icon-tiny"><use href="#i-dot"></use></svg> Open 24/7</span>
+      <p class="footer-area">Lebanon — serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
         <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
@@ -349,6 +413,10 @@
   </div>
   <div class="container footer-bottom">
     <p>&copy; <span id="year"></span> CedarPoint Media. All rights reserved.</p>
+    <div class="footer-legal">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+    </div>
   </div>
 </footer>
 

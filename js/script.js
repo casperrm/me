@@ -240,20 +240,252 @@
       const services = selectedFrom('service').join(', ') || '—';
       const budget = selectedFrom('budget')[0] || '—';
       const timeline = selectedFrom('timeline')[0] || '—';
+      const contactPref = selectedFrom('contactPref')[0] || '—';
 
       const name = document.getElementById('quoteName').value.trim();
       const email = document.getElementById('quoteEmail').value.trim();
       const phone = document.getElementById('quotePhone').value.trim();
       const brand = document.getElementById('quoteBrand').value.trim();
-      const message = document.getElementById('quoteMessage').value.trim();
+      const industry = document.getElementById('quoteIndustry').value.trim();
+      const social = document.getElementById('quoteSocial').value.trim();
+      const goals = document.getElementById('quoteGoals').value.trim();
+      const start = document.getElementById('quoteStart').value.trim();
 
       const body =
         `Service(s) needed: ${services}\nBudget: ${budget}\nTimeline: ${timeline}\n\n` +
-        `Name: ${name}\nEmail: ${email}\nPhone: ${phone || '—'}\nBrand/Business: ${brand || '—'}\n\n` +
-        `Message:\n${message || '—'}`;
+        `Business name: ${brand || '—'}\nIndustry: ${industry || '—'}\nSocial accounts / website: ${social || '—'}\n\n` +
+        `Goals:\n${goals || '—'}\n\n` +
+        `Name: ${name}\nEmail: ${email}\nPhone: ${phone || '—'}\nPreferred start date: ${start || '—'}\nPreferred contact method: ${contactPref}`;
 
       sendViaGmail('New Quote Request', body);
       showConfirmation(quoteForm, quoteConfirmation);
+    });
+  }
+
+  // ---- Mode tabs: "Request a Quote" vs "Book a Consultation" (contact.html) ----
+  const modeTabs = document.getElementById('modeTabs');
+  if (modeTabs) {
+    const tabs = Array.from(modeTabs.querySelectorAll('.mode-tab'));
+    const panels = Array.from(document.querySelectorAll('.mode-panel'));
+    const activateMode = (mode) => {
+      tabs.forEach((t) => t.classList.toggle('active', t.getAttribute('data-mode') === mode));
+      panels.forEach((p) => p.classList.toggle('active', p.getAttribute('data-mode-panel') === mode));
+    };
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activateMode(tab.getAttribute('data-mode')));
+    });
+    if (window.location.hash === '#book' || window.location.hash === '#consultation-mode') {
+      activateMode('consultation');
+    }
+  }
+
+  // ---- "Book a Consultation" form (contact.html) ----
+  const consultForm = document.getElementById('consultForm');
+  const consultConfirmation = document.getElementById('consultConfirmation');
+  if (consultForm && consultConfirmation) {
+    consultForm.querySelectorAll('.chip-group').forEach((group) => {
+      group.querySelectorAll('.chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          group.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+          chip.classList.toggle('selected');
+        });
+      });
+    });
+
+    consultForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const selectedFrom = (groupName) =>
+        Array.from(consultForm.querySelectorAll(`.chip-group[data-group="${groupName}"] .chip.selected`))
+          .map((c) => c.textContent.trim());
+
+      const name = document.getElementById('consultName').value.trim();
+      const email = document.getElementById('consultEmail').value.trim();
+      const phone = document.getElementById('consultPhone').value.trim();
+      const date = document.getElementById('consultDate').value.trim();
+      const timeWindow = selectedFrom('timeWindow')[0] || '—';
+      const contactPref = selectedFrom('consultContactPref')[0] || '—';
+      const topic = document.getElementById('consultTopic').value.trim();
+
+      const body =
+        `Preferred date: ${date || '—'}\nPreferred time: ${timeWindow}\nPreferred contact method: ${contactPref}\n\n` +
+        `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone}\n\n` +
+        `What they'd like to discuss:\n${topic || '—'}`;
+
+      sendViaGmail('Consultation Request', body);
+      showConfirmation(consultForm, consultConfirmation);
+    });
+  }
+
+  // ---- FAQ accordion (contact.html) ----
+  const faqList = document.getElementById('faqList');
+  if (faqList) {
+    const faqItems = Array.from(faqList.querySelectorAll('.faq-item'));
+    faqItems.forEach((item) => {
+      const question = item.querySelector('.faq-question');
+      const answer = item.querySelector('.faq-answer');
+      question.addEventListener('click', () => {
+        const isOpen = item.classList.contains('open');
+        faqItems.forEach((other) => {
+          other.classList.remove('open');
+          other.querySelector('.faq-answer').style.maxHeight = '';
+        });
+        if (!isOpen) {
+          item.classList.add('open');
+          answer.style.maxHeight = answer.scrollHeight + 'px';
+        }
+      });
+    });
+  }
+
+  // ---- Interactive service selector (index.html) ----
+  const selectorGrid = document.getElementById('selectorGrid');
+  const selectorResult = document.getElementById('selectorResult');
+  if (selectorGrid && selectorResult) {
+    const recommendations = {
+      branding: {
+        title: 'Sounds like Brand Strategy is your fit.',
+        text: 'Start with our Brand & Growth Strategy service — usually paired with the Growth package once your direction is set.',
+        service: 'services.html',
+        pkg: 'packages.html#growth',
+      },
+      social: {
+        title: 'Sounds like Social Media Management is your fit.',
+        text: 'Consistent posting and community management, built into every package — Starter is the easiest place to begin.',
+        service: 'services.html',
+        pkg: 'packages.html#starter',
+      },
+      content: {
+        title: 'Sounds like Creative Content & Design is your fit.',
+        text: 'Graphics, reels, and campaign creative — included from Starter up, with more volume in Growth.',
+        service: 'services.html',
+        pkg: 'packages.html#starter',
+      },
+      ads: {
+        title: 'Sounds like Paid Social & Ad Campaigns is your fit.',
+        text: 'Targeted ad management is built into Growth, with full campaign management in Premium.',
+        service: 'services.html',
+        pkg: 'packages.html#growth',
+      },
+      design: {
+        title: 'Sounds like Product & Campaign Shoots is your fit.',
+        text: 'Photography, print, and visual design — great as a standalone request or layered onto any package.',
+        service: 'services.html',
+        pkg: 'packages.html#starter',
+      },
+      full: {
+        title: 'Sounds like Full Marketing Support is your fit.',
+        text: 'Strategy, content, ads, and reporting handled end to end — that\'s exactly what Premium is built for.',
+        service: 'services.html',
+        pkg: 'packages.html#premium',
+      },
+    };
+
+    const options = Array.from(selectorGrid.querySelectorAll('.selector-option'));
+    const resultTitle = document.getElementById('selectorResultTitle');
+    const resultText = document.getElementById('selectorResultText');
+    const serviceLink = document.getElementById('selectorServiceLink');
+    const pkgLink = document.getElementById('selectorPackageLink');
+
+    options.forEach((opt) => {
+      opt.addEventListener('click', () => {
+        options.forEach((o) => o.classList.remove('selected'));
+        opt.classList.add('selected');
+
+        const rec = recommendations[opt.getAttribute('data-need')];
+        if (!rec) return;
+        resultTitle.textContent = rec.title;
+        resultText.textContent = rec.text;
+        serviceLink.href = rec.service;
+        pkgLink.href = rec.pkg;
+        selectorResult.classList.add('show');
+      });
+    });
+  }
+
+  // ---- Case study modal (work.html) ----
+  const csModal = document.getElementById('csModal');
+  if (csModal) {
+    const caseStudies = {
+      'black-charge': {
+        category: 'Product Ads',
+        title: 'Black Charge — Launch Concept',
+        img: 'assets/images/work-drink-boost.jpg',
+        project: 'A concept launch campaign for Black Charge, a new energy drink line, built to demonstrate a full product-ad system.',
+        objective: 'Design scroll-stopping product ads ready for Instagram and TikTok placement.',
+        direction: 'Two ad variants — a bold hero shot and a playful "fuel gauge" concept — anchored to one consistent brand system.',
+        deliverables: '2 finished ad creatives, packaging integration, platform-ready exports.',
+        result: 'This is a concept project created to demonstrate our process, not a paid client campaign — real performance results will be added here once this work runs as a live, paid campaign.',
+      },
+      'growth-carousel': {
+        category: 'Social Carousel',
+        title: 'The Five-Slide Growth Carousel',
+        img: 'assets/images/work-carousel-idea.jpg',
+        project: 'A sample Instagram carousel built to show how a process can be turned into shareable, swipeable content.',
+        objective: 'Turn a process into a carousel people actually read to the end, not just swipe past.',
+        direction: 'A 5-slide system with one visual language — each slide standalone, all five building toward a clear CTA.',
+        deliverables: '5-slide carousel, matching cover design, caption copy.',
+        result: 'This is a demonstration project, not a paid client campaign — real reach and engagement numbers will be added once this format runs for an actual client.',
+      },
+      'trend-marketing': {
+        category: 'Trend Marketing',
+        title: 'Trend-Style Meme Marketing',
+        img: 'assets/images/work-kermit-trends.jpg',
+        project: 'A sample set showing how a recognizable, relatable format can be adapted into on-brand marketing.',
+        objective: 'Show that trend-style content can carry a real marketing message without feeling forced.',
+        direction: 'Paired a familiar format with copy written for real small-business pain points, in English and Arabic.',
+        deliverables: '4-piece ad set, bilingual copy versions.',
+        result: 'This is concept and sample work created to demonstrate our creative range — not a paid client campaign. Client results will be added here as they launch.',
+      },
+    };
+
+    const csImg = document.getElementById('csModalImg');
+    const csCategory = document.getElementById('csModalCategory');
+    const csTitle = document.getElementById('csModalTitle');
+    const csProject = document.getElementById('csModalProject');
+    const csObjective = document.getElementById('csModalObjective');
+    const csDirection = document.getElementById('csModalDirection');
+    const csDeliverables = document.getElementById('csModalDeliverables');
+    const csResult = document.getElementById('csModalResult');
+    const csClose = document.getElementById('csModalClose');
+
+    const openCaseStudy = (id) => {
+      const cs = caseStudies[id];
+      if (!cs) return;
+      csImg.src = cs.img;
+      csImg.alt = cs.title;
+      csCategory.textContent = cs.category;
+      csTitle.textContent = cs.title;
+      csProject.textContent = cs.project;
+      csObjective.textContent = cs.objective;
+      csDirection.textContent = cs.direction;
+      csDeliverables.textContent = cs.deliverables;
+      csResult.textContent = cs.result;
+      csModal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    };
+
+    const closeCaseStudy = () => {
+      csModal.classList.remove('open');
+      document.body.style.overflow = '';
+    };
+
+    document.querySelectorAll('.cs-trigger').forEach((card) => {
+      card.addEventListener('click', () => openCaseStudy(card.getAttribute('data-cs-id')));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openCaseStudy(card.getAttribute('data-cs-id'));
+        }
+      });
+    });
+
+    csClose.addEventListener('click', closeCaseStudy);
+    csModal.addEventListener('click', (e) => {
+      if (e.target === csModal) closeCaseStudy();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCaseStudy();
     });
   }
 
