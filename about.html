@@ -24,6 +24,8 @@
   <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1 .4 2.1.6 3.2.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.5 21 3 13.5 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.1.2 2.2.6 3.2.1.3 0 .7-.2 1L6.6 10.8z" fill="currentColor"/></symbol>
   <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 8.8c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4.2.5.6 1.5.6 1.6.1.1.1.3 0 .4-.1.2-.2.3-.3.4-.1.1-.3.3-.4.4-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.2.1.4.1.5-.1.2-.2.6-.7.8-.9.2-.2.3-.2.5-.1.2.1 1.4.7 1.7.8.3.1.4.2.5.3 0 .2 0 .8-.3 1.3-.3.5-1.5 1.1-2.1 1.1-.5 0-1.9-.2-3.6-1.6-2.1-1.7-3.4-3.8-3.6-4.1-.1-.3-.7-1-.7-1.9 0-.9.5-1.3.6-1.5z" fill="currentColor"/></symbol>
   <symbol id="i-flip" viewBox="0 0 24 24"><path d="M17 2v4h-4M3 12a9 9 0 0 1 15-6.7L20 8M7 22v-4h4M21 12a9 9 0 0 1-15 6.7L4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M16.5 3c.4 2 1.8 3.4 3.8 3.7v2.9c-1.4 0-2.7-.4-3.8-1.2v6.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .6 0 .9.1v2.9a2.5 2.5 0 1 0 1.8 2.4V3h2.7z" fill="currentColor"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div class="scroll-progress" id="scrollProgress"></div>
@@ -47,11 +49,32 @@
 
     <nav class="main-nav" id="mainNav">
       <a href="index.html">Home</a>
-      <a href="services.html">Services</a>
+      <div class="nav-item-dropdown">
+        <a href="services.html" class="nav-drop-trigger">Services <svg class="icon icon-tiny"><use href="#i-chevron-down"></use></svg></a>
+        <div class="nav-dropdown-panel">
+          <a href="services.html#social-media-management">Social Media Management</a>
+          <a href="services.html#creative-content-design">Creative Content &amp; Design</a>
+          <a href="services.html#paid-social-ads">Paid Social &amp; Ad Campaigns</a>
+          <a href="services.html#brand-growth-strategy">Brand &amp; Growth Strategy</a>
+          <a href="services.html#analytics-reporting">Analytics &amp; Reporting</a>
+          <a href="services.html#product-campaign-shoots">Product &amp; Campaign Shoots</a>
+          <a href="services.html" class="nav-dropdown-all">View All Services &rarr;</a>
+        </div>
+      </div>
       <a href="work.html">Our Work</a>
       <a href="packages.html">Packages</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
+
+      <div class="nav-extra">
+        <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
+        <a href="tel:+96181113001">+961 81 113 001</a>
+        <div class="nav-extra-socials">
+          <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
+          <a href="https://www.tiktok.com/@cedarpointmedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><svg class="icon"><use href="#i-tiktok"></use></svg></a>
+          <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
+        </div>
+      </div>
     </nav>
 
     <div class="header-actions">
@@ -96,6 +119,62 @@
           <li><svg class="icon"><use href="#i-check"></use></svg> Transparent monthly performance reports</li>
         </ul>
         <a href="work.html" class="btn btn-primary">See Our Work</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WE ARE CEDARPOINT ===== -->
+  <section class="section section-dark">
+    <div class="container">
+      <div class="statement-copy" data-reveal>
+        <span class="tag tag-light">Who We Are</span>
+        <h2>We are <span class="text-accent">CedarPoint Media.</span></h2>
+        <p>We're a small, focused team that treats every client's brand like it's our own — because a bloated agency with account managers relaying messages between you and the people actually doing the work isn't what growing brands need.</p>
+        <p>What we bring is direct communication, bilingual creative that actually lands in both English and Arabic markets, and reporting you can read without a marketing degree. No inflated promises, no recycled templates — just strategy and content built around your brand specifically.</p>
+      </div>
+      <div class="statement-strip" data-reveal>Strategy-Led &middot; Bilingual Creative &middot; Honest Reporting &middot; Direct Communication</div>
+    </div>
+  </section>
+
+  <!-- ===== OUR APPROACH ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head center" data-reveal>
+        <span class="tag">How We Work Day to Day</span>
+        <h2>Our <span class="text-accent">approach.</span></h2>
+      </div>
+
+      <div class="quote-card" data-reveal style="max-width: 780px; margin: 0 auto;">
+        <div class="mode-tabs" id="modeTabs">
+          <button type="button" class="mode-tab active" data-mode="communication">Communication</button>
+          <button type="button" class="mode-tab" data-mode="content">Content</button>
+          <button type="button" class="mode-tab" data-mode="reporting">Reporting</button>
+        </div>
+
+        <div class="mode-panel active" data-mode-panel="communication">
+          <p style="color: var(--gray-500); margin-bottom: 14px;">You talk directly to the people creating your content and running your ads — not an account manager relaying messages back and forth.</p>
+          <ul class="about-points">
+            <li><svg class="icon"><use href="#i-check"></use></svg> A dedicated point of contact via WhatsApp, phone, or email</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> Fast replies — usually within a few hours</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> Strategy check-ins, not just status updates</li>
+          </ul>
+        </div>
+        <div class="mode-panel" data-mode-panel="content">
+          <p style="color: var(--gray-500); margin-bottom: 14px;">Every piece of content is planned, not improvised — and nothing goes live without your sign-off.</p>
+          <ul class="about-points">
+            <li><svg class="icon"><use href="#i-check"></use></svg> Monthly content calendar shared in advance</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> A clear approval step before anything posts</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> Revisions included, not billed as extras</li>
+          </ul>
+        </div>
+        <div class="mode-panel" data-mode-panel="reporting">
+          <p style="color: var(--gray-500); margin-bottom: 14px;">You'll always know what's actually working — reported in plain language, not vanity numbers.</p>
+          <ul class="about-points">
+            <li><svg class="icon"><use href="#i-check"></use></svg> Monthly performance reports (reach, engagement, conversions)</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> Honest notes on what to change next, not just charts</li>
+            <li><svg class="icon"><use href="#i-check"></use></svg> A long-term roadmap, reviewed quarterly</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
@@ -273,6 +352,7 @@
       <p class="footer-area">Lebanon — serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
+        <a href="https://www.tiktok.com/@cedarpointmedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><svg class="icon"><use href="#i-tiktok"></use></svg></a>
         <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
         <a href="mailto:consultingcedarpoint@gmail.com" aria-label="Email" title="Email"><svg class="icon"><use href="#i-envelope"></use></svg></a>
       </div>

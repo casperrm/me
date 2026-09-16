@@ -40,6 +40,7 @@
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-4.5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-4.5-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="8.5" y="2.3" width="7" height="3.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 11h7M8.5 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M16.5 3c.4 2 1.8 3.4 3.8 3.7v2.9c-1.4 0-2.7-.4-3.8-1.2v6.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .6 0 .9.1v2.9a2.5 2.5 0 1 0 1.8 2.4V3h2.7z" fill="currentColor"/></symbol>
 </svg>
 
 <div class="scroll-progress" id="scrollProgress"></div>
@@ -72,11 +73,32 @@
 
     <nav class="main-nav" id="mainNav">
       <a href="index.html">Home</a>
-      <a href="services.html">Services</a>
+      <div class="nav-item-dropdown">
+        <a href="services.html" class="nav-drop-trigger">Services <svg class="icon icon-tiny"><use href="#i-chevron-down"></use></svg></a>
+        <div class="nav-dropdown-panel">
+          <a href="services.html#social-media-management">Social Media Management</a>
+          <a href="services.html#creative-content-design">Creative Content &amp; Design</a>
+          <a href="services.html#paid-social-ads">Paid Social &amp; Ad Campaigns</a>
+          <a href="services.html#brand-growth-strategy">Brand &amp; Growth Strategy</a>
+          <a href="services.html#analytics-reporting">Analytics &amp; Reporting</a>
+          <a href="services.html#product-campaign-shoots">Product &amp; Campaign Shoots</a>
+          <a href="services.html" class="nav-dropdown-all">View All Services &rarr;</a>
+        </div>
+      </div>
       <a href="work.html">Our Work</a>
       <a href="packages.html">Packages</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
+
+      <div class="nav-extra">
+        <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
+        <a href="tel:+96181113001">+961 81 113 001</a>
+        <div class="nav-extra-socials">
+          <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
+          <a href="https://www.tiktok.com/@cedarpointmedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><svg class="icon"><use href="#i-tiktok"></use></svg></a>
+          <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
+        </div>
+      </div>
     </nav>
 
     <div class="header-actions">
@@ -99,7 +121,7 @@
     <div class="container hero-inner">
       <div class="hero-copy" data-reveal>
         <span class="eyebrow"><svg class="icon"><use href="#i-bolt"></use></svg> Social Media & Digital Marketing Agency</span>
-        <h1>We build brands that get <span class="text-accent">seen</span>, remembered, and chosen.</h1>
+        <h1>We build brands that get <mark class="accent-block">seen, remembered, and chosen.</mark></h1>
         <p class="hero-lead">Cedar Point Media handles the strategy, content, and campaigns behind a brand people actually notice — so you can focus on running the business.</p>
         <div class="hero-cta">
           <a href="audit.html" class="btn btn-primary btn-lg">Get a Free Audit <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
@@ -406,6 +428,7 @@
       <p class="footer-area">Lebanon — serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
+        <a href="https://www.tiktok.com/@cedarpointmedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><svg class="icon"><use href="#i-tiktok"></use></svg></a>
         <a href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><svg class="icon"><use href="#i-whatsapp"></use></svg></a>
         <a href="mailto:consultingcedarpoint@gmail.com" aria-label="Email" title="Email"><svg class="icon"><use href="#i-envelope"></use></svg></a>
       </div>

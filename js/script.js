@@ -38,7 +38,24 @@
   });
   mainNav.querySelectorAll('a').forEach((link) => {
     link.addEventListener('click', () => {
+      if (link.classList.contains('nav-drop-trigger') && window.innerWidth <= 992) return;
       mainNav.classList.remove('open');
+      navToggle.classList.remove('active');
+    });
+  });
+
+  // ---- Services nav dropdown ----
+  document.querySelectorAll('.nav-item-dropdown > .nav-drop-trigger').forEach((trigger) => {
+    trigger.addEventListener('click', (e) => {
+      if (window.innerWidth <= 992) {
+        e.preventDefault();
+        trigger.closest('.nav-item-dropdown').classList.toggle('open');
+      }
+    });
+  });
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.nav-item-dropdown.open').forEach((item) => {
+      if (!item.contains(e.target)) item.classList.remove('open');
     });
   });
 
