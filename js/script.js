@@ -73,7 +73,8 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ---- Scroll reveal ----
+  // ---- Scroll reveal (cards/sections fade up; headline text nested inside
+  // them opens from center via the same .in-view class, see CSS) ----
   const revealEls = document.querySelectorAll('[data-reveal]');
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
@@ -101,16 +102,39 @@
   });
 
   // ---- Lightbox (only present on pages with a portfolio grid) ----
+  // Grouped items (data-images="a.jpg|b.jpg|c.jpg") open as a mini
+  // carousel with prev/next + a slide counter; single-image items just
+  // show the one photo with the controls hidden.
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
   const lightboxClose = document.getElementById('lightboxClose');
+  const lightboxPrev = document.getElementById('lightboxPrev');
+  const lightboxNext = document.getElementById('lightboxNext');
+  const lightboxCounter = document.getElementById('lightboxCounter');
 
   if (lightbox && lightboxImg && lightboxClose) {
+    let currentImages = [];
+    let currentIndex = 0;
+
+    const showSlide = (i) => {
+      currentIndex = (i + currentImages.length) % currentImages.length;
+      lightboxImg.src = currentImages[currentIndex];
+      const multi = currentImages.length > 1;
+      if (lightboxPrev) lightboxPrev.hidden = !multi;
+      if (lightboxNext) lightboxNext.hidden = !multi;
+      if (lightboxCounter) {
+        lightboxCounter.hidden = !multi;
+        lightboxCounter.textContent = `${currentIndex + 1} / ${currentImages.length}`;
+      }
+    };
+
     portfolioItems.forEach((item) => {
       item.addEventListener('click', () => {
+        const groupAttr = item.getAttribute('data-images');
         const img = item.querySelector('img');
-        lightboxImg.src = img.src;
+        currentImages = groupAttr ? groupAttr.split('|') : [img.src];
         lightboxImg.alt = img.alt;
+        showSlide(0);
         lightbox.classList.add('open');
         document.body.style.overflow = 'hidden';
       });
@@ -124,8 +148,13 @@
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox) closeLightbox();
     });
+    if (lightboxPrev) lightboxPrev.addEventListener('click', () => showSlide(currentIndex - 1));
+    if (lightboxNext) lightboxNext.addEventListener('click', () => showSlide(currentIndex + 1));
     document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('open')) return;
       if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') showSlide(currentIndex - 1);
+      if (e.key === 'ArrowRight') showSlide(currentIndex + 1);
     });
   }
 

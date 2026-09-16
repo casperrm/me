@@ -16,7 +16,9 @@
 <svg style="display:none">
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 11-14h-7l1-6z" fill="currentColor"/></symbol>
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-images" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="14" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 9.5h13a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H8.5A1.5 1.5 0 0 1 7 20V9.5z" fill="currentColor" opacity="0.35"/></symbol>
   <symbol id="i-envelope" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
@@ -95,7 +97,7 @@
     </div>
     <div class="container page-hero-inner" data-reveal>
       <span class="tag tag-light">Our Work</span>
-      <h1>Real campaigns, <span class="text-accent">real craft.</span></h1>
+      <h1 data-reveal-text>Real campaigns, <span class="text-accent">real craft.</span></h1>
       <p>A look at the content, ads, and campaign concepts we've designed — from product launches to full bilingual social carousels.</p>
     </div>
   </section>
@@ -105,7 +107,7 @@
     <div class="container">
       <div class="section-head" data-reveal>
         <span class="tag">Selected Projects</span>
-        <h2>A closer look at <span class="text-accent">how we work.</span></h2>
+        <h2 data-reveal-text>A closer look at <span class="text-accent">how we work.</span></h2>
         <p>The brief, our approach, and what we actually delivered — on three projects from our portfolio.</p>
       </div>
 
@@ -156,7 +158,7 @@
     <div class="container">
       <div class="section-head" data-reveal>
         <span class="tag">Full Portfolio</span>
-        <h2>Browse <span class="text-accent">everything we've made.</span></h2>
+        <h2 data-reveal-text>Browse <span class="text-accent">everything we've made.</span></h2>
       </div>
 
       <div class="filter-bar" data-reveal>
@@ -200,65 +202,27 @@
           <img src="assets/images/work-campaign-dashboard.jpg" alt="Marketing performance dashboard illustration">
           <figcaption><span>Creative Campaign</span><h4>Campaign Performance Reveal</h4></figcaption>
         </figure>
-        <figure class="portfolio-item" data-cat="carousel" data-reveal>
-          <img src="assets/images/work-carousel-idea.jpg" alt="The Idea social media carousel slide">
-          <figcaption><span>Social Carousel</span><h4>"The Idea" — Slide 1</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="carousel" data-reveal>
-          <img src="assets/images/work-carousel-content.jpg" alt="The Content social media carousel slide">
-          <figcaption><span>Social Carousel</span><h4>"The Content" — Slide 2</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="carousel" data-reveal>
-          <img src="assets/images/work-carousel-strategy.jpg" alt="The Strategy social media carousel slide">
-          <figcaption><span>Social Carousel</span><h4>"The Strategy" — Slide 3</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="carousel" data-reveal>
-          <img src="assets/images/work-carousel-growth.jpg" alt="The Growth social media carousel slide">
-          <figcaption><span>Social Carousel</span><h4>"The Growth" — Slide 4</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="carousel" data-reveal>
-          <img src="assets/images/work-carousel-partnership.jpg" alt="The Partnership social media carousel slide">
-          <figcaption><span>Social Carousel</span><h4>"The Partnership" — Slide 5</h4></figcaption>
+        <figure class="portfolio-item" data-cat="carousel" data-reveal
+          data-images="assets/images/work-carousel-idea.jpg|assets/images/work-carousel-content.jpg|assets/images/work-carousel-strategy.jpg|assets/images/work-carousel-growth.jpg|assets/images/work-carousel-partnership.jpg">
+          <span class="portfolio-item-count"><svg class="icon"><use href="#i-images"></use></svg> 5</span>
+          <img src="assets/images/work-carousel-idea.jpg" alt="Five-slide growth carousel, slide 1 of 5">
+          <figcaption><span>Social Carousel</span><h4>The Five-Slide Growth Carousel</h4></figcaption>
         </figure>
         <figure class="portfolio-item" data-cat="carousel" data-reveal>
           <img src="assets/images/work-services-ar.jpg" alt="Arabic language services promotional post">
           <figcaption><span>Social Carousel</span><h4>Bilingual Services Post</h4></figcaption>
         </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-confused.jpg" alt="Meme marketing ad featuring a confused character">
-          <figcaption><span>Trend Marketing</span><h4>"Lost or Confused?" Ad</h4></figcaption>
+        <figure class="portfolio-item" data-cat="meme" data-reveal
+          data-images="assets/images/work-kermit-confused.jpg|assets/images/work-kermit-trends.jpg|assets/images/work-kermit-fit.jpg|assets/images/work-kermit-brand.jpg|assets/images/work-kermit-agency.jpg|assets/images/work-kermit-closing.jpg">
+          <span class="portfolio-item-count"><svg class="icon"><use href="#i-images"></use></svg> 6</span>
+          <img src="assets/images/work-kermit-confused.jpg" alt="Trend-style meme marketing series, slide 1 of 6">
+          <figcaption><span>Trend Marketing</span><h4>Trend-Style Meme Marketing</h4></figcaption>
         </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-trends.jpg" alt="Meme marketing ad about chasing trends">
-          <figcaption><span>Trend Marketing</span><h4>"Chasing Trends?" Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-brand.jpg" alt="Meme marketing ad about brand identity">
-          <figcaption><span>Trend Marketing</span><h4>Brand Identity Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-fit.jpg" alt="Meme marketing ad about fitting every style">
-          <figcaption><span>Trend Marketing</span><h4>"Fits Everything" Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-agency.jpg" alt="Meme marketing ad about not every agency giving you an identity">
-          <figcaption><span>Trend Marketing</span><h4>"Not Every Agency" Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-closing.jpg" alt="Cedar Point Media closing brand card with WhatsApp contact">
-          <figcaption><span>Trend Marketing</span><h4>Campaign Closing Card</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-callcedar.jpg" alt="Meme marketing ad about having an idea but not knowing where to start">
-          <figcaption><span>Trend Marketing</span><h4>"Got an Idea?" Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-corkboard.jpg" alt="Meme marketing ad breaking an idea into strategy, identity, and content">
-          <figcaption><span>Trend Marketing</span><h4>"Cedar Organizes It" Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-cat="meme" data-reveal>
-          <img src="assets/images/work-kermit-mirror.jpg" alt="Meme marketing ad about turning an idea into a brand">
-          <figcaption><span>Trend Marketing</span><h4>"Your Idea Becomes a Brand" Ad</h4></figcaption>
+        <figure class="portfolio-item" data-cat="meme" data-reveal
+          data-images="assets/images/work-kermit-callcedar.jpg|assets/images/work-kermit-corkboard.jpg|assets/images/work-kermit-mirror.jpg">
+          <span class="portfolio-item-count"><svg class="icon"><use href="#i-images"></use></svg> 3</span>
+          <img src="assets/images/work-kermit-callcedar.jpg" alt="From idea to brand explainer series, slide 1 of 3">
+          <figcaption><span>Trend Marketing</span><h4>"From Idea to Brand" Series</h4></figcaption>
         </figure>
       </div>
     </div>
@@ -267,7 +231,7 @@
   <!-- ===== CTA ===== -->
   <section class="cta-band">
     <div class="container cta-inner" data-reveal>
-      <h2>Like what you see?</h2>
+      <h2 data-reveal-text>Like what you see?</h2>
       <p>Let's build campaigns like these for your brand.</p>
       <div class="hero-cta">
         <a href="audit.html" class="btn btn-primary btn-lg">Get a Free Audit <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
@@ -344,7 +308,10 @@
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lightboxClose" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+  <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous photo" hidden><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
   <img src="" alt="" id="lightboxImg">
+  <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next photo" hidden><svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+  <span class="lightbox-counter" id="lightboxCounter" hidden></span>
 </div>
 
 <!-- Case Study Modal -->
