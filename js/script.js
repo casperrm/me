@@ -451,7 +451,7 @@
         project: 'A sample set showing how a recognizable, relatable format can be adapted into on-brand marketing.',
         objective: 'Show that trend-style content can carry a real marketing message without feeling forced.',
         direction: 'Paired a familiar format with copy written for real small-business pain points, in English and Arabic.',
-        deliverables: '4-piece ad set, bilingual copy versions.',
+        deliverables: '6-piece ad set, bilingual copy versions.',
         result: 'This is concept and sample work created to demonstrate our creative range — not a paid client campaign. Client results will be added here as they launch.',
       },
     };
