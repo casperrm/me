@@ -292,6 +292,25 @@ h3 { font-size: 1.25rem; }
   mask-image: radial-gradient(circle at 50% 30%, black, transparent 75%);
 }
 
+/* ---------- Hero growth-line accent ---------- */
+.growth-line { position: absolute; right: -40px; bottom: 6%; width: 46%; max-width: 480px; opacity: 0.55; pointer-events: none; }
+.growth-line path {
+  fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 720; stroke-dashoffset: 720;
+  animation: drawLine 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s forwards;
+}
+.growth-line circle {
+  fill: var(--cyan-light);
+  opacity: 0;
+  animation: dotAppear 0.4s ease 2.7s forwards, dotPulse 2.4s ease-in-out 3.1s infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+@keyframes dotAppear { to { opacity: 1; } }
+@keyframes dotPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.6); } }
+@media (max-width: 992px) { .growth-line { display: none; } }
+
 .hero-inner {
   position: relative; z-index: 1;
   display: grid;
@@ -584,12 +603,37 @@ h3 { font-size: 1.25rem; }
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 20px;
+  position: relative;
 }
+.process-rail::before {
+  content: '';
+  position: absolute;
+  top: 56px; left: 44px; right: 44px;
+  height: 0;
+  border-top: 2px dashed rgba(22,194,204,0.25);
+  z-index: 0;
+}
+.process-rail::after {
+  content: '';
+  position: absolute;
+  top: 53px; left: 44px; right: 44px;
+  height: 6px;
+  background-image: radial-gradient(circle, var(--cyan) 0%, var(--cyan) 35%, transparent 70%);
+  background-size: 60px 6px;
+  background-repeat: no-repeat;
+  background-position: -60px center;
+  filter: drop-shadow(0 0 6px var(--cyan));
+  animation: travelDot 5s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+@keyframes travelDot { to { background-position: calc(100% + 60px) center; } }
 .process-step {
   background: var(--ink-soft);
   border-radius: var(--radius-md);
   padding: 30px 22px;
   position: relative;
+  z-index: 1;
   border: 1px solid rgba(255,255,255,0.06);
   transition: transform 0.3s ease, background 0.3s ease;
 }
