@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  tasks        Task[]
+  chatMessages ChatMessage[]
+  memoryNotes  MemoryNote[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  email     String?
+  niche     String?
+  status    String   @default("active") // active | paused | churned
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts     Post[]
+  campaigns Campaign[]
+  invoices  Invoice[]
+  tasks     Task[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platform  String   @default("instagram") // instagram | tiktok | facebook | x | linkedin | youtube
+  caption   String
+  notes     String?
+  date      DateTime
+  status    String   @default("idea") // idea | drafted | scheduled | posted
+  aiGenerated Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Campaign {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name       String
+  platform   String   @default("instagram")
+  goal       String?
+  budget     Float    @default(0)
+  spend      Float    @default(0)
+  reach      Int      @default(0)
+  engagement Int      @default(0)
+  conversions Int     @default(0)
+  status     String   @default("planned") // planned | active | paused | completed
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Invoice {
+  id          String    @id @default(cuid())
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  description String
+  amount      Float
+  status      String    @default("unpaid") // unpaid | paid | overdue
+  issueDate   DateTime  @default(now())
+  dueDate     DateTime
+  paidDate    DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String?
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  title     String
+  notes     String?
+  priority  String    @default("medium") // low | medium | high
+  status    String    @default("open") // open | done
+  dueDate   DateTime?
+  aiRank    Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Long-term "memory" for the Cedar Point Brain: facts, trends, client
+// preferences and learnings it can draw on in future conversations.
+model MemoryNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  tags      String   @default("") // comma-separated keywords for retrieval
+  source    String   @default("manual") // manual | chat | link
+  sourceUrl String?
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode      String   @default("chat") // chat | ideas | report | priority | ads
+  role      String   // user | assistant
+  content   String
+  createdAt DateTime @default(now())
+}
