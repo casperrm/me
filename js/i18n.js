@@ -1,0 +1,538 @@
+// ---- Homepage language switcher (EN/AR/FR), single URL, no page reload ----
+(function () {
+  const STORAGE_KEY = 'cp_lang';
+
+  const translations = {
+    en: {
+      '__meta.title': 'CedarPoint Media — Social Media & Digital Marketing Agency',
+      '__meta.description': 'CedarPoint Media builds the strategy, content, and campaigns that get brands seen, remembered, and chosen. Free brand audit available.',
+
+      'nav.home': 'Home',
+      'nav.services': 'Services',
+      'nav.dropdown.social': 'Social Media Management',
+      'nav.dropdown.content': 'Creative Content & Design',
+      'nav.dropdown.ads': 'Paid Social & Ad Campaigns',
+      'nav.dropdown.strategy': 'Brand & Growth Strategy',
+      'nav.dropdown.analytics': 'Analytics & Reporting',
+      'nav.dropdown.shoots': 'Product & Campaign Shoots',
+      'nav.dropdown.viewAll': 'View All Services →',
+      'nav.work': 'Our Work',
+      'nav.packages': 'Packages',
+      'nav.about': 'About',
+      'nav.contact': 'Contact',
+      'nav.freeAudit': 'Free Audit',
+      'nav.toggleMenu': 'Toggle menu',
+      'lang.ariaLabel': 'Language',
+
+      'sectionNav.ariaLabel': 'Jump to section',
+      'sectionNav.home': 'Home',
+      'sectionNav.services': 'Services',
+      'sectionNav.selector': 'Find Your Fit',
+      'sectionNav.work': 'Our Work',
+      'sectionNav.packages': 'Packages',
+      'sectionNav.getStarted': 'Get Started',
+
+      'hero.eyebrow': 'Social Media & Digital Marketing Agency',
+      'hero.headline': 'We build brands people <mark class="accent-block">see, remember, and choose.</mark>',
+      'hero.lead': 'Cedar Point Media handles the strategy, content, and campaigns behind a brand people actually notice — so you can focus on running the business.',
+      'hero.ctaAudit': 'Get a Free Audit',
+      'hero.ctaWork': 'View Our Work',
+      'hero.trust.alwaysOn': 'Always On, 24/7',
+      'hero.trust.trilingual': 'Trilingual EN / AR / FR',
+      'hero.trust.liveChat': 'Live Chat',
+      'hero.visual.alt1': 'CedarPoint Media product ad campaign example',
+      'hero.visual.alt2': 'CedarPoint Media social carousel design',
+      'hero.visual.auditTitle': 'Free Brand Audit',
+      'hero.visual.auditSub': 'Honest. No pressure.',
+      'hero.scrollDown': 'Scroll down',
+
+      'marquee.contentCreation': 'Content Creation',
+      'marquee.paidAds': 'Paid Social Ads',
+      'marquee.brandStrategy': 'Brand Strategy',
+      'marquee.communityMgmt': 'Community Management',
+      'marquee.campaignDesign': 'Campaign Design',
+      'marquee.analytics': 'Analytics & Reporting',
+
+      'services.tag': 'What We Do',
+      'services.heading': 'Everything your brand needs online, <span class="text-accent">handled.</span>',
+      'services.sub': 'Strategy, content, and paid media working as one system — not three disconnected freelancers.',
+      'services.card1.title': 'Social Media Management',
+      'services.card1.desc': 'Daily content, scheduling, and community management — consistent, on-brand, on time.',
+      'services.card2.title': 'Creative Content & Design',
+      'services.card2.desc': 'Scroll-stopping graphics and reels, from clean corporate posts to bold campaign creative.',
+      'services.card3.title': 'Paid Social & Ad Campaigns',
+      'services.card3.desc': 'Targeted campaigns across Meta, TikTok & Google, built to put your brand in front of the right people.',
+      'services.seeIncluded': "See what's included",
+      'services.viewAll': 'View All Services',
+
+      'selector.tag': 'Not Sure Where to Start?',
+      'selector.heading': 'What does your business <span class="text-accent">need right now?</span>',
+      'selector.sub': "Pick what's closest to your goal and we'll point you to the right service and package.",
+      'selector.branding.title': 'Branding',
+      'selector.branding.desc': 'I need a clearer identity and strategy.',
+      'selector.branding.recTitle': 'Sounds like Brand Strategy is your fit.',
+      'selector.branding.recText': 'Start with our Brand & Growth Strategy service — usually paired with the Growth package once your direction is set.',
+      'selector.social.title': 'Social Media Management',
+      'selector.social.desc': 'I need consistent posting and community management.',
+      'selector.social.recTitle': 'Sounds like Social Media Management is your fit.',
+      'selector.social.recText': 'Consistent posting and community management, built into every package — Starter is the easiest place to begin.',
+      'selector.content.title': 'Content Creation',
+      'selector.content.desc': 'I need graphics, reels, and creative assets.',
+      'selector.content.recTitle': 'Sounds like Creative Content & Design is your fit.',
+      'selector.content.recText': 'Graphics, reels, and campaign creative — included from Starter up, with more volume in Growth.',
+      'selector.ads.title': 'Paid Advertising',
+      'selector.ads.desc': 'I need campaigns that reach the right people.',
+      'selector.ads.recTitle': 'Sounds like Paid Social & Ad Campaigns is your fit.',
+      'selector.ads.recText': 'Targeted ad management is built into Growth, with full campaign management in Premium.',
+      'selector.design.title': 'Design',
+      'selector.design.desc': 'I need product shoots, print, or visual design.',
+      'selector.design.recTitle': 'Sounds like Product & Campaign Shoots is your fit.',
+      'selector.design.recText': 'Photography, print, and visual design — great as a standalone request or layered onto any package.',
+      'selector.full.title': 'Full Marketing Support',
+      'selector.full.desc': 'I need everything handled, end to end.',
+      'selector.full.recTitle': 'Sounds like Full Marketing Support is your fit.',
+      'selector.full.recText': 'Strategy, content, ads, and reporting handled end to end — that\'s exactly what Premium is built for.',
+      'selector.resultDefaultTitle': 'Recommendation',
+      'selector.resultDefaultText': 'Pick an option above to see what fits best.',
+      'selector.viewService': 'View Service',
+      'selector.seePackage': 'See Package',
+
+      'why.tag': 'Why Brands Choose Cedar Point',
+      'why.heading': 'Built to feel like <span class="text-accent">an in-house team.</span>',
+      'why.sub': 'No account managers relaying messages between you and the people doing the work.',
+      'why.card1.title': 'Direct Communication',
+      'why.card1.desc': 'You talk straight to the people making your content and running your ads.',
+      'why.card2.title': 'Transparent Reporting',
+      'why.card2.desc': "Clear, honest updates on what's working — in plain language, not jargon.",
+      'why.card3.title': 'Trilingual Creative',
+      'why.card3.desc': 'Content that lands naturally in English, Arabic, and French markets.',
+      'why.card4.title': 'Always On',
+      'why.card4.desc': "Open 24/7 — your brand's presence never goes quiet.",
+
+      'work.tag': 'Our Work',
+      'work.heading': 'A sample of what <span class="text-accent">we create.</span>',
+      'work.sub': "A look at the content, ads, and campaign concepts we've designed.",
+      'work.item1.alt': 'Black Charge energy drink promotional ad',
+      'work.item1.cat': 'Product Ads',
+      'work.item1.title': 'Black Charge — Launch Ad',
+      'work.item2.alt': 'Underwater themed brand campaign illustration',
+      'work.item2.cat': 'Creative Campaign',
+      'work.item2.title': 'Underwater World Concept',
+      'work.item3.alt': 'The Idea social media carousel slide',
+      'work.item3.cat': 'Social Carousel',
+      'work.item3.title': '"The Idea" — Slide 1',
+      'work.item4.alt': 'Meme marketing ad about chasing trends',
+      'work.item4.cat': 'Trend Marketing',
+      'work.item4.title': '"Chasing Trends?" Ad',
+      'work.viewAll': 'View All Our Work',
+
+      'packages.tag': 'Packages',
+      'packages.heading': 'Clear pricing, <span class="text-accent">no surprises.</span>',
+      'packages.sub': 'Three straightforward packages, or a custom plan built around your goals.',
+      'packages.starter.desc': '12 posts a month plus weekly boosting — a solid starting point.',
+      'packages.growth.badge': 'Most Chosen',
+      'packages.growth.desc': '20 posts, reels, and a real strategy & growth plan behind them.',
+      'packages.premium.desc': 'Full campaign management, ad targeting, and billboard design.',
+      'packages.perMonth': '/mo',
+      'packages.viewDetails': 'See Full Package Details',
+
+      'cta.heading': 'Ready to make your brand impossible to ignore?',
+      'cta.sub': 'Start with a free, honest look at where your brand stands today.',
+      'cta.audit': 'Get a Free Audit',
+      'cta.quote': 'Request a Quote',
+
+      'footer.tagline': 'Social media & digital marketing agency.<br>Strategy, content, and campaigns that convert.',
+      'footer.exploreHeading': 'Explore',
+      'footer.companyHeading': 'Company',
+      'footer.contactHeading': 'Contact',
+      'footer.about': 'About',
+      'footer.requestQuote': 'Request a Quote',
+      'footer.bookConsult': 'Book a Consultation',
+      'footer.open247': 'Open 24/7',
+      'footer.area': 'Lebanon — serving clients internationally',
+      'footer.copyright': 'CedarPoint Media. All rights reserved.',
+      'footer.privacy': 'Privacy Policy',
+      'footer.terms': 'Terms of Service',
+
+      'whatsapp.label': 'Chat with us',
+      'whatsapp.ariaLabel': 'Chat on WhatsApp',
+      'whatsapp.prefill': "Hi CedarPoint Media, I'd like to know more about your services.",
+
+      'backToTop.ariaLabel': 'Back to top',
+      'lightbox.close': 'Close',
+    },
+
+    fr: {
+      '__meta.title': 'CedarPoint Media — Agence de Médias Sociaux & Marketing Digital',
+      '__meta.description': "CedarPoint Media conçoit la stratégie, le contenu et les campagnes qui rendent votre marque vue, mémorable et choisie. Audit de marque gratuit disponible.",
+
+      'nav.home': 'Accueil',
+      'nav.services': 'Services',
+      'nav.dropdown.social': 'Gestion des Réseaux Sociaux',
+      'nav.dropdown.content': 'Création de Contenu & Design',
+      'nav.dropdown.ads': 'Publicités & Campagnes Payantes',
+      'nav.dropdown.strategy': 'Stratégie de Marque & Croissance',
+      'nav.dropdown.analytics': 'Analyses & Rapports',
+      'nav.dropdown.shoots': 'Shootings Produits & Campagnes',
+      'nav.dropdown.viewAll': 'Voir Tous les Services →',
+      'nav.work': 'Nos Réalisations',
+      'nav.packages': 'Formules',
+      'nav.about': 'À Propos',
+      'nav.contact': 'Contact',
+      'nav.freeAudit': 'Audit Gratuit',
+      'nav.toggleMenu': 'Ouvrir le menu',
+      'lang.ariaLabel': 'Langue',
+
+      'sectionNav.ariaLabel': 'Aller à la section',
+      'sectionNav.home': 'Accueil',
+      'sectionNav.services': 'Services',
+      'sectionNav.selector': 'Trouvez votre formule',
+      'sectionNav.work': 'Nos réalisations',
+      'sectionNav.packages': 'Formules',
+      'sectionNav.getStarted': 'Commencer',
+
+      'hero.eyebrow': 'Agence de Médias Sociaux & Marketing Digital',
+      'hero.headline': 'Nous créons des marques que les gens <mark class="accent-block">voient, retiennent et choisissent.</mark>',
+      'hero.lead': "Cedar Point Media gère la stratégie, le contenu et les campagnes derrière une marque que l'on remarque vraiment — pour que vous puissiez vous concentrer sur votre entreprise.",
+      'hero.ctaAudit': 'Audit Gratuit',
+      'hero.ctaWork': 'Voir Nos Réalisations',
+      'hero.trust.alwaysOn': 'Toujours Actifs, 24/7',
+      'hero.trust.trilingual': 'Trilingue EN / AR / FR',
+      'hero.trust.liveChat': 'Chat en Direct',
+      'hero.visual.alt1': 'Exemple de campagne publicitaire produit CedarPoint Media',
+      'hero.visual.alt2': 'Design de carrousel social CedarPoint Media',
+      'hero.visual.auditTitle': 'Audit de Marque Gratuit',
+      'hero.visual.auditSub': 'Honnête. Sans pression.',
+      'hero.scrollDown': 'Défiler vers le bas',
+
+      'marquee.contentCreation': 'Création de Contenu',
+      'marquee.paidAds': 'Publicités Payantes',
+      'marquee.brandStrategy': 'Stratégie de Marque',
+      'marquee.communityMgmt': 'Gestion de Communauté',
+      'marquee.campaignDesign': 'Design de Campagnes',
+      'marquee.analytics': 'Analyses & Rapports',
+
+      'services.tag': 'Ce Que Nous Faisons',
+      'services.heading': 'Tout ce dont votre marque a besoin en ligne, <span class="text-accent">pris en charge.</span>',
+      'services.sub': 'Stratégie, contenu et médias payants qui fonctionnent comme un seul système — pas trois freelances déconnectés.',
+      'services.card1.title': 'Gestion des Réseaux Sociaux',
+      'services.card1.desc': 'Contenu quotidien, planification et gestion de communauté — cohérent, fidèle à la marque, à temps.',
+      'services.card2.title': 'Création de Contenu & Design',
+      'services.card2.desc': 'Des visuels et reels qui arrêtent le scroll, des publications corporate épurées aux créations de campagne audacieuses.',
+      'services.card3.title': 'Publicités & Campagnes Payantes',
+      'services.card3.desc': 'Des campagnes ciblées sur Meta, TikTok et Google, conçues pour mettre votre marque devant les bonnes personnes.',
+      'services.seeIncluded': 'Voir ce qui est inclus',
+      'services.viewAll': 'Voir Tous les Services',
+
+      'selector.tag': 'Vous Ne Savez Pas Par Où Commencer ?',
+      'selector.heading': "De quoi votre entreprise <span class=\"text-accent\">a-t-elle besoin en ce moment ?</span>",
+      'selector.sub': 'Choisissez ce qui se rapproche le plus de votre objectif et nous vous orienterons vers le bon service et la bonne formule.',
+      'selector.branding.title': 'Identité de Marque',
+      'selector.branding.desc': "J'ai besoin d'une identité et d'une stratégie plus claires.",
+      'selector.branding.recTitle': 'On dirait que la Stratégie de Marque est faite pour vous.',
+      'selector.branding.recText': 'Commencez avec notre service Stratégie de Marque & Croissance — souvent associé à la formule Growth une fois votre direction définie.',
+      'selector.social.title': 'Gestion des Réseaux Sociaux',
+      'selector.social.desc': "J'ai besoin de publications régulières et de gestion de communauté.",
+      'selector.social.recTitle': 'On dirait que la Gestion des Réseaux Sociaux est faite pour vous.',
+      'selector.social.recText': 'Publications régulières et gestion de communauté, incluses dans chaque formule — Starter est le point de départ le plus simple.',
+      'selector.content.title': 'Création de Contenu',
+      'selector.content.desc': "J'ai besoin de visuels, de reels et de contenus créatifs.",
+      'selector.content.recTitle': 'On dirait que la Création de Contenu & Design est faite pour vous.',
+      'selector.content.recText': "Visuels, reels et créations de campagne — inclus dès la formule Starter, avec plus de volume en Growth.",
+      'selector.ads.title': 'Publicité Payante',
+      'selector.ads.desc': "J'ai besoin de campagnes qui atteignent les bonnes personnes.",
+      'selector.ads.recTitle': 'On dirait que les Publicités & Campagnes Payantes sont faites pour vous.',
+      'selector.ads.recText': 'La gestion publicitaire ciblée est incluse dans Growth, avec une gestion complète des campagnes en Premium.',
+      'selector.design.title': 'Design',
+      'selector.design.desc': "J'ai besoin de shootings produits, d'impression ou de design visuel.",
+      'selector.design.recTitle': 'On dirait que les Shootings Produits & Campagnes sont faits pour vous.',
+      'selector.design.recText': "Photographie, impression et design visuel — parfait en demande ponctuelle ou ajouté à n'importe quelle formule.",
+      'selector.full.title': 'Support Marketing Complet',
+      'selector.full.desc': "J'ai besoin que tout soit pris en charge, de A à Z.",
+      'selector.full.recTitle': 'On dirait que le Support Marketing Complet est fait pour vous.',
+      'selector.full.recText': 'Stratégie, contenu, publicités et rapports pris en charge de bout en bout — exactement ce pour quoi Premium est conçu.',
+      'selector.resultDefaultTitle': 'Recommandation',
+      'selector.resultDefaultText': 'Choisissez une option ci-dessus pour voir ce qui vous convient le mieux.',
+      'selector.viewService': 'Voir le Service',
+      'selector.seePackage': 'Voir la Formule',
+
+      'why.tag': 'Pourquoi les Marques Choisissent Cedar Point',
+      'why.heading': 'Conçu pour se sentir comme <span class="text-accent">une équipe interne.</span>',
+      'why.sub': 'Pas de chargés de compte qui relaient des messages entre vous et les personnes qui font le travail.',
+      'why.card1.title': 'Communication Directe',
+      'why.card1.desc': 'Vous parlez directement aux personnes qui créent votre contenu et gèrent vos publicités.',
+      'why.card2.title': 'Rapports Transparents',
+      'why.card2.desc': "Des mises à jour claires et honnêtes sur ce qui fonctionne — en langage simple, sans jargon.",
+      'why.card3.title': 'Créations Multilingues',
+      'why.card3.desc': "Un contenu qui touche naturellement les marchés anglophones, arabophones et francophones.",
+      'why.card4.title': 'Toujours Actifs',
+      'why.card4.desc': "Ouverts 24/7 — la présence de votre marque ne s'arrête jamais.",
+
+      'work.tag': 'Nos Réalisations',
+      'work.heading': 'Un aperçu de ce que <span class="text-accent">nous créons.</span>',
+      'work.sub': "Un aperçu du contenu, des publicités et des concepts de campagne que nous avons conçus.",
+      'work.item1.alt': 'Publicité promotionnelle boisson énergisante Black Charge',
+      'work.item1.cat': 'Publicités Produits',
+      'work.item1.title': 'Black Charge — Publicité de Lancement',
+      'work.item2.alt': 'Illustration de campagne de marque sur le thème sous-marin',
+      'work.item2.cat': 'Campagne Créative',
+      'work.item2.title': 'Concept Monde Sous-Marin',
+      'work.item3.alt': 'Diapositive de carrousel social « L\'Idée »',
+      'work.item3.cat': 'Carrousel Social',
+      'work.item3.title': '« L\'Idée » — Diapositive 1',
+      'work.item4.alt': 'Publicité marketing tendance sur la poursuite des tendances',
+      'work.item4.cat': 'Marketing Tendance',
+      'work.item4.title': 'Publicité « À la Poursuite des Tendances ? »',
+      'work.viewAll': 'Voir Toutes Nos Réalisations',
+
+      'packages.tag': 'Formules',
+      'packages.heading': 'Des tarifs clairs, <span class="text-accent">sans surprises.</span>',
+      'packages.sub': 'Trois formules simples, ou un plan sur mesure construit autour de vos objectifs.',
+      'packages.starter.desc': '12 publications par mois plus un boost hebdomadaire — un bon point de départ.',
+      'packages.growth.badge': 'Le Plus Choisi',
+      'packages.growth.desc': '20 publications, des reels, et une vraie stratégie de croissance derrière.',
+      'packages.premium.desc': "Gestion complète des campagnes, ciblage publicitaire et design d'affichage.",
+      'packages.perMonth': '/mois',
+      'packages.viewDetails': 'Voir Tous les Détails des Formules',
+
+      'cta.heading': 'Prêt à rendre votre marque impossible à ignorer ?',
+      'cta.sub': 'Commencez par un regard honnête et gratuit sur la position actuelle de votre marque.',
+      'cta.audit': 'Audit Gratuit',
+      'cta.quote': 'Demander un Devis',
+
+      'footer.tagline': 'Agence de médias sociaux et marketing digital.<br>Stratégie, contenu et campagnes qui convertissent.',
+      'footer.exploreHeading': 'Explorer',
+      'footer.companyHeading': 'Entreprise',
+      'footer.contactHeading': 'Contact',
+      'footer.about': 'À Propos',
+      'footer.requestQuote': 'Demander un Devis',
+      'footer.bookConsult': 'Réserver une Consultation',
+      'footer.open247': 'Ouverts 24/7',
+      'footer.area': "Liban — au service de clients à l'international",
+      'footer.copyright': 'CedarPoint Media. Tous droits réservés.',
+      'footer.privacy': 'Politique de Confidentialité',
+      'footer.terms': "Conditions d'Utilisation",
+
+      'whatsapp.label': 'Discutez avec nous',
+      'whatsapp.ariaLabel': 'Discuter sur WhatsApp',
+      'whatsapp.prefill': "Bonjour CedarPoint Media, j'aimerais en savoir plus sur vos services.",
+
+      'backToTop.ariaLabel': 'Retour en haut',
+      'lightbox.close': 'Fermer',
+    },
+
+    ar: {
+      '__meta.title': 'سيدربوينت ميديا — وكالة التواصل الاجتماعي والتسويق الرقمي',
+      '__meta.description': 'سيدربوينت ميديا تبني الاستراتيجية والمحتوى والحملات التي تجعل علامتكم التجارية تُرى وتُذكر وتُختار. احصلوا على تدقيق مجاني لعلامتكم.',
+
+      'nav.home': 'الرئيسية',
+      'nav.services': 'الخدمات',
+      'nav.dropdown.social': 'إدارة التواصل الاجتماعي',
+      'nav.dropdown.content': 'إنتاج المحتوى والتصميم',
+      'nav.dropdown.ads': 'الإعلانات الممولة والحملات',
+      'nav.dropdown.strategy': 'استراتيجية العلامة التجارية والنمو',
+      'nav.dropdown.analytics': 'التحليلات والتقارير',
+      'nav.dropdown.shoots': 'تصوير المنتجات والحملات',
+      'nav.dropdown.viewAll': 'عرض جميع الخدمات ←',
+      'nav.work': 'أعمالنا',
+      'nav.packages': 'الباقات',
+      'nav.about': 'من نحن',
+      'nav.contact': 'تواصل معنا',
+      'nav.freeAudit': 'تدقيق مجاني',
+      'nav.toggleMenu': 'فتح القائمة',
+      'lang.ariaLabel': 'اللغة',
+
+      'sectionNav.ariaLabel': 'الانتقال إلى قسم',
+      'sectionNav.home': 'الرئيسية',
+      'sectionNav.services': 'الخدمات',
+      'sectionNav.selector': 'اعثر على باقتك',
+      'sectionNav.work': 'أعمالنا',
+      'sectionNav.packages': 'الباقات',
+      'sectionNav.getStarted': 'ابدأ الآن',
+
+      'hero.eyebrow': 'وكالة التواصل الاجتماعي والتسويق الرقمي',
+      'hero.headline': 'نبني علامات تجارية <mark class="accent-block">يراها الناس، يتذكرونها، ويختارونها.</mark>',
+      'hero.lead': 'سيدربوينت ميديا تتولى الاستراتيجية والمحتوى والحملات وراء علامة تجارية يلاحظها الناس فعلاً — لتتفرغوا أنتم لإدارة عملكم.',
+      'hero.ctaAudit': 'تدقيق مجاني',
+      'hero.ctaWork': 'شاهدوا أعمالنا',
+      'hero.trust.alwaysOn': 'متواجدون دائمًا، ٢٤/٧',
+      'hero.trust.trilingual': 'ثلاثية اللغة EN / AR / FR',
+      'hero.trust.liveChat': 'دردشة مباشرة',
+      'hero.visual.alt1': 'نموذج حملة إعلانية لمنتج من سيدربوينت ميديا',
+      'hero.visual.alt2': 'تصميم منشور دائري اجتماعي من سيدربوينت ميديا',
+      'hero.visual.auditTitle': 'تدقيق مجاني للعلامة التجارية',
+      'hero.visual.auditSub': 'صريح. بلا أي ضغط.',
+      'hero.scrollDown': 'مرر للأسفل',
+
+      'marquee.contentCreation': 'إنتاج المحتوى',
+      'marquee.paidAds': 'الإعلانات الممولة',
+      'marquee.brandStrategy': 'استراتيجية العلامة التجارية',
+      'marquee.communityMgmt': 'إدارة المجتمع',
+      'marquee.campaignDesign': 'تصميم الحملات',
+      'marquee.analytics': 'التحليلات والتقارير',
+
+      'services.tag': 'ماذا نقدّم',
+      'services.heading': 'كل ما تحتاجه علامتكم التجارية أونلاين، <span class="text-accent">متكفَّلون به.</span>',
+      'services.sub': 'استراتيجية ومحتوى وإعلانات ممولة تعمل كمنظومة واحدة — لا ثلاثة عاملين مستقلين غير متناسقين.',
+      'services.card1.title': 'إدارة التواصل الاجتماعي',
+      'services.card1.desc': 'محتوى يومي، جدولة، وإدارة مجتمع — متناسق، صادق مع هوية علامتكم، وفي وقته.',
+      'services.card2.title': 'إنتاج المحتوى والتصميم',
+      'services.card2.desc': 'مرئيات وريلز توقف التمرير، من منشورات مؤسسية أنيقة إلى تصاميم حملات جريئة.',
+      'services.card3.title': 'الإعلانات الممولة والحملات',
+      'services.card3.desc': 'حملات مستهدفة على ميتا وتيك توك وغوغل، مصمَّمة لتضع علامتكم أمام الجمهور المناسب.',
+      'services.seeIncluded': 'شاهدوا ما هو مشمول',
+      'services.viewAll': 'عرض جميع الخدمات',
+
+      'selector.tag': 'لا تعرفون من أين تبدأون؟',
+      'selector.heading': 'ما الذي تحتاجه شركتكم <span class="text-accent">الآن بالتحديد؟</span>',
+      'selector.sub': 'اختاروا الأقرب لهدفكم وسنوجّهكم إلى الخدمة والباقة المناسبتين.',
+      'selector.branding.title': 'هوية العلامة التجارية',
+      'selector.branding.desc': 'أحتاج هوية واستراتيجية أوضح.',
+      'selector.branding.recTitle': 'يبدو أن استراتيجية العلامة التجارية هي ما تحتاجونه.',
+      'selector.branding.recText': 'ابدأوا بخدمة استراتيجية العلامة التجارية والنمو — غالبًا ما تُقترن بباقة Growth بمجرد تحديد اتجاهكم.',
+      'selector.social.title': 'إدارة التواصل الاجتماعي',
+      'selector.social.desc': 'أحتاج منشورات منتظمة وإدارة مجتمع.',
+      'selector.social.recTitle': 'يبدو أن إدارة التواصل الاجتماعي هي ما تحتاجونه.',
+      'selector.social.recText': 'منشورات منتظمة وإدارة مجتمع، مشمولة في كل باقة — Starter هي أبسط نقطة بداية.',
+      'selector.content.title': 'إنتاج المحتوى',
+      'selector.content.desc': 'أحتاج مرئيات وريلز ومحتوى إبداعي.',
+      'selector.content.recTitle': 'يبدو أن إنتاج المحتوى والتصميم هو ما تحتاجونه.',
+      'selector.content.recText': 'مرئيات وريلز وتصاميم حملات — مشمولة منذ باقة Starter، مع كمية أكبر في Growth.',
+      'selector.ads.title': 'الإعلانات الممولة',
+      'selector.ads.desc': 'أحتاج حملات تصل إلى الجمهور المناسب.',
+      'selector.ads.recTitle': 'يبدو أن الإعلانات الممولة والحملات هي ما تحتاجونه.',
+      'selector.ads.recText': 'إدارة الإعلانات المستهدفة مشمولة في باقة Growth، مع إدارة حملات كاملة في Premium.',
+      'selector.design.title': 'التصميم',
+      'selector.design.desc': 'أحتاج تصوير منتجات أو طباعة أو تصميم مرئي.',
+      'selector.design.recTitle': 'يبدو أن تصوير المنتجات والحملات هو ما تحتاجونه.',
+      'selector.design.recText': 'تصوير، طباعة، وتصميم مرئي — مثالية كطلب منفرد أو مضافة إلى أي باقة.',
+      'selector.full.title': 'الدعم التسويقي الكامل',
+      'selector.full.desc': 'أحتاج أن يتولى فريق واحد كل شيء، من الألف إلى الياء.',
+      'selector.full.recTitle': 'يبدو أن الدعم التسويقي الكامل هو ما تحتاجونه.',
+      'selector.full.recText': 'استراتيجية ومحتوى وإعلانات وتقارير مُدارة من الألف إلى الياء — وهذا بالضبط ما صُمِّمت له باقة Premium.',
+      'selector.resultDefaultTitle': 'التوصية',
+      'selector.resultDefaultText': 'اختاروا خيارًا أعلاه لتروا الأنسب لكم.',
+      'selector.viewService': 'شاهدوا الخدمة',
+      'selector.seePackage': 'شاهدوا الباقة',
+
+      'why.tag': 'لماذا تختار العلامات التجارية سيدربوينت',
+      'why.heading': 'مصمَّمون لنكون <span class="text-accent">كفريق داخلي فعلي.</span>',
+      'why.sub': 'بلا مدراء حسابات ينقلون الرسائل بينكم وبين من ينفّذ العمل فعلاً.',
+      'why.card1.title': 'تواصل مباشر',
+      'why.card1.desc': 'تتحدثون مباشرة مع من ينتج محتواكم ويدير إعلاناتكم.',
+      'why.card2.title': 'تقارير شفافة',
+      'why.card2.desc': 'تحديثات واضحة وصادقة حول ما ينجح — بلغة بسيطة، بلا مصطلحات معقدة.',
+      'why.card3.title': 'إبداع ثلاثي اللغة',
+      'why.card3.desc': 'محتوى يصل بشكل طبيعي إلى الأسواق الناطقة بالإنجليزية والعربية والفرنسية.',
+      'why.card4.title': 'متواجدون دائمًا',
+      'why.card4.desc': 'متاحون على مدار الساعة طوال أيام الأسبوع — حضور علامتكم لا يتوقف أبدًا.',
+
+      'work.tag': 'أعمالنا',
+      'work.heading': 'لمحة عمّا <span class="text-accent">ننتجه.</span>',
+      'work.sub': 'لمحة عن المحتوى والإعلانات ومفاهيم الحملات التي صمّمناها.',
+      'work.item1.alt': 'إعلان ترويجي لمشروب طاقة Black Charge',
+      'work.item1.cat': 'إعلانات المنتجات',
+      'work.item1.title': 'Black Charge — إعلان الإطلاق',
+      'work.item2.alt': 'توضيح حملة علامة تجارية بموضوع عالم تحت الماء',
+      'work.item2.cat': 'حملة إبداعية',
+      'work.item2.title': 'مفهوم العالم تحت الماء',
+      'work.item3.alt': 'شريحة منشور دائري اجتماعي «الفكرة»',
+      'work.item3.cat': 'منشور دائري اجتماعي',
+      'work.item3.title': '«الفكرة» — الشريحة ١',
+      'work.item4.alt': 'إعلان تسويقي عن مواكبة الترندات',
+      'work.item4.cat': 'تسويق الترندات',
+      'work.item4.title': 'إعلان «هل تُلاحقون الترندات؟»',
+      'work.viewAll': 'شاهدوا كل أعمالنا',
+
+      'packages.tag': 'الباقات',
+      'packages.heading': 'أسعار واضحة، <span class="text-accent">بلا مفاجآت.</span>',
+      'packages.sub': 'ثلاث باقات بسيطة، أو خطة مخصصة تُبنى حول أهدافكم.',
+      'packages.starter.desc': '١٢ منشورًا شهريًا بالإضافة إلى تعزيز أسبوعي — نقطة انطلاق جيدة.',
+      'packages.growth.badge': 'الأكثر اختيارًا',
+      'packages.growth.desc': '٢٠ منشورًا، ريلز، واستراتيجية نمو حقيقية خلفها.',
+      'packages.premium.desc': 'إدارة حملات كاملة، استهداف إعلاني، وتصميم لوحات إعلانية.',
+      'packages.perMonth': '/شهريًا',
+      'packages.viewDetails': 'شاهدوا كل تفاصيل الباقات',
+
+      'cta.heading': 'جاهزون لجعل علامتكم التجارية يستحيل تجاهلها؟',
+      'cta.sub': 'ابدأوا بنظرة صادقة ومجانية على وضع علامتكم التجارية اليوم.',
+      'cta.audit': 'تدقيق مجاني',
+      'cta.quote': 'اطلبوا عرض سعر',
+
+      'footer.tagline': 'وكالة التواصل الاجتماعي والتسويق الرقمي.<br>استراتيجية ومحتوى وحملات تحقق نتائج.',
+      'footer.exploreHeading': 'استكشفوا',
+      'footer.companyHeading': 'الشركة',
+      'footer.contactHeading': 'تواصل معنا',
+      'footer.about': 'من نحن',
+      'footer.requestQuote': 'اطلبوا عرض سعر',
+      'footer.bookConsult': 'احجزوا استشارة',
+      'footer.open247': 'متاحون ٢٤/٧',
+      'footer.area': 'لبنان — نخدم عملاء حول العالم',
+      'footer.copyright': 'سيدربوينت ميديا. جميع الحقوق محفوظة.',
+      'footer.privacy': 'سياسة الخصوصية',
+      'footer.terms': 'شروط الاستخدام',
+
+      'whatsapp.label': 'راسلونا',
+      'whatsapp.ariaLabel': 'تواصلوا عبر واتساب',
+      'whatsapp.prefill': 'مرحبًا CedarPoint Media، أرغب بمعرفة المزيد عن خدماتكم.',
+
+      'backToTop.ariaLabel': 'العودة إلى الأعلى',
+      'lightbox.close': 'إغلاق',
+    },
+  };
+
+  function applyLanguage(lang) {
+    if (!translations[lang]) lang = 'en';
+    const dict = translations[lang];
+
+    document.documentElement.setAttribute('lang', lang);
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.getAttribute('data-i18n');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-html');
+      if (dict[key] !== undefined) el.innerHTML = dict[key];
+    });
+
+    document.querySelectorAll('[data-i18n-attrs]').forEach((el) => {
+      el.getAttribute('data-i18n-attrs').split('|').forEach((pair) => {
+        const [attr, key] = pair.split(':');
+        if (dict[key] !== undefined) el.setAttribute(attr, dict[key]);
+      });
+    });
+
+    if (dict['__meta.title']) document.title = dict['__meta.title'];
+    const metaDesc = document.getElementById('metaDescription');
+    if (metaDesc && dict['__meta.description']) metaDesc.setAttribute('content', dict['__meta.description']);
+
+    const waLink = document.getElementById('whatsappFab');
+    if (waLink && dict['whatsapp.prefill']) {
+      waLink.href = 'https://wa.me/96181113001?text=' + encodeURIComponent(dict['whatsapp.prefill']);
+    }
+
+    document.querySelectorAll('[data-lang]').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+    });
+
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) { /* private mode, ignore */ }
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-lang]');
+    if (!btn) return;
+    e.preventDefault();
+    applyLanguage(btn.getAttribute('data-lang'));
+  });
+
+  let initial = 'en';
+  try {
+    initial = localStorage.getItem(STORAGE_KEY) || 'en';
+  } catch (e) { /* private mode, ignore */ }
+  applyLanguage(initial);
+
+  window.CedarPointI18n = { applyLanguage, translations };
+})();

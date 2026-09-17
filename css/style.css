@@ -1258,11 +1258,8 @@ h3 { font-size: 1.25rem; }
 
 /* ---------- Bold headline highlight (homepage hero signature moment) ---------- */
 .accent-block {
-  background: var(--ink);
+  background: none;
   color: var(--cyan-light);
-  padding: 0.06em 12px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 
 /* ---------- Full-screen mobile nav overlay ---------- */
@@ -1450,6 +1447,18 @@ h3 { font-size: 1.25rem; }
    directional icons, and a couple of absolutely-positioned
    corner elements).
    ========================================================= */
+[dir="rtl"] body,
+[dir="rtl"] .brand-text,
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] p,
+[dir="rtl"] a,
+[dir="rtl"] span,
+[dir="rtl"] button {
+  font-family: 'Noto Kufi Arabic', 'Manrope', sans-serif;
+}
 [dir="rtl"] { text-align: right; }
 [dir="rtl"] .pricing-mini-card,
 [dir="rtl"] .selector-option,
