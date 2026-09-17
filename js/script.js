@@ -385,48 +385,11 @@
   }
 
   // ---- Interactive service selector (index.html) ----
+  // Recommendation copy lives on each option as data-rec-title/text/service/pkg
+  // (not a hardcoded JS lookup) so the same script works on every language's page.
   const selectorGrid = document.getElementById('selectorGrid');
   const selectorResult = document.getElementById('selectorResult');
   if (selectorGrid && selectorResult) {
-    const recommendations = {
-      branding: {
-        title: 'Sounds like Brand Strategy is your fit.',
-        text: 'Start with our Brand & Growth Strategy service — usually paired with the Growth package once your direction is set.',
-        service: 'services.html',
-        pkg: 'packages.html#growth',
-      },
-      social: {
-        title: 'Sounds like Social Media Management is your fit.',
-        text: 'Consistent posting and community management, built into every package — Starter is the easiest place to begin.',
-        service: 'services.html',
-        pkg: 'packages.html#starter',
-      },
-      content: {
-        title: 'Sounds like Creative Content & Design is your fit.',
-        text: 'Graphics, reels, and campaign creative — included from Starter up, with more volume in Growth.',
-        service: 'services.html',
-        pkg: 'packages.html#starter',
-      },
-      ads: {
-        title: 'Sounds like Paid Social & Ad Campaigns is your fit.',
-        text: 'Targeted ad management is built into Growth, with full campaign management in Premium.',
-        service: 'services.html',
-        pkg: 'packages.html#growth',
-      },
-      design: {
-        title: 'Sounds like Product & Campaign Shoots is your fit.',
-        text: 'Photography, print, and visual design — great as a standalone request or layered onto any package.',
-        service: 'services.html',
-        pkg: 'packages.html#starter',
-      },
-      full: {
-        title: 'Sounds like Full Marketing Support is your fit.',
-        text: 'Strategy, content, ads, and reporting handled end to end — that\'s exactly what Premium is built for.',
-        service: 'services.html',
-        pkg: 'packages.html#premium',
-      },
-    };
-
     const options = Array.from(selectorGrid.querySelectorAll('.selector-option'));
     const resultTitle = document.getElementById('selectorResultTitle');
     const resultText = document.getElementById('selectorResultText');
@@ -438,12 +401,10 @@
         options.forEach((o) => o.classList.remove('selected'));
         opt.classList.add('selected');
 
-        const rec = recommendations[opt.getAttribute('data-need')];
-        if (!rec) return;
-        resultTitle.textContent = rec.title;
-        resultText.textContent = rec.text;
-        serviceLink.href = rec.service;
-        pkgLink.href = rec.pkg;
+        resultTitle.textContent = opt.getAttribute('data-rec-title') || '';
+        resultText.textContent = opt.getAttribute('data-rec-text') || '';
+        serviceLink.href = opt.getAttribute('data-rec-service') || 'services.html';
+        pkgLink.href = opt.getAttribute('data-rec-pkg') || 'packages.html';
         selectorResult.classList.add('show');
       });
     });

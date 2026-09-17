@@ -212,6 +212,15 @@ h3 { font-size: 1.25rem; }
 
 .header-actions { display: flex; align-items: center; gap: 16px; }
 
+/* ---------- Language switcher ---------- */
+.lang-switch { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 800; }
+.lang-switch a { color: var(--white); opacity: 0.55; transition: opacity 0.2s ease; letter-spacing: 0.02em; }
+.lang-switch a.active { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+.lang-switch a:hover { opacity: 1; }
+.lang-switch .lang-sep { color: var(--white); opacity: 0.3; }
+.site-header.scrolled .lang-switch a,
+.site-header.scrolled .lang-switch .lang-sep { color: var(--ink); }
+
 .nav-toggle {
   display: none;
   flex-direction: column;
@@ -1335,6 +1344,9 @@ h3 { font-size: 1.25rem; }
   .main-nav { display: none; }
   .nav-toggle { display: flex; }
   .header-actions .btn-primary { display: none; }
+  .header-actions > .lang-switch { display: none; }
+  .main-nav.open .lang-switch { display: flex; justify-content: center; gap: 10px; font-size: 0.9rem; margin-top: 18px; }
+  .main-nav.open .lang-switch a { color: var(--white); }
   .hero-inner { grid-template-columns: 1fr; text-align: center; }
   .hero-lead { margin-left: auto; margin-right: auto; }
   .hero-cta { justify-content: center; }
@@ -1430,3 +1442,39 @@ h3 { font-size: 1.25rem; }
   .lightbox-prev { left: 6px; }
   .lightbox-next { right: 6px; }
 }
+
+/* =========================================================
+   RTL support (Arabic pages, html[dir="rtl"])
+   Flexbox/grid row direction mirrors automatically with dir;
+   these cover the spots that don't (hard-coded text-align,
+   directional icons, and a couple of absolutely-positioned
+   corner elements).
+   ========================================================= */
+[dir="rtl"] { text-align: right; }
+[dir="rtl"] .pricing-mini-card,
+[dir="rtl"] .selector-option,
+[dir="rtl"] .trust-card,
+[dir="rtl"] .service-card {
+  text-align: right;
+}
+[dir="rtl"] .section-head.center,
+[dir="rtl"] .section-head.light.center {
+  text-align: center;
+}
+[dir="rtl"] .btn .icon,
+[dir="rtl"] .service-next .icon,
+[dir="rtl"] .section-cta .icon,
+[dir="rtl"] .nav-dropdown-all {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .eyebrow .icon,
+[dir="rtl"] .trust-badge .icon,
+[dir="rtl"] .mini-stat .icon,
+[dir="rtl"] .whatsapp-fab .icon,
+[dir="rtl"] .lang-switch,
+[dir="rtl"] .footer-status .icon {
+  transform: none;
+}
+[dir="rtl"] .whatsapp-fab { left: auto; right: 28px; }
+[dir="rtl"] .back-to-top { right: auto; left: 28px; }
+[dir="rtl"] .growth-line { right: auto; left: -40px; transform: scaleX(-1); }
