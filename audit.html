@@ -171,15 +171,18 @@
             <label for="auditChallenge">What's your biggest challenge right now?</label>
             <textarea id="auditChallenge" name="challenge" rows="3" placeholder="Not enough engagement, inconsistent posting, no clear strategy..."></textarea>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-block">Request My Free Audit <svg class="icon"><use href="#i-send"></use></svg></button>
+          <div class="form-error" id="auditFormError" role="alert"></div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block" id="auditSubmitBtn">
+            <span class="btn-label">Request My Free Audit <svg class="icon"><use href="#i-send"></use></svg></span>
+            <span class="btn-loading">Sending&hellip;</span>
+          </button>
           <p class="form-note" id="auditFormNote">We'll get back to you personally — no automated replies.</p>
         </form>
 
         <div class="form-confirmation" id="auditConfirmation">
           <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
-          <h3>Request received</h3>
-          <p>A Gmail tab just opened with your audit request pre-filled — hit send there to complete it.</p>
-          <p>Once we get it, we'll review your brand and reply directly, usually within a couple of business days.</p>
+          <h3>Thank you.</h3>
+          <p>Your request has been received by Cedar Point Media. Our team will contact you shortly.</p>
           <a href="index.html" class="btn btn-outline">Back to Home</a>
         </div>
       </div>

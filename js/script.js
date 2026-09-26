@@ -203,24 +203,61 @@
     sections.forEach((s) => sectionObserver.observe(s));
   }
 
-  // ---- Shared email helper ----
-  // Opens a pre-filled Gmail compose window rather than a plain "mailto:"
-  // link. mailto: only works when the visitor's device has a desktop mail
-  // client configured, which fails silently for most people on phones/
-  // Chromebooks — going straight to Gmail's own compose URL is reliable
-  // since the inbox every form sends to is a Gmail address anyway.
-  const sendViaGmail = (subject, bodyText) => {
-    const encSubject = encodeURIComponent(subject);
-    const encBody = encodeURIComponent(bodyText);
-    const mailtoUrl = `mailto:consultingcedarpoint@gmail.com?subject=${encSubject}&body=${encBody}`;
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=consultingcedarpoint@gmail.com&su=${encSubject}&body=${encBody}`;
-    const gmailTab = window.open(gmailUrl, '_blank', 'noopener');
-    if (!gmailTab) {
-      // Popup blocked — fall back to the OS mail handler.
-      window.location.href = mailtoUrl;
+  // ---- Shared inquiry submission ----
+  // Submits form data directly to consultingcedarpoint@gmail.com via
+  // Web3Forms (https://web3forms.com), a form backend built for static
+  // sites like this one (no server of our own required). The access key
+  // below is a public, domain-scoped site identifier — like a site ID,
+  // not a secret. It cannot read mail, send as consultingcedarpoint@
+  // gmail.com, or be used for anything beyond delivering these specific
+  // forms, so it's safe to ship in frontend code.
+  //
+  // SETUP (one-time, ~60 seconds): go to https://web3forms.com, enter
+  // consultingcedarpoint@gmail.com (no account or password needed), and
+  // paste the access key it emails you in place of the placeholder below.
+  // Until that's done, every form on the site will show a clear error
+  // instead of silently pretending to send.
+  const WEB3FORMS_ACCESS_KEY = 'YOUR_WEB3FORMS_ACCESS_KEY';
+  const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+
+  const submitInquiry = async (subject, fields) => {
+    if (!WEB3FORMS_ACCESS_KEY || WEB3FORMS_ACCESS_KEY === 'YOUR_WEB3FORMS_ACCESS_KEY') {
+      throw new Error('not-configured');
     }
-    return mailtoUrl;
+    const res = await fetch(WEB3FORMS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject,
+        from_name: 'Cedar Point Media website',
+        ...fields,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.message || 'send-failed');
+    return data;
   };
+
+  const setButtonLoading = (btn, loading) => {
+    if (!btn) return;
+    btn.classList.toggle('is-loading', loading);
+    btn.disabled = loading;
+  };
+
+  const showFormError = (el, message) => {
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add('show');
+  };
+
+  const clearFormError = (el) => {
+    if (!el) return;
+    el.textContent = '';
+    el.classList.remove('show');
+  };
+
+  const GENERIC_SEND_ERROR = "Something went wrong sending your request. Please try again, or reach us directly on WhatsApp or by email — we're happy to help either way.";
 
   const showConfirmation = (form, confirmation) => {
     if (!form || !confirmation) return;
@@ -231,9 +268,11 @@
   // ---- Free audit form (audit.html) ----
   const auditForm = document.getElementById('auditForm');
   const auditConfirmation = document.getElementById('auditConfirmation');
+  const auditFormError = document.getElementById('auditFormError');
   if (auditForm && auditConfirmation) {
-    auditForm.addEventListener('submit', (e) => {
+    auditForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearFormError(auditFormError);
       const name = document.getElementById('auditName').value.trim();
       const email = document.getElementById('auditEmail').value.trim();
       const handle = document.getElementById('auditHandle').value.trim();
@@ -241,14 +280,23 @@
       const challenge = document.getElementById('auditChallenge').value.trim();
 
       const body = `Name: ${name}\nEmail: ${email}\nInstagram / Website: ${handle}\nBusiness type: ${industry || '—'}\n\nBiggest challenge:\n${challenge || '—'}`;
-      sendViaGmail('Free Brand Audit Request', body);
-      showConfirmation(auditForm, auditConfirmation);
+      const submitBtn = document.getElementById('auditSubmitBtn');
+      setButtonLoading(submitBtn, true);
+      try {
+        await submitInquiry('Free Brand Audit Request — Cedar Point Media', { name, email, message: body });
+        showConfirmation(auditForm, auditConfirmation);
+      } catch (err) {
+        showFormError(auditFormError, GENERIC_SEND_ERROR);
+      } finally {
+        setButtonLoading(submitBtn, false);
+      }
     });
   }
 
   // ---- Multi-step "Request a Quote" form (contact.html) ----
   const quoteForm = document.getElementById('quoteForm');
   const quoteConfirmation = document.getElementById('quoteConfirmation');
+  const quoteFormError = document.getElementById('quoteFormError');
   if (quoteForm && quoteConfirmation) {
     // Chip selection: single-select groups keep one active chip, the
     // service group (data-multi) allows several.
@@ -264,6 +312,17 @@
       });
     });
 
+    // Pre-select a package when arriving from a pricing card's "Get
+    // Started" link (contact.html?package=basic|standard|premium).
+    const packageParam = new URLSearchParams(window.location.search).get('package');
+    if (packageParam) {
+      const chip = quoteForm.querySelector(`.chip-group[data-group="package"] .chip[data-value="${packageParam}"]`);
+      if (chip) {
+        chip.classList.add('selected');
+        setTimeout(() => chip.scrollIntoView({ block: 'center', behavior: 'smooth' }), 400);
+      }
+    }
+
     const steps = Array.from(quoteForm.querySelectorAll('.quote-step'));
     const progressSteps = Array.from(document.querySelectorAll('#quoteProgress .quote-progress-step'));
     const goToStep = (n) => {
@@ -276,15 +335,16 @@
     if (nextBtn) nextBtn.addEventListener('click', () => goToStep(2));
     if (backBtn) backBtn.addEventListener('click', () => goToStep(1));
 
-    quoteForm.addEventListener('submit', (e) => {
+    quoteForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearFormError(quoteFormError);
 
       const selectedFrom = (groupName) =>
         Array.from(quoteForm.querySelectorAll(`.chip-group[data-group="${groupName}"] .chip.selected`))
           .map((c) => c.textContent.trim());
 
       const services = selectedFrom('service').join(', ') || '—';
-      const budget = selectedFrom('budget')[0] || '—';
+      const packageChoice = selectedFrom('package')[0] || '—';
       const timeline = selectedFrom('timeline')[0] || '—';
       const contactPref = selectedFrom('contactPref')[0] || '—';
 
@@ -292,19 +352,30 @@
       const email = document.getElementById('quoteEmail').value.trim();
       const phone = document.getElementById('quotePhone').value.trim();
       const brand = document.getElementById('quoteBrand').value.trim();
+      const country = document.getElementById('quoteCountry').value.trim();
       const industry = document.getElementById('quoteIndustry').value.trim();
       const social = document.getElementById('quoteSocial').value.trim();
       const goals = document.getElementById('quoteGoals').value.trim();
       const start = document.getElementById('quoteStart').value.trim();
 
       const body =
-        `Service(s) needed: ${services}\nBudget: ${budget}\nTimeline: ${timeline}\n\n` +
-        `Business name: ${brand || '—'}\nIndustry: ${industry || '—'}\nSocial accounts / website: ${social || '—'}\n\n` +
-        `Goals:\n${goals || '—'}\n\n` +
-        `Name: ${name}\nEmail: ${email}\nPhone: ${phone || '—'}\nPreferred start date: ${start || '—'}\nPreferred contact method: ${contactPref}`;
+        `Service needed: ${services}\nPackage: ${packageChoice}\nTimeline: ${timeline}\n\n` +
+        `Business / brand name: ${brand || '—'}\nCountry: ${country}\nIndustry: ${industry || '—'}\nSocial accounts / website: ${social || '—'}\n\n` +
+        `Project description:\n${goals || '—'}\n\n` +
+        `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone || '—'}\nPreferred start date: ${start || '—'}\nPreferred contact method: ${contactPref}`;
 
-      sendViaGmail('New Quote Request', body);
-      showConfirmation(quoteForm, quoteConfirmation);
+      const submitBtn = document.getElementById('quoteSubmitBtn');
+      setButtonLoading(submitBtn, true);
+      try {
+        await submitInquiry('New Quote Request — Cedar Point Media', {
+          name, email, phone, country, package: packageChoice, service: services, message: body,
+        });
+        showConfirmation(quoteForm, quoteConfirmation);
+      } catch (err) {
+        showFormError(quoteFormError, GENERIC_SEND_ERROR);
+      } finally {
+        setButtonLoading(submitBtn, false);
+      }
     });
   }
 
@@ -328,6 +399,7 @@
   // ---- "Book a Consultation" form (contact.html) ----
   const consultForm = document.getElementById('consultForm');
   const consultConfirmation = document.getElementById('consultConfirmation');
+  const consultFormError = document.getElementById('consultFormError');
   if (consultForm && consultConfirmation) {
     consultForm.querySelectorAll('.chip-group').forEach((group) => {
       group.querySelectorAll('.chip').forEach((chip) => {
@@ -338,8 +410,9 @@
       });
     });
 
-    consultForm.addEventListener('submit', (e) => {
+    consultForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearFormError(consultFormError);
 
       const selectedFrom = (groupName) =>
         Array.from(consultForm.querySelectorAll(`.chip-group[data-group="${groupName}"] .chip.selected`))
@@ -358,8 +431,16 @@
         `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone}\n\n` +
         `What they'd like to discuss:\n${topic || '—'}`;
 
-      sendViaGmail('Consultation Request', body);
-      showConfirmation(consultForm, consultConfirmation);
+      const submitBtn = document.getElementById('consultSubmitBtn');
+      setButtonLoading(submitBtn, true);
+      try {
+        await submitInquiry('Consultation Request — Cedar Point Media', { name, email, phone, message: body });
+        showConfirmation(consultForm, consultConfirmation);
+      } catch (err) {
+        showFormError(consultFormError, GENERIC_SEND_ERROR);
+      } finally {
+        setButtonLoading(submitBtn, false);
+      }
     });
   }
 

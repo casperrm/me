@@ -159,7 +159,7 @@
             <div class="quote-step active" data-step="1">
               <p class="quote-progress-label">Step 1 of 2 — What do you need?</p>
 
-              <span class="chip-group-label">Which service(s)?</span>
+              <span class="chip-group-label">Service Needed</span>
               <div class="chip-group" data-group="service" data-multi="true">
                 <button type="button" class="chip">Social Media Management</button>
                 <button type="button" class="chip">Content & Design</button>
@@ -169,12 +169,12 @@
                 <button type="button" class="chip">Something Else</button>
               </div>
 
-              <span class="chip-group-label">Monthly budget or package</span>
-              <div class="chip-group" data-group="budget">
-                <button type="button" class="chip">Starter (~$150)</button>
-                <button type="button" class="chip">Growth (~$350)</button>
-                <button type="button" class="chip">Premium (~$620)</button>
-                <button type="button" class="chip">Not sure yet</button>
+              <span class="chip-group-label">Package</span>
+              <div class="chip-group" data-group="package" id="packageChipGroup">
+                <button type="button" class="chip" data-value="basic">Basic ($240/mo)</button>
+                <button type="button" class="chip" data-value="standard">Standard ($380/mo)</button>
+                <button type="button" class="chip" data-value="premium">Premium ($580/mo)</button>
+                <button type="button" class="chip" data-value="not-sure">Not sure yet</button>
               </div>
 
               <span class="chip-group-label">Timeline</span>
@@ -203,12 +203,18 @@
                   <input type="text" id="quoteIndustry" name="industry" placeholder="e.g. restaurant, clothing, real estate">
                 </div>
               </div>
-              <div class="form-field">
-                <label for="quoteSocial">Social accounts / website (optional)</label>
-                <input type="text" id="quoteSocial" name="social" placeholder="@yourbrand or yourbrand.com">
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="quoteCountry">Country</label>
+                  <input type="text" id="quoteCountry" name="country" placeholder="e.g. Lebanon" required>
+                </div>
+                <div class="form-field">
+                  <label for="quoteSocial">Social accounts / website (optional)</label>
+                  <input type="text" id="quoteSocial" name="social" placeholder="@yourbrand or yourbrand.com">
+                </div>
               </div>
               <div class="form-field">
-                <label for="quoteGoals">What are your goals?</label>
+                <label for="quoteGoals">Project Description</label>
                 <textarea id="quoteGoals" name="goals" rows="3" placeholder="What are you hoping this project achieves?"></textarea>
               </div>
               <div class="form-row">
@@ -232,7 +238,7 @@
                 </div>
               </div>
 
-              <span class="chip-group-label">How should we contact you?</span>
+              <span class="chip-group-label">Preferred Contact Method</span>
               <div class="chip-group" data-group="contactPref">
                 <button type="button" class="chip">Email</button>
                 <button type="button" class="chip">Phone Call</button>
@@ -240,9 +246,14 @@
                 <button type="button" class="chip">Instagram DM</button>
               </div>
 
+              <div class="form-error" id="quoteFormError" role="alert"></div>
+
               <div class="quote-nav">
                 <button type="button" class="btn btn-outline btn-lg" id="quoteBack"><svg class="icon"><use href="#i-arrow-left"></use></svg> Back</button>
-                <button type="submit" class="btn btn-primary btn-lg">Send Request <svg class="icon"><use href="#i-send"></use></svg></button>
+                <button type="submit" class="btn btn-primary btn-lg" id="quoteSubmitBtn">
+                  <span class="btn-label">Send Request <svg class="icon"><use href="#i-send"></use></svg></span>
+                  <span class="btn-loading">Sending&hellip;</span>
+                </button>
               </div>
               <p class="form-note" id="quoteFormNote">We'll reply personally within 8 hours.</p>
             </div>
@@ -250,9 +261,8 @@
 
           <div class="form-confirmation" id="quoteConfirmation">
             <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
-            <h3>Request sent</h3>
-            <p>A Gmail tab just opened with your request pre-filled — hit send there to complete it.</p>
-            <p>Once we get it, we'll reply personally with next steps, usually within 8 hours.</p>
+            <h3>Thank you.</h3>
+            <p>Your request has been received by Cedar Point Media. Our team will contact you shortly.</p>
             <a href="index.html" class="btn btn-outline">Back to Home</a>
           </div>
         </div>
@@ -302,15 +312,19 @@
               <textarea id="consultTopic" name="topic" rows="3" placeholder="e.g. which package fits, a specific campaign idea..."></textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg btn-block">Request This Time <svg class="icon"><use href="#i-send"></use></svg></button>
+            <div class="form-error" id="consultFormError" role="alert"></div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block" id="consultSubmitBtn">
+              <span class="btn-label">Request This Time <svg class="icon"><use href="#i-send"></use></svg></span>
+              <span class="btn-loading">Sending&hellip;</span>
+            </button>
             <p class="form-note">This confirms a request, not a booked slot — we'll follow up to lock in the time.</p>
           </form>
 
           <div class="form-confirmation" id="consultConfirmation">
             <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
-            <h3>Consultation requested</h3>
-            <p>A Gmail tab just opened with your preferred time pre-filled — hit send there to complete it.</p>
-            <p>We'll confirm the exact time by email or WhatsApp shortly.</p>
+            <h3>Thank you.</h3>
+            <p>Your request has been received by Cedar Point Media. Our team will contact you shortly.</p>
             <a href="index.html" class="btn btn-outline">Back to Home</a>
           </div>
         </div>
