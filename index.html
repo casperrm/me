@@ -54,10 +54,10 @@
 <nav class="section-nav" id="sectionNav" data-i18n-attrs="aria-label:sectionNav.ariaLabel" aria-label="Jump to section">
   <a href="#home" data-section="home" data-i18n-attrs="aria-label:sectionNav.home" aria-label="Home"></a>
   <a href="#services" data-section="services" data-i18n-attrs="aria-label:sectionNav.services" aria-label="Services"></a>
-  <a href="#selector" data-section="selector" data-i18n-attrs="aria-label:sectionNav.selector" aria-label="Find Your Fit"></a>
   <a href="#work-teaser" data-section="work-teaser" data-i18n-attrs="aria-label:sectionNav.work" aria-label="Our Work"></a>
-  <a href="#packages-teaser" data-section="packages-teaser" data-i18n-attrs="aria-label:sectionNav.packages" aria-label="Packages"></a>
-  <a href="#get-started" data-section="get-started" data-i18n-attrs="aria-label:sectionNav.getStarted" aria-label="Get Started"></a>
+  <a href="#process" data-section="process" data-i18n-attrs="aria-label:sectionNav.process" aria-label="Our Process"></a>
+  <a href="#why-us" data-section="why-us" data-i18n-attrs="aria-label:sectionNav.why" aria-label="Why Cedar Point"></a>
+  <a href="#get-started" data-section="get-started" data-i18n-attrs="aria-label:sectionNav.getStarted" aria-label="Start a Project"></a>
 </nav>
 
 <!-- ===== HEADER ===== -->
@@ -68,13 +68,16 @@
         <svg viewBox="0 0 100 100" width="40" height="40">
           <path d="M78 26 A38 38 0 1 0 78 74" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
           <polygon points="42,34 42,66 70,50" fill="currentColor"/>
+          <line x1="78" y1="22" x2="86" y2="13" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+          <line x1="89" y1="32" x2="99" y2="23" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
         </svg>
       </span>
-      <span class="brand-text">CedarPoint<em>Media</em></span>
+      <span class="brand-text">Cedar Point <em>Media</em></span>
     </a>
 
     <nav class="main-nav" id="mainNav">
       <a href="index.html" data-i18n="nav.home">Home</a>
+      <a href="about.html" data-i18n="nav.about">About</a>
       <div class="nav-item-dropdown">
         <a href="services.html" class="nav-drop-trigger"><span data-i18n="nav.services">Services</span> <svg class="icon icon-tiny"><use href="#i-chevron-down"></use></svg></a>
         <div class="nav-dropdown-panel">
@@ -87,9 +90,8 @@
           <a href="services.html" class="nav-dropdown-all" data-i18n="nav.dropdown.viewAll">View All Services &rarr;</a>
         </div>
       </div>
-      <a href="work.html" data-i18n="nav.work">Our Work</a>
-      <a href="packages.html" data-i18n="nav.packages">Packages</a>
-      <a href="about.html" data-i18n="nav.about">About</a>
+      <a href="work.html" data-i18n="nav.work">Work</a>
+      <a href="index.html#process" data-i18n="nav.process">Process</a>
       <a href="contact.html" data-i18n="nav.contact">Contact</a>
 
       <div class="nav-extra">
@@ -110,7 +112,7 @@
       <div class="lang-switch" data-i18n-attrs="aria-label:lang.ariaLabel" aria-label="Language">
         <a href="#" class="active" data-lang="en">EN</a><span class="lang-sep">/</span><a href="#" data-lang="ar">AR</a><span class="lang-sep">/</span><a href="#" data-lang="fr">FR</a>
       </div>
-      <a href="audit.html" class="btn btn-primary btn-sm" data-i18n="nav.freeAudit">Free Audit</a>
+      <a href="contact.html" class="btn btn-primary btn-sm" data-i18n="nav.startProject">Start a Project</a>
       <button class="nav-toggle" id="navToggle" data-i18n-attrs="aria-label:nav.toggleMenu" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
@@ -133,10 +135,10 @@
     <div class="container hero-inner">
       <div class="hero-copy" data-reveal>
         <span class="eyebrow"><svg class="icon"><use href="#i-bolt"></use></svg> <span data-i18n="hero.eyebrow">Social Media & Digital Marketing Agency</span></span>
-        <h1 data-reveal-text data-i18n-html="hero.headline">We build brands people <mark class="accent-block">see, remember, and choose.</mark></h1>
-        <p class="hero-lead" data-i18n="hero.lead">Cedar Point Media handles the strategy, content, and campaigns behind a brand people actually notice — so you can focus on running the business.</p>
+        <h1 data-reveal-text data-i18n-html="hero.headline">We build brands <mark class="accent-block">people notice.</mark></h1>
+        <p class="hero-lead" data-i18n="hero.lead">From a raw idea to a brand people recognize online — Cedar Point Media handles the strategy, identity, content, and digital presence behind it, end to end.</p>
         <div class="hero-cta">
-          <a href="audit.html" class="btn btn-primary btn-lg"><span data-i18n="hero.ctaAudit">Get a Free Audit</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+          <a href="contact.html" class="btn btn-primary btn-lg"><span data-i18n="nav.startProject">Start a Project</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
           <a href="work.html" class="btn btn-ghost btn-lg" data-i18n="hero.ctaWork">View Our Work</a>
         </div>
         <div class="hero-trust">
@@ -160,6 +162,21 @@
               <span data-i18n="hero.visual.auditSub">Honest. No pressure.</span>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="pipeline-strip" data-reveal aria-label="Our process, from idea to growth">
+        <div class="pipeline-track">
+          <span class="pipeline-step"><span class="pipeline-num">01</span> <span data-i18n="pipeline.idea">Idea</span></span>
+          <svg class="icon pipeline-arrow"><use href="#i-arrow-right"></use></svg>
+          <span class="pipeline-step"><span class="pipeline-num">02</span> <span data-i18n="pipeline.strategy">Strategy</span></span>
+          <svg class="icon pipeline-arrow"><use href="#i-arrow-right"></use></svg>
+          <span class="pipeline-step"><span class="pipeline-num">03</span> <span data-i18n="pipeline.identity">Brand Identity</span></span>
+          <svg class="icon pipeline-arrow"><use href="#i-arrow-right"></use></svg>
+          <span class="pipeline-step"><span class="pipeline-num">04</span> <span data-i18n="pipeline.content">Content</span></span>
+          <svg class="icon pipeline-arrow"><use href="#i-arrow-right"></use></svg>
+          <span class="pipeline-step"><span class="pipeline-num">05</span> <span data-i18n="pipeline.presence">Digital Presence</span></span>
+          <svg class="icon pipeline-arrow"><use href="#i-arrow-right"></use></svg>
+          <span class="pipeline-step is-final"><span class="pipeline-num">06</span> <span data-i18n="pipeline.growth">Growth</span></span>
         </div>
       </div>
     </div>
@@ -226,6 +243,8 @@
       <svg viewBox="0 0 100 100">
         <path d="M78 26 A38 38 0 1 0 78 74" fill="none" stroke="currentColor" stroke-width="8"/>
         <polygon points="42,34 42,66 70,50" fill="currentColor"/>
+        <line x1="78" y1="22" x2="86" y2="13" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+        <line x1="89" y1="32" x2="99" y2="23" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="container">
@@ -305,6 +324,248 @@
     </div>
   </section>
 
+  <!-- ===== WORK TEASER ===== -->
+  <section class="section" id="work-teaser">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <span class="tag" data-i18n="work.tag">Our Work</span>
+        <h2 data-reveal-text data-i18n-html="work.heading">A sample of what <span class="text-accent">we create.</span></h2>
+        <p data-i18n="work.sub">A look at the content, ads, and campaign concepts we've designed.</p>
+      </div>
+
+      <div class="portfolio-grid" id="portfolioGrid">
+        <figure class="portfolio-item" data-reveal>
+          <img src="assets/images/work-drink-boost.jpg" data-i18n-attrs="alt:work.item1.alt" alt="Black Charge energy drink promotional ad">
+          <figcaption><span data-i18n="work.item1.cat">Product Ads</span><h4 data-i18n="work.item1.title">Black Charge — Launch Ad</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal>
+          <img src="assets/images/work-branding-cap.jpg" data-i18n-attrs="alt:work.item2.alt" alt="Cedar Point Media branded cap mockup">
+          <figcaption><span data-i18n="work.item2.cat">Brand Identity</span><h4 data-i18n="work.item2.title">From Anything, to a Brand</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal>
+          <img src="assets/images/work-carousel-idea.jpg" data-i18n-attrs="alt:work.item3.alt" alt="The Idea social media carousel slide">
+          <figcaption><span data-i18n="work.item3.cat">Social Carousel</span><h4 data-i18n="work.item3.title">"The Idea" — Slide 1</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal>
+          <img src="assets/images/work-puzzle-fit.jpg" data-i18n-attrs="alt:work.item4.alt" alt="Are We a Fit engagement concept ad">
+          <figcaption><span data-i18n="work.item4.cat">Engagement Concept</span><h4 data-i18n="work.item4.title">"Are We a Fit?"</h4></figcaption>
+        </figure>
+      </div>
+
+      <div class="section-cta" data-reveal>
+        <a href="work.html" class="btn btn-outline btn-lg"><span data-i18n="work.viewAll">View All Our Work</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRODUCT & COMMERCIAL CREATIVE ===== -->
+  <section class="section section-off" id="product-creative">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <span class="tag" data-i18n="productCreative.tag">Product & Commercial Creative</span>
+        <h2 data-reveal-text data-i18n-html="productCreative.heading">Product shots and campaign creative <span class="text-accent">built to sell.</span></h2>
+        <p data-i18n="productCreative.sub">Commercial photography and ad creative for real products — from can design to launch campaign.</p>
+      </div>
+
+      <div class="portfolio-grid" id="productCreativeGrid">
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0s;">
+          <img src="assets/images/work-drink-boost.jpg" data-i18n-attrs="alt:productCreative.item1.alt" alt="Black Charge energy drink product ad">
+          <figcaption><span data-i18n="productCreative.item1.cat">Product Ad</span><h4 data-i18n="productCreative.item1.title">Black Charge — Launch Ad</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.1s;">
+          <img src="assets/images/work-drink-fuel.jpg" data-i18n-attrs="alt:productCreative.item2.alt" alt="Black Charge energy drink fuel gauge concept ad">
+          <figcaption><span data-i18n="productCreative.item2.cat">Concept Ad</span><h4 data-i18n="productCreative.item2.title">Black Charge — "Full Tank"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.2s;">
+          <img src="assets/images/work-drink-red-voltage.jpg" data-i18n-attrs="alt:productCreative.item3.alt" alt="Red Voltage energy drink product ad">
+          <figcaption><span data-i18n="productCreative.item3.cat">Product Ad</span><h4 data-i18n="productCreative.item3.title">Red Voltage — Energy Drink</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.3s;">
+          <img src="assets/images/work-branding-cap.jpg" data-i18n-attrs="alt:productCreative.item4.alt" alt="Cedar Point Media branded cap mockup">
+          <figcaption><span data-i18n="productCreative.item4.cat">Brand Application</span><h4 data-i18n="productCreative.item4.title">Merch & Brand Application</h4></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CONCEPT PROJECTS ===== -->
+  <section class="section" id="concept-projects">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <span class="tag" data-i18n="conceptProjects.tag">Concept Projects</span>
+        <h2 data-reveal-text data-i18n-html="conceptProjects.heading">Ideas we've pitched, <span class="text-accent">built, and shipped.</span></h2>
+        <p data-i18n="conceptProjects.sub">Brand storytelling and pitch concepts — how we explain strategy, growth, and partnership in a single scroll.</p>
+      </div>
+
+      <div class="portfolio-grid" id="conceptProjectsGrid">
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0s;">
+          <img src="assets/images/work-carousel-strategy.jpg" data-i18n-attrs="alt:conceptProjects.item1.alt" alt="The Strategy process carousel slide">
+          <figcaption><span data-i18n="conceptProjects.item1.cat">Process Carousel</span><h4 data-i18n="conceptProjects.item1.title">"The Strategy"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.1s;">
+          <img src="assets/images/work-carousel-growth.jpg" data-i18n-attrs="alt:conceptProjects.item2.alt" alt="The Growth process carousel slide">
+          <figcaption><span data-i18n="conceptProjects.item2.cat">Process Carousel</span><h4 data-i18n="conceptProjects.item2.title">"The Growth"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.2s;">
+          <img src="assets/images/work-carousel-content.jpg" data-i18n-attrs="alt:conceptProjects.item3.alt" alt="The Content process carousel slide">
+          <figcaption><span data-i18n="conceptProjects.item3.cat">Process Carousel</span><h4 data-i18n="conceptProjects.item3.title">"The Content"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.3s;">
+          <img src="assets/images/work-carousel-partnership.jpg" data-i18n-attrs="alt:conceptProjects.item4.alt" alt="The Partnership process carousel slide">
+          <figcaption><span data-i18n="conceptProjects.item4.cat">Process Carousel</span><h4 data-i18n="conceptProjects.item4.title">"The Partnership"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.4s;">
+          <img src="assets/images/work-puzzle-fit.jpg" data-i18n-attrs="alt:conceptProjects.item5.alt" alt="Are We a Fit engagement concept ad">
+          <figcaption><span data-i18n="conceptProjects.item5.cat">Engagement Concept</span><h4 data-i18n="conceptProjects.item5.title">"Are We a Fit?"</h4></figcaption>
+        </figure>
+        <figure class="portfolio-item" data-reveal style="--reveal-delay: 0.5s;">
+          <img src="assets/images/work-services-ar.jpg" data-i18n-attrs="alt:conceptProjects.item6.alt" alt="Arabic language services overview creative">
+          <figcaption><span data-i18n="conceptProjects.item6.cat">Bilingual Creative</span><h4 data-i18n="conceptProjects.item6.title">Services Overview — Arabic</h4></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OUR PROCESS ===== -->
+  <section class="section section-dark" id="process">
+    <div class="container">
+      <div class="section-head light" data-reveal>
+        <span class="tag tag-light" data-i18n="process.tag">Our Process</span>
+        <h2 data-reveal-text data-i18n-html="process.heading">From idea to growth, <span class="text-accent">in six steps.</span></h2>
+        <p data-i18n="process.sub">Every project moves through the same pipeline — tap a card for what each stage actually involves.</p>
+      </div>
+
+      <div class="process-rail cols-3">
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">01</div>
+              <h3 data-i18n="process.step1.title">Idea</h3>
+              <p data-i18n="process.step1.front">We dig into your brand, your audience, and your goals to shape a concept worth building on.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">01</div>
+              <h3 data-i18n="process.step1.title">Idea</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step1.b1">Brand & audience research</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step1.b2">Competitor scan</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step1.b3">Concept direction</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step1.b4">Kickoff call</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">02</div>
+              <h3 data-i18n="process.step2.title">Strategy</h3>
+              <p data-i18n="process.step2.front">We build the plan that puts your brand in front of the right audience, on the right platforms.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">02</div>
+              <h3 data-i18n="process.step2.title">Strategy</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step2.b1">Platform-by-platform plan</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step2.b2">Posting cadence</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step2.b3">Paid vs. organic mix</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step2.b4">Clear KPIs</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">03</div>
+              <h3 data-i18n="process.step3.title">Brand Identity</h3>
+              <p data-i18n="process.step3.front">Logo, color, voice, and visual system — a brand that looks and sounds like one thing everywhere it shows up.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">03</div>
+              <h3 data-i18n="process.step3.title">Brand Identity</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step3.b1">Logo & visual identity</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step3.b2">Color & typography system</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step3.b3">Brand voice & tone</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step3.b4">Guidelines anyone can follow</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">04</div>
+              <h3 data-i18n="process.step4.title">Content</h3>
+              <p data-i18n="process.step4.front">Creative content, strong visuals, and consistent communication — kept clean and smart, day by day.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">04</div>
+              <h3 data-i18n="process.step4.title">Content</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step4.b1">Monthly content calendar</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step4.b2">Visual style guide</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step4.b3">Caption & copywriting</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step4.b4">Approval workflow</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">05</div>
+              <h3 data-i18n="process.step5.title">Digital Presence</h3>
+              <p data-i18n="process.step5.front">Your website, social profiles, and ad accounts — set up, connected, and working together as one system.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">05</div>
+              <h3 data-i18n="process.step5.title">Digital Presence</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step5.b1">Website & profile setup</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step5.b2">Social & ad account structure</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step5.b3">Tracking & analytics wired up</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step5.b4">Everything connected</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="process-step flip-card" data-reveal>
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <div class="process-num">06</div>
+              <h3 data-i18n="process.step6.title">Growth</h3>
+              <p data-i18n="process.step6.front">We manage, optimize, and report — building visibility, engagement, and authority over time.</p>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapDetails">Tap for details</span></span>
+            </div>
+            <div class="flip-card-back">
+              <div class="process-num">06</div>
+              <h3 data-i18n="process.step6.title">Growth</h3>
+              <ul>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step6.b1">Daily community management</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step6.b2">Ads live & optimized</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step6.b3">Performance reporting</span></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg> <span data-i18n="process.step6.b4">Ongoing optimization</span></li>
+              </ul>
+              <span class="flip-hint"><svg class="icon"><use href="#i-flip"></use></svg> <span data-i18n="process.tapBack">Tap to flip back</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== WHY CEDARPOINT ===== -->
   <section class="section" id="why-us">
     <div class="container">
@@ -339,36 +600,17 @@
     </div>
   </section>
 
-  <!-- ===== WORK TEASER ===== -->
-  <section class="section" id="work-teaser">
-    <div class="container">
-      <div class="section-head" data-reveal>
-        <span class="tag" data-i18n="work.tag">Our Work</span>
-        <h2 data-reveal-text data-i18n-html="work.heading">A sample of what <span class="text-accent">we create.</span></h2>
-        <p data-i18n="work.sub">A look at the content, ads, and campaign concepts we've designed.</p>
+  <!-- ===== ABOUT TEASER ===== -->
+  <section class="section" id="about-teaser">
+    <div class="container about-teaser-inner">
+      <div class="about-teaser-media" data-reveal>
+        <img src="assets/images/work-services-ar.jpg" data-i18n-attrs="alt:aboutTeaser.imgAlt" alt="Cedar Point Media team and tools overview">
       </div>
-
-      <div class="portfolio-grid" id="portfolioGrid">
-        <figure class="portfolio-item" data-reveal>
-          <img src="assets/images/work-drink-boost.jpg" data-i18n-attrs="alt:work.item1.alt" alt="Black Charge energy drink promotional ad">
-          <figcaption><span data-i18n="work.item1.cat">Product Ads</span><h4 data-i18n="work.item1.title">Black Charge — Launch Ad</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-reveal>
-          <img src="assets/images/work-campaign-dinner.jpg" data-i18n-attrs="alt:work.item2.alt" alt="Underwater themed brand campaign illustration">
-          <figcaption><span data-i18n="work.item2.cat">Creative Campaign</span><h4 data-i18n="work.item2.title">Underwater World Concept</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-reveal>
-          <img src="assets/images/work-carousel-idea.jpg" data-i18n-attrs="alt:work.item3.alt" alt="The Idea social media carousel slide">
-          <figcaption><span data-i18n="work.item3.cat">Social Carousel</span><h4 data-i18n="work.item3.title">"The Idea" — Slide 1</h4></figcaption>
-        </figure>
-        <figure class="portfolio-item" data-reveal>
-          <img src="assets/images/work-kermit-trends.jpg" data-i18n-attrs="alt:work.item4.alt" alt="Meme marketing ad about chasing trends">
-          <figcaption><span data-i18n="work.item4.cat">Trend Marketing</span><h4 data-i18n="work.item4.title">"Chasing Trends?" Ad</h4></figcaption>
-        </figure>
-      </div>
-
-      <div class="section-cta" data-reveal>
-        <a href="work.html" class="btn btn-outline btn-lg"><span data-i18n="work.viewAll">View All Our Work</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+      <div class="about-teaser-copy" data-reveal>
+        <span class="tag" data-i18n="aboutTeaser.tag">About Cedar Point</span>
+        <h2 data-reveal-text data-i18n-html="aboutTeaser.heading">A small team, <span class="text-accent">built to move like an in-house one.</span></h2>
+        <p data-i18n="aboutTeaser.body">Cedar Point Media started with a simple idea: businesses shouldn't need five different freelancers to look and sound like one brand. We took that idea, built a strategy around it, and turned it into a team that handles identity, content, and growth under one roof.</p>
+        <a href="about.html" class="btn btn-outline"><span data-i18n="aboutTeaser.cta">Learn Our Story</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
       </div>
     </div>
   </section>
@@ -410,14 +652,25 @@
     </div>
   </section>
 
-  <!-- ===== CTA ===== -->
+  <!-- ===== FINAL CTA + CONTACT ===== -->
   <section class="cta-band" id="get-started">
     <div class="container cta-inner" data-reveal>
-      <h2 data-reveal-text data-i18n="cta.heading">Ready to make your brand impossible to ignore?</h2>
-      <p data-i18n="cta.sub">Start with a free, honest look at where your brand stands today.</p>
+      <h2 data-reveal-text data-i18n="cta.heading">Have an idea? Let's turn it into a brand.</h2>
+      <p data-i18n="cta.sub">Tell us where your business stands today, and we'll tell you exactly what it needs next.</p>
       <div class="hero-cta">
-        <a href="audit.html" class="btn btn-primary btn-lg"><span data-i18n="cta.audit">Get a Free Audit</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
-        <a href="contact.html" class="btn btn-ghost btn-lg" data-i18n="cta.quote">Request a Quote</a>
+        <a href="contact.html" class="btn btn-primary btn-lg"><span data-i18n="nav.startProject">Start a Project</span> <svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+        <a href="audit.html" class="btn btn-ghost btn-lg" data-i18n="cta.audit">Get a Free Audit</a>
+      </div>
+      <div class="contact-inline">
+        <a class="contact-inline-item" href="mailto:consultingcedarpoint@gmail.com">
+          <svg class="icon"><use href="#i-envelope"></use></svg> consultingcedarpoint@gmail.com
+        </a>
+        <a class="contact-inline-item" href="tel:+96181113001" dir="ltr">
+          <svg class="icon"><use href="#i-phone"></use></svg> +961 81 113 001
+        </a>
+        <a class="contact-inline-item" href="https://wa.me/96181113001" target="_blank" rel="noopener noreferrer">
+          <svg class="icon"><use href="#i-whatsapp"></use></svg> <span data-i18n="contact.whatsapp">WhatsApp</span>
+        </a>
       </div>
     </div>
   </section>
@@ -433,9 +686,11 @@
           <svg viewBox="0 0 100 100" width="34" height="34">
             <path d="M78 26 A38 38 0 1 0 78 74" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
             <polygon points="42,34 42,66 70,50" fill="currentColor"/>
+            <line x1="78" y1="22" x2="86" y2="13" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+            <line x1="89" y1="32" x2="99" y2="23" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
           </svg>
         </span>
-        <span class="brand-text">CedarPoint<em>Media</em></span>
+        <span class="brand-text">Cedar Point <em>Media</em></span>
       </a>
       <p data-i18n-html="footer.tagline">Social media & digital marketing agency.<br>Strategy, content, and campaigns that convert.</p>
     </div>
@@ -451,7 +706,7 @@
     <div class="footer-links">
       <h5 data-i18n="footer.companyHeading">Company</h5>
       <a href="about.html" data-i18n="footer.about">About</a>
-      <a href="audit.html" data-i18n="nav.freeAudit">Free Audit</a>
+      <a href="audit.html" data-i18n="footer.freeAudit">Free Audit</a>
       <a href="contact.html" data-i18n="footer.requestQuote">Request a Quote</a>
       <a href="contact.html#consultation" data-i18n="footer.bookConsult">Book a Consultation</a>
     </div>
