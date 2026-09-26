@@ -532,6 +532,17 @@ h3 { font-size: 1.25rem; }
 .flip-card-back li { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: rgba(255,255,255,0.85); }
 .flip-card-back li .icon { color: var(--cyan); flex-shrink: 0; }
 .flip-card-back .btn { align-self: flex-start; margin-top: 18px; }
+.service-price-note {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-family: var(--font-head); font-weight: 800; font-size: 0.95rem;
+  color: var(--cyan-light);
+}
+.service-price-note span { display: block; margin-top: 4px; font-family: var(--font-body); font-weight: 500; font-size: 0.78rem; color: rgba(255,255,255,0.55); }
+/* This card carries an extra checklist item plus a pricing line, so it
+   needs more room than the standard 300px flip-card min-height. */
+#web-design-development.flip-card { min-height: 460px; }
 .flip-hint {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 0.76rem; font-weight: 700;
