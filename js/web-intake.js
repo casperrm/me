@@ -1,4 +1,4 @@
-// ---- Cedar Point Media — Web Development Client Intake ----
+// ---- CedarPoint Media: Web Development Client Intake ----
 // Self-contained, no external dependencies. Flow: welcome -> steps 1-5
 // -> review -> WhatsApp handoff -> confirmation.
 (() => {
@@ -188,8 +188,8 @@
 
   function formatValue(data, f) {
     const val = data[f.name];
-    if (f.multi) return Array.isArray(val) && val.length ? val.join(', ') : '—';
-    return val && val !== '' ? val : '—';
+    if (f.multi) return Array.isArray(val) && val.length ? val.join(', ') : 'N/A';
+    return val && val !== '' ? val : 'N/A';
   }
 
   // ---------------------------------------------------------------
@@ -235,7 +235,7 @@
   // WhatsApp message + handoff
   // ---------------------------------------------------------------
   function buildWhatsAppMessage(data) {
-    const lines = ['*New Website Project Inquiry*', '_via Cedar Point Media — Web Intake Form_', ''];
+    const lines = ['*New Website Project Inquiry*', '_via CedarPoint Media Web Intake Form_', ''];
     REVIEW_SECTIONS.forEach((section) => {
       lines.push(`*${section.title}*`);
       section.fields.forEach((f) => {
@@ -264,14 +264,14 @@
     showScreen('confirmation');
 
     if (!win) {
-      showToast('Your browser blocked the pop-up — tap "Open WhatsApp Again" below to send your message.');
+      showToast('Your browser blocked the pop-up. Tap "Open WhatsApp Again" below to send your message.');
     }
 
     clearSavedProgress();
   }
 
   // ---------------------------------------------------------------
-  // localStorage progress save (field values only — reload-safe,
+  // localStorage progress save (field values only, reload-safe,
   // not a tracking mechanism; cleared on submit or restart)
   // ---------------------------------------------------------------
   function saveProgress() {
@@ -283,7 +283,7 @@
         plain[key].push(value);
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
-    } catch (e) { /* private mode or storage full — safe to ignore */ }
+    } catch (e) { /* private mode or storage full, safe to ignore */ }
   }
 
   function restoreProgress() {
@@ -348,7 +348,7 @@
     }
   });
 
-  // Prevent native form submission (Enter key in a text field, etc.) —
+  // Prevent native form submission (Enter key in a text field, etc.):
   // navigation is entirely button/JS-driven.
   form.addEventListener('submit', (e) => e.preventDefault());
 

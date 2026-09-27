@@ -1,5 +1,5 @@
 /* =========================================================
-   Cedar Point Media — Stylesheet
+   CedarPoint Media: Stylesheet
    Design system: black / white / indigo. Restrained, single-accent,
    built around the real Cedar Point brand mark and content palette.
    ========================================================= */
@@ -152,19 +152,6 @@ h3 { font-size: 1.25rem; }
 .preloader-mark span { color: var(--white); font-family: var(--font-head); font-weight: 800; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.cursor-glow {
-  position: fixed;
-  width: 420px; height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(84, 104, 255,0.08), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-  transform: translate(-50%, -50%);
-  transition: opacity 0.3s ease;
-  display: none;
-}
-@media (min-width: 992px) { .cursor-glow { display: block; } }
-
 /* ---------- Header ---------- */
 .site-header {
   position: fixed; top: 0; left: 0; right: 0;
@@ -287,13 +274,12 @@ h3 { font-size: 1.25rem; }
   color: var(--white);
 }
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
-.blob {
-  position: absolute; border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.35;
+.hero-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 82% 8%, rgba(84, 104, 255, 0.16), transparent 65%),
+    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 100%);
 }
-.blob-1 { width: 560px; height: 560px; background: var(--cyan); top: -160px; right: -120px; animation: float1 14s ease-in-out infinite; }
-@keyframes float1 { 0%,100%{ transform: translate(0,0);} 50%{ transform: translate(-30px, 40px);} }
 .grid-overlay {
   position: absolute; inset: 0;
   background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
@@ -433,28 +419,6 @@ h3 { font-size: 1.25rem; }
 .page-hero h1 { font-size: clamp(2.2rem, 4.5vw, 3.1rem); color: var(--white); margin-bottom: 16px; }
 .page-hero p { font-size: 1.05rem; color: rgba(255,255,255,0.7); }
 .page-hero .tag { margin-left: auto; margin-right: auto; }
-
-/* ---------- Marquee ---------- */
-.marquee-strip {
-  background: var(--ink);
-  color: var(--cyan-light);
-  padding: 16px 0;
-  overflow: hidden;
-  white-space: nowrap;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.marquee-track {
-  display: inline-flex;
-  gap: 14px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  animation: marquee 28s linear infinite;
-}
-.marquee-track span:nth-child(2n) { color: rgba(255,255,255,0.35); }
-@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---------- Services ---------- */
 .services-grid {
@@ -597,7 +561,7 @@ h3 { font-size: 1.25rem; }
   overflow: hidden;
   cursor: pointer;
   background: var(--gray-100);
-  /* Every source image is a native 4:5 post — matching the box to that
+  /* Every source image is a native 4:5 post, matching the box to that
      ratio means object-fit: cover never has to crop into the artwork
      or its baked-in text. */
   aspect-ratio: 4 / 5;
@@ -813,18 +777,13 @@ h3 { font-size: 1.25rem; }
 .pricing-card.featured {
   background: var(--ink);
   color: var(--white);
-  border-color: var(--ink);
+  border: 1px solid var(--cyan);
   transform: scale(1.04);
   box-shadow: var(--shadow-lg);
   position: relative;
-  animation: pricingGlow 3.2s ease-in-out infinite;
 }
 .pricing-card.featured:hover { transform: scale(1.04) translateY(-6px); }
 .pricing-card.featured .service-icon { background: var(--cyan); color: var(--ink); }
-@keyframes pricingGlow {
-  0%, 100% { box-shadow: var(--shadow-lg); }
-  50% { box-shadow: var(--shadow-lg), 0 0 40px rgba(84, 104, 255,0.25); }
-}
 .pricing-badge {
   position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
   background: var(--cyan);
@@ -868,7 +827,7 @@ h3 { font-size: 1.25rem; }
    (sized as if laid out in one unwrapped row) can force this whole grid
    wider than the viewport. min-width:0 lets the columns shrink to the
    track's actual size so chips wrap inside it as intended. */
-.contact-info, .quote-card { min-width: 0; }
+.contact-info, .quote-card, .audit-form-card { min-width: 0; }
 .contact-info p { color: var(--gray-500); margin-bottom: 32px; }
 .contact-detail {
   display: flex; align-items: center; gap: 16px;
@@ -1003,6 +962,7 @@ h3 { font-size: 1.25rem; }
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-100);
 }
+.audit-benefit > div { min-width: 0; }
 .audit-benefit .icon-box {
   width: 40px; height: 40px; border-radius: 10px;
   background: var(--ink); color: var(--cyan);
@@ -1033,8 +993,7 @@ h3 { font-size: 1.25rem; }
 .footer-links a { display: block; margin-bottom: 12px; font-size: 0.9rem; transition: color 0.2s ease; }
 .footer-links a:hover { color: var(--white); }
 .footer-status { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-top: 4px; }
-.footer-status .icon { font-size: 0.5rem; color: #22c55e; animation: statusPulse 2.2s ease-in-out infinite; }
-@keyframes statusPulse { 0%,100%{ opacity: 1; filter: drop-shadow(0 0 0 rgba(34,197,94,0.6)); } 50%{ opacity: 0.55; filter: drop-shadow(0 0 4px rgba(34,197,94,0.6)); } }
+.footer-status .icon { font-size: 0.5rem; color: #22c55e; }
 
 .footer-social { display: flex; gap: 10px; margin-top: 18px; }
 .footer-social a {
@@ -1162,7 +1121,7 @@ h3 { font-size: 1.25rem; }
 [data-reveal].in-view { opacity: 1; transform: translateY(0); }
 
 /* ---------- Headline open-reveal (curtains open from center) ----------
-   The heading itself is never the IntersectionObserver target — it sits
+   The heading itself is never the IntersectionObserver target: it sits
    inside a [data-reveal] container, and once THAT container is close
    enough to intersect it gets .in-view (see script.js). Driving the
    clip-path off the ancestor's class instead of observing the heading
@@ -1205,11 +1164,6 @@ h3 { font-size: 1.25rem; }
 .pricing-mini-card.featured {
   background: rgba(84, 104, 255,0.08);
   border-color: var(--cyan);
-  animation: miniGlow 3.2s ease-in-out infinite;
-}
-@keyframes miniGlow {
-  0%, 100% { box-shadow: 0 0 0 rgba(84, 104, 255,0); }
-  50% { box-shadow: 0 0 32px rgba(84, 104, 255,0.18); }
 }
 .pricing-mini-badge {
   position: absolute; top: -13px; left: 26px;

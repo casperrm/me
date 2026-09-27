@@ -207,7 +207,7 @@
   // Submits form data directly to consultingcedarpoint@gmail.com via
   // Web3Forms (https://web3forms.com), a form backend built for static
   // sites like this one (no server of our own required). The access key
-  // below is a public, domain-scoped site identifier — like a site ID,
+  // below is a public, domain-scoped site identifier, like a site ID,
   // not a secret. It cannot read mail, send as consultingcedarpoint@
   // gmail.com, or be used for anything beyond delivering these specific
   // forms, so it's safe to ship in frontend code.
@@ -230,7 +230,7 @@
       body: JSON.stringify({
         access_key: WEB3FORMS_ACCESS_KEY,
         subject,
-        from_name: 'Cedar Point Media website',
+        from_name: 'CedarPoint Media website',
         ...fields,
       }),
     });
@@ -257,7 +257,7 @@
     el.classList.remove('show');
   };
 
-  const GENERIC_SEND_ERROR = "Something went wrong sending your request. Please try again, or reach us directly on WhatsApp or by email — we're happy to help either way.";
+  const GENERIC_SEND_ERROR = "Something went wrong sending your request. Please try again, or reach us directly on WhatsApp or by email. We're happy to help either way.";
 
   const showConfirmation = (form, confirmation) => {
     if (!form || !confirmation) return;
@@ -279,11 +279,11 @@
       const industry = document.getElementById('auditIndustry').value.trim();
       const challenge = document.getElementById('auditChallenge').value.trim();
 
-      const body = `Name: ${name}\nEmail: ${email}\nInstagram / Website: ${handle}\nBusiness type: ${industry || '—'}\n\nBiggest challenge:\n${challenge || '—'}`;
+      const body = `Name: ${name}\nEmail: ${email}\nInstagram / Website: ${handle}\nBusiness type: ${industry || 'N/A'}\n\nBiggest challenge:\n${challenge || 'N/A'}`;
       const submitBtn = document.getElementById('auditSubmitBtn');
       setButtonLoading(submitBtn, true);
       try {
-        await submitInquiry('Free Brand Audit Request — Cedar Point Media', { name, email, message: body });
+        await submitInquiry('Free Brand Audit Request: CedarPoint Media', { name, email, message: body });
         showConfirmation(auditForm, auditConfirmation);
       } catch (err) {
         showFormError(auditFormError, GENERIC_SEND_ERROR);
@@ -343,10 +343,10 @@
         Array.from(quoteForm.querySelectorAll(`.chip-group[data-group="${groupName}"] .chip.selected`))
           .map((c) => c.textContent.trim());
 
-      const services = selectedFrom('service').join(', ') || '—';
-      const packageChoice = selectedFrom('package')[0] || '—';
-      const timeline = selectedFrom('timeline')[0] || '—';
-      const contactPref = selectedFrom('contactPref')[0] || '—';
+      const services = selectedFrom('service').join(', ') || 'N/A';
+      const packageChoice = selectedFrom('package')[0] || 'N/A';
+      const timeline = selectedFrom('timeline')[0] || 'N/A';
+      const contactPref = selectedFrom('contactPref')[0] || 'N/A';
 
       const name = document.getElementById('quoteName').value.trim();
       const email = document.getElementById('quoteEmail').value.trim();
@@ -360,14 +360,14 @@
 
       const body =
         `Service needed: ${services}\nPackage: ${packageChoice}\nTimeline: ${timeline}\n\n` +
-        `Business / brand name: ${brand || '—'}\nCountry: ${country}\nIndustry: ${industry || '—'}\nSocial accounts / website: ${social || '—'}\n\n` +
-        `Project description:\n${goals || '—'}\n\n` +
-        `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone || '—'}\nPreferred start date: ${start || '—'}\nPreferred contact method: ${contactPref}`;
+        `Business / brand name: ${brand || 'N/A'}\nCountry: ${country}\nIndustry: ${industry || 'N/A'}\nSocial accounts / website: ${social || 'N/A'}\n\n` +
+        `Project description:\n${goals || 'N/A'}\n\n` +
+        `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone || 'N/A'}\nPreferred start date: ${start || 'N/A'}\nPreferred contact method: ${contactPref}`;
 
       const submitBtn = document.getElementById('quoteSubmitBtn');
       setButtonLoading(submitBtn, true);
       try {
-        await submitInquiry('New Quote Request — Cedar Point Media', {
+        await submitInquiry('New Quote Request: CedarPoint Media', {
           name, email, phone, country, package: packageChoice, service: services, message: body,
         });
         showConfirmation(quoteForm, quoteConfirmation);
@@ -422,19 +422,19 @@
       const email = document.getElementById('consultEmail').value.trim();
       const phone = document.getElementById('consultPhone').value.trim();
       const date = document.getElementById('consultDate').value.trim();
-      const timeWindow = selectedFrom('timeWindow')[0] || '—';
-      const contactPref = selectedFrom('consultContactPref')[0] || '—';
+      const timeWindow = selectedFrom('timeWindow')[0] || 'N/A';
+      const contactPref = selectedFrom('consultContactPref')[0] || 'N/A';
       const topic = document.getElementById('consultTopic').value.trim();
 
       const body =
-        `Preferred date: ${date || '—'}\nPreferred time: ${timeWindow}\nPreferred contact method: ${contactPref}\n\n` +
+        `Preferred date: ${date || 'N/A'}\nPreferred time: ${timeWindow}\nPreferred contact method: ${contactPref}\n\n` +
         `Name: ${name}\nEmail: ${email}\nPhone / WhatsApp: ${phone}\n\n` +
-        `What they'd like to discuss:\n${topic || '—'}`;
+        `What they'd like to discuss:\n${topic || 'N/A'}`;
 
       const submitBtn = document.getElementById('consultSubmitBtn');
       setButtonLoading(submitBtn, true);
       try {
-        await submitInquiry('Consultation Request — Cedar Point Media', { name, email, phone, message: body });
+        await submitInquiry('Consultation Request: CedarPoint Media', { name, email, phone, message: body });
         showConfirmation(consultForm, consultConfirmation);
       } catch (err) {
         showFormError(consultFormError, GENERIC_SEND_ERROR);
@@ -497,13 +497,13 @@
     const caseStudies = {
       'black-charge': {
         category: 'Product Ads',
-        title: 'Black Charge — Launch Concept',
+        title: 'Black Charge: Launch Concept',
         img: 'assets/images/work-drink-boost.jpg',
         project: 'A concept launch campaign for Black Charge, a new energy drink line, built to demonstrate a full product-ad system.',
         objective: 'Design scroll-stopping product ads ready for Instagram and TikTok placement.',
-        direction: 'Two ad variants — a bold hero shot and a playful "fuel gauge" concept — anchored to one consistent brand system.',
+        direction: 'Two ad variants (a bold hero shot and a playful "fuel gauge" concept) anchored to one consistent brand system.',
         deliverables: '2 finished ad creatives, packaging integration, platform-ready exports.',
-        result: 'This is a concept project created to demonstrate our process, not a paid client campaign — real performance results will be added here once this work runs as a live, paid campaign.',
+        result: 'This is a concept project created to demonstrate our process, not a paid client campaign. Real performance results will be added here once this work runs as a live, paid campaign.',
       },
       'growth-carousel': {
         category: 'Social Carousel',
@@ -511,9 +511,9 @@
         img: 'assets/images/work-carousel-idea.jpg',
         project: 'A sample Instagram carousel built to show how a process can be turned into shareable, swipeable content.',
         objective: 'Turn a process into a carousel people actually read to the end, not just swipe past.',
-        direction: 'A 5-slide system with one visual language — each slide standalone, all five building toward a clear CTA.',
+        direction: 'A 5-slide system with one visual language: each slide standalone, all five building toward a clear CTA.',
         deliverables: '5-slide carousel, matching cover design, caption copy.',
-        result: 'This is a demonstration project, not a paid client campaign — real reach and engagement numbers will be added once this format runs for an actual client.',
+        result: 'This is a demonstration project, not a paid client campaign. Real reach and engagement numbers will be added once this format runs for an actual client.',
       },
       'trend-marketing': {
         category: 'Trend Marketing',
@@ -523,7 +523,7 @@
         objective: 'Show that trend-style content can carry a real marketing message without feeling forced.',
         direction: 'Paired a familiar format with copy written for real small-business pain points, in English and Arabic.',
         deliverables: '6-piece ad set, bilingual copy versions.',
-        result: 'This is concept and sample work created to demonstrate our creative range — not a paid client campaign. Client results will be added here as they launch.',
+        result: 'This is concept and sample work created to demonstrate our creative range, not a paid client campaign. Client results will be added here as they launch.',
       },
     };
 

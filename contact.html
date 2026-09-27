@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Request a Quote — CedarPoint Media</title>
+<title>Request a Quote | CedarPoint Media</title>
 <meta name="description" content="Tell CedarPoint Media what your brand needs and get a personal, no-pressure quote.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/images/favicon-512.png">
@@ -35,8 +35,6 @@
 
 <div class="preloader" id="preloader"><div class="preloader-mark"><span>C</span></div></div>
 
-<div class="cursor-glow" id="cursorGlow"></div>
-
 <!-- ===== HEADER ===== -->
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
@@ -52,6 +50,7 @@
 
     <nav class="main-nav" id="mainNav">
       <a href="index.html">Home</a>
+      <a href="about.html">About</a>
       <div class="nav-item-dropdown">
         <a href="services.html" class="nav-drop-trigger">Services <svg class="icon icon-tiny"><use href="#i-chevron-down"></use></svg></a>
         <div class="nav-dropdown-panel">
@@ -65,9 +64,8 @@
           <a href="services.html" class="nav-dropdown-all">View All Services &rarr;</a>
         </div>
       </div>
-      <a href="work.html">Our Work</a>
-      <a href="packages.html">Packages</a>
-      <a href="about.html">About</a>
+      <a href="work.html">Work</a>
+      <a href="index.html#process">Process</a>
       <a href="contact.html">Contact</a>
 
       <div class="nav-extra">
@@ -82,7 +80,7 @@
     </nav>
 
     <div class="header-actions">
-      <a href="audit.html" class="btn btn-primary btn-sm">Free Audit</a>
+      <a href="contact.html" class="btn btn-primary btn-sm">Start a Project</a>
       <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
@@ -95,13 +93,13 @@
   <!-- ===== PAGE HERO ===== -->
   <section class="page-hero">
     <div class="hero-bg">
-      <div class="blob blob-1"></div>
+      <div class="hero-vignette"></div>
       <div class="grid-overlay"></div>
     </div>
     <div class="container page-hero-inner" data-reveal>
       <span class="tag tag-light">Request a Quote or Book a Call</span>
       <h1 data-reveal-text>Tell us what you need. <span class="text-accent">We'll take it from there.</span></h1>
-      <p>Send a project brief, or pick a time to talk it through directly — no generic contact form guesswork.</p>
+      <p>Send a project brief, or pick a time to talk it through directly. No generic contact form guesswork.</p>
     </div>
   </section>
 
@@ -111,7 +109,7 @@
       <div class="contact-info" data-reveal>
         <span class="tag">Get In Touch</span>
         <h2 data-reveal-text>Prefer to just <span class="text-accent">reach out directly?</span></h2>
-        <p>That works too. Email, call, or WhatsApp us any time — the forms here are just the fastest way for us to prepare a real answer instead of a generic reply.</p>
+        <p>That works too. Email, call, or WhatsApp us any time: the forms here are just the fastest way for us to prepare a real answer instead of a generic reply.</p>
 
         <div class="contact-detail">
           <svg class="icon"><use href="#i-envelope"></use></svg>
@@ -158,7 +156,7 @@
           <form id="quoteForm">
             <!-- STEP 1 -->
             <div class="quote-step active" data-step="1">
-              <p class="quote-progress-label">Step 1 of 2 — What do you need?</p>
+              <p class="quote-progress-label">Step 1 of 2: What do you need?</p>
 
               <span class="chip-group-label">Service Needed</span>
               <div class="chip-group" data-group="service" data-multi="true">
@@ -193,7 +191,7 @@
 
             <!-- STEP 2 -->
             <div class="quote-step" data-step="2">
-              <p class="quote-progress-label">Step 2 of 2 — Your business & contact info</p>
+              <p class="quote-progress-label">Step 2 of 2: Your business & contact info</p>
 
               <div class="form-row">
                 <div class="form-field">
@@ -264,14 +262,14 @@
           <div class="form-confirmation" id="quoteConfirmation">
             <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
             <h3>Thank you.</h3>
-            <p>Your request has been received by Cedar Point Media. Our team will contact you shortly.</p>
+            <p>Your request has been received by CedarPoint Media. Our team will contact you shortly.</p>
             <a href="index.html" class="btn btn-outline">Back to Home</a>
           </div>
         </div>
 
         <!-- ===== CONSULTATION MODE ===== -->
         <div class="mode-panel" data-mode-panel="consultation">
-          <p class="form-hint" style="margin-top: 0;">Suggest a day and time that works for you — we'll confirm by email or WhatsApp, usually within a few hours.</p>
+          <p class="form-hint" style="margin-top: 0;">Suggest a day and time that works for you. We'll confirm by email or WhatsApp, usually within a few hours.</p>
 
           <form id="consultForm">
             <div class="form-row">
@@ -320,13 +318,13 @@
               <span class="btn-label">Request This Time <svg class="icon"><use href="#i-send"></use></svg></span>
               <span class="btn-loading">Sending&hellip;</span>
             </button>
-            <p class="form-note">This confirms a request, not a booked slot — we'll follow up to lock in the time.</p>
+            <p class="form-note">This confirms a request, not a booked slot. We'll follow up to lock in the time.</p>
           </form>
 
           <div class="form-confirmation" id="consultConfirmation">
             <div class="confirmation-icon"><svg class="icon"><use href="#i-check"></use></svg></div>
             <h3>Thank you.</h3>
-            <p>Your request has been received by Cedar Point Media. Our team will contact you shortly.</p>
+            <p>Your request has been received by CedarPoint Media. Our team will contact you shortly.</p>
             <a href="index.html" class="btn btn-outline">Back to Home</a>
           </div>
         </div>
@@ -348,11 +346,11 @@
         </div>
         <div class="faq-item" data-reveal>
           <button type="button" class="faq-question">How long does a project take?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
-          <div class="faq-answer"><div class="faq-answer-inner">Monthly management runs continuously once we start. One-off projects (a shoot, a campaign, a brand refresh) vary by scope — we'll give you a real timeline during your quote, not a generic estimate.</div></div>
+          <div class="faq-answer"><div class="faq-answer-inner">Monthly management runs continuously once we start. One-off projects (a shoot, a campaign, a brand refresh) vary by scope: we'll give you a real timeline during your quote, not a generic estimate.</div></div>
         </div>
         <div class="faq-item" data-reveal>
           <button type="button" class="faq-question">Do you work internationally?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
-          <div class="faq-answer"><div class="faq-answer-inner">Yes. We're based in Lebanon and work with clients remotely worldwide — everything from strategy calls to content delivery happens online.</div></div>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes. We're based in Lebanon and work with clients remotely worldwide. Everything from strategy calls to content delivery happens online.</div></div>
         </div>
         <div class="faq-item" data-reveal>
           <button type="button" class="faq-question">How many revisions are included?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
@@ -360,11 +358,11 @@
         </div>
         <div class="faq-item" data-reveal>
           <button type="button" class="faq-question">Can I choose individual services instead of a package?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
-          <div class="faq-answer"><div class="faq-answer-inner">Yes. Packages are the easiest starting point, but you can request any single service — content, ads, strategy, a shoot — on its own through the quote form.</div></div>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes. Packages are the easiest starting point, but you can request any single service (content, ads, strategy, a shoot) on its own through the quote form.</div></div>
         </div>
         <div class="faq-item" data-reveal>
           <button type="button" class="faq-question">What happens after I submit a request?<svg class="icon"><use href="#i-arrow-right"></use></svg></button>
-          <div class="faq-answer"><div class="faq-answer-inner">We personally read every request. You'll hear back from us directly — usually within 8 hours — with real next steps, not an automated reply.</div></div>
+          <div class="faq-answer"><div class="faq-answer-inner">We personally read every request. You'll hear back from us directly, usually within 8 hours, with real next steps, not an automated reply.</div></div>
         </div>
       </div>
     </div>
@@ -409,7 +407,7 @@
       <a href="mailto:consultingcedarpoint@gmail.com">consultingcedarpoint@gmail.com</a>
       <a href="tel:+96181113001">+961 81 113 001</a>
       <span class="footer-status"><svg class="icon icon-tiny"><use href="#i-dot"></use></svg> Open 24/7</span>
-      <p class="footer-area">Lebanon — serving clients internationally</p>
+      <p class="footer-area">Lebanon, serving clients internationally</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/cedarpoint.media/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg class="icon"><use href="#i-instagram"></use></svg></a>
         <a href="https://www.tiktok.com/@cedarpointmedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><svg class="icon"><use href="#i-tiktok"></use></svg></a>
@@ -423,6 +421,7 @@
     <div class="footer-legal">
       <a href="privacy.html">Privacy Policy</a>
       <a href="terms.html">Terms of Service</a>
+      <a href="refund-policy.html">Refund Policy</a>
     </div>
   </div>
 </footer>
