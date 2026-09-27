@@ -245,7 +245,7 @@
       'footer.copyright': 'CedarPoint Media. All rights reserved.',
       'footer.privacy': 'Privacy Policy',
       'footer.terms': 'Terms of Service',
-      'footer.refund': 'Refund Policy',
+      'footer.refund': 'Cancellation Policy',
 
       'whatsapp.label': 'Chat with us',
       'whatsapp.ariaLabel': 'Chat on WhatsApp',
@@ -497,7 +497,7 @@
       'footer.copyright': 'CedarPoint Media. Tous droits réservés.',
       'footer.privacy': 'Politique de Confidentialité',
       'footer.terms': "Conditions d'Utilisation",
-      'footer.refund': "Politique de Remboursement",
+      'footer.refund': "Politique d'Annulation",
 
       'whatsapp.label': 'Discutez avec nous',
       'whatsapp.ariaLabel': 'Discuter sur WhatsApp',
@@ -749,7 +749,7 @@
       'footer.copyright': 'سيدربوينت ميديا. جميع الحقوق محفوظة.',
       'footer.privacy': 'سياسة الخصوصية',
       'footer.terms': 'شروط الاستخدام',
-      'footer.refund': 'سياسة الاسترداد',
+      'footer.refund': 'سياسة الإلغاء',
 
       'whatsapp.label': 'راسلونا',
       'whatsapp.ariaLabel': 'تواصلوا عبر واتساب',
